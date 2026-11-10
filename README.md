@@ -65,7 +65,7 @@ All nonpublic endpoints require `Authorization: Bearer <token>`.
 | Method / route | Input and access |
 |---|---|
 | GET /health | Public health response |
-| POST /api/v1/auth/login | `email`, `password`; returns 15-minute opaque bearer token |
+| POST /api/v1/auth/login | `email`, `password`; returns a 15-minute HS256 JWT bearer token |
 | POST /api/v1/auth/logout | Authenticated; revokes current token |
 | POST /api/v1/research/search | Public; `keyword`, optional year/department/limit/offset; typo-tolerant approved records only |
 | GET /api/v1/research/:id | Record owner or staff; other records return 404 |
@@ -75,7 +75,7 @@ All nonpublic endpoints require `Authorization: Bearer <token>`.
 | POST /api/v1/admin/deletion-requests/:id/complete | Staff; `confirm_review: true`; synthetic hard deletion |
 | GET /api/v1/admin/audit-logs | Staff only; last 100 minimal audit events |
 
-Consultation ticketing and PostgreSQL trigram search are implemented; see [search and scheduling API](docs/SEARCH_AND_CONSULTATIONS.md). Private upload adapters and an Android cache/security library are now implemented; see [IAS implementation](docs/IAS_IMPLEMENTATION.md). No complete frontend, SSO, live cloud deployment or Turnitin integration is claimed.
+Consultation ticketing and PostgreSQL trigram search are implemented; see [search and scheduling API](docs/SEARCH_AND_CONSULTATIONS.md). Private upload adapters and a launchable Android sign-in/offline-resources app are now implemented; see [IAS implementation](docs/IAS_IMPLEMENTATION.md). No complete frontend, SSO, live cloud deployment or Turnitin integration is claimed.
 
 ## Team and submission
 Read [team handoff](docs/TEAM_HANDOFF.md), [report corrections](docs/REPORT_CORRECTIONS.md), [privacy behavior](docs/PRIVACY.md), [controls](docs/CONTROLS.md), and [demo instructions](docs/DEMO.md).
@@ -117,4 +117,6 @@ cache. See [API and guarantees](docs/SEARCH_AND_CONSULTATIONS.md) and
 
 ## IAS confidentiality, integrity and availability update
 
-See [implementation and deployment guide](docs/IAS_IMPLEMENTATION.md) for native RLS, faculty/membership/reviewer scope, feedback isolation, Argon2id, shared throttling, private documents, TLS, encrypted recovery, Android library and evidence commands. Older reports describe their original submission snapshot.
+See [implementation and deployment guide](docs/IAS_IMPLEMENTATION.md) for native RLS, faculty/membership/reviewer scope, feedback isolation, Argon2id, shared throttling, private documents, TLS, encrypted recovery, Android app/library and evidence commands. Older reports describe their original submission snapshot.
+
+The security/lifecycle update adds database-backed SHA-256 audit chaining, assigned-officer lifecycle events with independent presentation/publication dates, and numbered document revision history. Apply migrations before starting the updated API; see [workflow API and validation notes](docs/IAS_IMPLEMENTATION.md#audit-chains-lifecycle-and-document-revisions-10-november-2026). Run `npm run test:integrity:db` only against a disposable synthetic database.
