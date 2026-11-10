@@ -8,7 +8,15 @@ Shared repository for the III-BCSAD bolanatics IAS and ALGOCOM milestones, using
 
 This is a synthetic-data teaching implementation, not the complete university platform or a production deployment.
 
-Repository: https://github.com/a-a123456789/umak-research-management
+Repository: https://github.com/project-works-collab/umak-research-management
+
+## Privacy Policy and Terms
+
+- [Privacy Policy](docs/policies/PRIVACY_POLICY.md)
+- [Terms and Conditions](docs/policies/TERMS_AND_CONDITIONS.md)
+- [Sources, implementation mapping and institutional adoption schedule](docs/policies/README.md)
+
+**Final academic submission — proposed policy pending institutional adoption.** These documents describe the CRM project; publishing them does not activate institutional policies, deploy the application or record user acceptance. The unchanged generator exports are preserved separately as source evidence.
 
 ## Security assessment reports
 
@@ -87,7 +95,7 @@ The isolated `algocom/` core now includes DAG duration estimates. Staff can call
 
 ## Course submissions
 
-Final report PDFs, editable Markdown and 14-slide PowerPoint decks: [submissions](submissions/README.md). See [completion and team handoff](docs/COMPLETION_CHECKLIST.md), [current evidence](evidence/STATUS.md), and [algorithm API contract](docs/ALGORITHM_API.md). The shared repository is `a-a123456789/umak-research-management`; `algocom/` remains independent of the IAS database.
+Final report PDFs, editable Markdown and 14-slide PowerPoint decks: [submissions](submissions/README.md). See [completion and team handoff](docs/COMPLETION_CHECKLIST.md), [current evidence](evidence/STATUS.md), and [algorithm API contract](docs/ALGORITHM_API.md). The shared repository is `project-works-collab/umak-research-management`; `algocom/` remains independent of the IAS database.
 
 Next actions for every member: [concise handoff](docs/NEXT_STEPS.md). Financial evidence remains [external](docs/FINANCIAL_EVIDENCE_WORKSHEET.md).
 
