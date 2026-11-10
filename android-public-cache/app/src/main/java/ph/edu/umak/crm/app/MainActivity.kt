@@ -52,7 +52,10 @@ class MainActivity : Activity() {
         val origin = preferences.getString("server", "") ?: ""
         if (origin.isNotEmpty()) { PublicSync.schedule(this, origin) }
     }
-    private fun field(hintText: String) = EditText(this).apply { hint = hintText; layout.addView(this) }
+    private fun field(hintText: String) = EditText(this).apply {
+        hint = hintText
+        this@MainActivity.layout.addView(this)
+    }
     private fun button(label: String, action: () -> Unit) { layout.addView(Button(this).apply { text = label; setOnClickListener { action() } }) }
     private fun origin(): String {
         val url = URL(server.text.toString().trim())
