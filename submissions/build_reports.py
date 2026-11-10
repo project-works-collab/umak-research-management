@@ -10,7 +10,7 @@ from reportlab.pdfgen import canvas
 from pypdf import PdfReader,PdfWriter
 from PIL import Image as PILImage
 import argparse,os
-a=argparse.ArgumentParser();a.add_argument('--root',type=Path,default=Path(__file__).resolve().parent);args=a.parse_args();P=args.root.resolve();out=P/'output';out.mkdir(exist_ok=True)
+a=argparse.ArgumentParser();a.add_argument('--root',type=Path,default=Path(__file__).resolve().parent);args=a.parse_args();P=args.root.resolve();inputs=P/'sources' if (P/'sources').is_dir() else P;out=P/'output';out.mkdir(exist_ok=True)
 for name,file in [('Arial','Arial.ttf'),('ArialBold','Arial Bold.ttf'),('ArialItalic','Arial Italic.ttf')]:pdfmetrics.registerFont(TTFont(name,str(Path(os.environ.get('REPORT_FONT_DIR','/System/Library/Fonts/Supplemental'))/file)))
 pdfmetrics.registerFontFamily('Arial',normal='Arial',bold='ArialBold',italic='ArialItalic',boldItalic='ArialBold')
 styles=getSampleStyleSheet();styles.add(ParagraphStyle(name='Body',fontName='Arial',fontSize=10,leading=13,spaceAfter=6,textColor=colors.HexColor('#203747')));styles.add(ParagraphStyle(name='Tcell',parent=styles['Body'],fontSize=7.2,leading=9,spaceAfter=0));styles.add(ParagraphStyle(name='CodeBlock',fontName='Courier',fontSize=7,leading=9,spaceAfter=10));
@@ -24,7 +24,7 @@ def footer(c,d):
  c.setFont('Arial',8);c.setFillColor(colors.HexColor('#516778'));c.drawString(44,24,'III-BCSAD · bolanatics | CRM | 5 October 2026');c.drawRightString(W-44,24,str(d.page));c.setStrokeColor(colors.HexColor('#D3E3E8'));c.line(44,38,W-44,38)
 
 def build(course):
- text=(P/(course+'_Report.md')).read_text();lines=text.splitlines();story=[];i=0
+ text=(inputs/(course+'_Report.md')).read_text();lines=text.splitlines();story=[];i=0
  while i<len(lines):
   l=lines[i].strip();i+=1
   if not l:continue
@@ -34,10 +34,10 @@ def build(course):
    story.append(KeepTogether([Paragraph(fmt(image_match.group(1)),styles['Heading2']),Image(str(file),width=width,height=height),Spacer(1,10)]));continue
   if l=='{{DFD_IMAGES}}':
    for n in [0,1]:
-    story.append(Paragraph('Figure '+str(n+1)+'. Level '+str(n)+' Threat Dragon rendered diagram',styles['Heading2']));file=P/'build'/('ThreatDragon_Level_'+str(n)+'.png');im=PILImage.open(file);story.append(Image(str(file),width=CW,height=CW*im.height/im.width));story.append(Spacer(1,10))
+    story.append(Paragraph('Figure '+str(n+1)+'. Level '+str(n)+' Threat Dragon rendered diagram',styles['Heading2']));file=P/'figures'/('ThreatDragon_Level_'+str(n)+'.png');im=PILImage.open(file);story.append(Image(str(file),width=CW,height=CW*im.height/im.width));story.append(Spacer(1,10))
    continue
   if l in ['{{ARCH_IMAGE}}','{{ATTACK_IMAGE}}']:
-   file=P/'build'/('Algorithm_Architecture.png' if l=='{{ARCH_IMAGE}}' else 'Attack_Tree_Current.png');im=PILImage.open(file);story.append(Image(str(file),width=CW,height=CW*im.height/im.width));story.append(Spacer(1,10));continue
+   file=P/'figures'/('Algorithm_Architecture.png' if l=='{{ARCH_IMAGE}}' else 'Attack_Tree_Current.png');im=PILImage.open(file);story.append(Image(str(file),width=CW,height=CW*im.height/im.width));story.append(Spacer(1,10));continue
   if l.startswith('<!--'):
    story.append(Paragraph(fmt(l.removeprefix('<!--').removesuffix('-->').strip()),ParagraphStyle(name='Disclosure',parent=styles['Body'],fontSize=8.2,leading=11,textColor=colors.HexColor('#516778'))));continue
   if l.startswith('```'):

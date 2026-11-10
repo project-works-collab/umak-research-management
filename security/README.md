@@ -87,17 +87,17 @@ security/
 | Shared request/upload and login controls | [limiter.js](../src/security/limiter.js), [migration 002](../db/migrations/002_ias_controls.sql) |
 | Production database TLS configuration | [database-config.js](../src/security/database-config.js) |
 | API TLS startup and timeouts | [src/server.js](../src/server.js) |
-| File structure validation and isolated workers | [storage directory](../src/storage/) |
+| File structure validation and isolated workers | [storage directory](../src/storage) |
 | Storage authorization and S3 signing | [routes.js](../src/storage/routes.js), [s3.js](../src/storage/s3.js) |
 | ClamAV INSTREAM adapter | [scanner.js](../src/storage/scanner.js) |
 | Public offline content and blank form | [public-content.js](../src/public-content.js) |
 | Search publication boundary | [research/search.js](../src/research/search.js) |
 | Consultation authorization, locking and versions | [consultations/routes.js](../src/consultations/routes.js) |
-| Database schema, policies, audit triggers and recovery queues | [db directory](../db/) |
-| Encryption, backups, restore and deletion maintenance | [scripts directory](../scripts/) |
-| Bucket policies and Linux service/timer definitions | [ops directory](../ops/) |
-| Android Room cache and Keystore vault | [Android library](../android-public-cache/README.md) |
-| Tests, saved evidence and calibration | [test](../test/), [evidence](../evidence/ias-plan/IMPLEMENTATION.md), [benchmarks](../benchmarks/README.md) |
+| Database schema, policies, audit triggers and recovery queues | [db directory](../db) |
+| Encryption, backups, restore and deletion maintenance | [scripts directory](../scripts) |
+| Bucket policies and Linux service/timer definitions | [ops directory](../ops) |
+| Android Room cache and Keystore vault | [Android library](../android/README.md) |
+| Tests, saved evidence and calibration | [test](../test), [evidence](../evidence/ias-plan/IMPLEMENTATION.md), [benchmarks](../benchmarks/README.md) |
 
 ## 3. Architecture and trust boundaries
 
@@ -308,7 +308,7 @@ S3 versioning means an object delete may leave old versions. Approved retention/
 
 ### 6.4 Android offline content and secrets
 
-The [Android library](../android-public-cache/README.md) stores only public directory, requirements, instruction and template metadata in Room. Template bytes are in app-private files. WorkManager refreshes the public content on a 12-hour network-constrained schedule. Files pass size/checksum checks before the new metadata set is published atomically; a failed refresh preserves the previous complete cache.
+The [Android library](../android/README.md) stores only public directory, requirements, instruction and template metadata in Room. Template bytes are in app-private files. WorkManager refreshes the public content on a 12-hour network-constrained schedule. Files pass size/checksum checks before the new metadata set is published atomically; a failed refresh preserves the previous complete cache.
 
 The integrating app must display last-sync/offline/stale information and handle first-install empty caches. Private manuscripts and staff notes are outside this public-cache flow. The supplied public content and blank form are clearly marked synthetic placeholders.
 
@@ -421,7 +421,7 @@ For document upload, send file bytes rather than JSON, base64 or multipart field
 
 Consent uses `policy_version:"2026-10-v1"` and boolean `institutional_analytics` / `email_notifications` choices. Both may be false. Server identity and timestamp cannot be supplied by the client. Deletion is a reviewed workflow, not an assertion that every historical backup copy has been erased.
 
-See the [consultation contract](../docs/SEARCH_AND_CONSULTATIONS.md) and [planning API contract](../docs/ALGORITHM_API.md) for detailed payloads. Their historical control descriptions should be read alongside this newer security status.
+See the [consultation contract](../docs/api/SEARCH_AND_CONSULTATIONS.md) and [planning API contract](../docs/api/ALGORITHM_API.md) for detailed payloads. Their historical control descriptions should be read alongside this newer security status.
 
 ## 9. Local setup and configuration
 
@@ -529,7 +529,7 @@ Tests intentionally create/delete synthetic users and studies. Reseeding before 
 | Backup tampering/wrong key rejected; real SDK signs 600-second URL | [ias-unit.test.js](../test/ias-unit.test.js) |
 | Existing SQLi, consent, deletion, session and grants regression | [security.test.js](../test/security.test.js) |
 | Concurrent queue claims, stale versions and audit rollback | [features.test.js](../test/features.test.js) |
-| Keystore tamper/logout and Room reopen | [Android instrumentation source](../android-public-cache/src/androidTest/java/ph/edu/umak/crm/SecurityCacheTest.kt); compiled, not device-executed |
+| Keystore tamper/logout and Room reopen | [Android instrumentation source](../android/core/src/androidTest/java/ph/edu/umak/crm/SecurityCacheTest.java); compiled, not device-executed |
 
 ### Saved results
 
@@ -589,7 +589,7 @@ Trigram search and EDF measurements are separate workloads under [benchmark inst
 | `npm run demo:secret` | Real pre-commit rejection of a recognizable fake secret in a disposable Git repository | Does not prove every secret is detected or remote push protection is enabled |
 | `npm run backup:verify` | Disposable DB restoration with rows/policies/grants/sequences comparison | Quiescent local proof, not production/offsite recovery |
 
-The [saved IAS transcript](../evidence/ias-plan/demo.txt) contains access outcomes, not raw tokens or passwords. Existing [defense instructions](../docs/DEMO.md) cover the short secret-scanning demonstration.
+The [saved IAS transcript](../evidence/ias-plan/demo.txt) contains access outcomes, not raw tokens or passwords. Existing [defense instructions](../docs/team/DEMO.md) cover the short secret-scanning demonstration.
 
 ### Suggested presentation order
 
@@ -646,7 +646,7 @@ Inputs come from [financial_inputs.json](data/financial_inputs.json). All amount
 | Annual control cost (ACS) | Sum of allocated safeguards | ₱240,000 |
 | Cost-benefit estimate | Prior ALE − target ALE − ACS | ₱2,568,000 |
 
-Arithmetic consistency is testable; the institutional validity of the input assumptions is a separate task. See the [financial evidence worksheet](../docs/FINANCIAL_EVIDENCE_WORKSHEET.md).
+Arithmetic consistency is testable; the institutional validity of the input assumptions is a separate task. See the [financial evidence worksheet](../docs/team/FINANCIAL_EVIDENCE_WORKSHEET.md).
 
 ### 13.4 Validate the package
 
@@ -720,7 +720,7 @@ RA 10173 applicability and lawful basis, IP/publication rights, retention and in
 
 ### Current source and evidence
 
-- [Implementation and deployment guide](../docs/IAS_IMPLEMENTATION.md)
+- [Implementation and deployment guide](../docs/implementation/IAS_IMPLEMENTATION.md)
 - [Current evidence index](../evidence/ias-plan/IMPLEMENTATION.md)
 - [Full Node regression results](../evidence/ias-plan/implementation-tests.tap)
 - [Android build and lint output](../evidence/ias-plan/android-build.txt)
@@ -734,11 +734,11 @@ RA 10173 applicability and lawful basis, IP/publication rights, retention and in
 ### Course artifacts and earlier records
 
 - [Submission index and editable reports/decks](../submissions/README.md)
-- [IAS report source](../submissions/IAS_Report.md)
-- [IAS capstone portfolio PDF](../submissions/III-BCSAD_bolanatics_IAS_Capstone_Portfolio.pdf)
-- [IAS defense PowerPoint](../submissions/IAS_Defense.pptx)
+- [IAS report source](../submissions/sources/IAS_Report.md)
+- [IAS capstone portfolio PDF](../submissions/final/III-BCSAD_bolanatics_IAS_Capstone_Portfolio.pdf)
+- [IAS defense PowerPoint](../submissions/final/IAS_Defense.pptx)
 - [Earlier integration evidence](../evidence/STATUS.md)
-- [Team handoff](../docs/TEAM_HANDOFF.md), [completion checklist](../docs/COMPLETION_CHECKLIST.md) and [financial evidence worksheet](../docs/FINANCIAL_EVIDENCE_WORKSHEET.md)
+- [Team handoff](../docs/team/TEAM_HANDOFF.md), [completion checklist](../docs/team/COMPLETION_CHECKLIST.md) and [financial evidence worksheet](../docs/team/FINANCIAL_EVIDENCE_WORKSHEET.md)
 
 ### Technical and policy references
 

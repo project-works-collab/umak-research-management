@@ -1,7 +1,7 @@
 """Benchmark supplied CRM methods on synthetic workflows; Python stdlib only.
 
 Usage: python bench.py [--seed 20261001] [--reps 10]
-Writes results.csv and results.md beside this script. No timing thresholds.
+Writes results.csv and results.md under benchmarks/results/algocom/. No timing thresholds.
 """
 import argparse
 import csv
@@ -106,7 +106,8 @@ def main():
                 'proposed_peak_kib': round(peak_kib(evaluate_proposed, args), 1),
                 'baseline_peak_kib': round(peak_kib(evaluate_baseline, args), 1),
             })
-    here = Path(__file__).resolve().parent
+    here = Path(__file__).resolve().parents[1] / 'benchmarks/results/algocom'
+    here.mkdir(parents=True, exist_ok=True)
     with (here / 'results.csv').open('w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()

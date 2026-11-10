@@ -75,7 +75,7 @@ Philippine law and applicable approved university policies inform institutional 
 
 ## Reviewer appendix
 
-- **Feature baseline:** commit `1a305391339b8258ab2f05737717aa0038fd3d97`; see [implementation guide](../IAS_IMPLEMENTATION.md), [search and consultations](../SEARCH_AND_CONSULTATIONS.md) and [algorithm API](../ALGORITHM_API.md).
+- **Feature baseline:** commit `1a305391339b8258ab2f05737717aa0038fd3d97`; see [implementation guide](../implementation/IAS_IMPLEMENTATION.md), [search and consultations](../api/SEARCH_AND_CONSULTATIONS.md) and [algorithm API](../api/ALGORITHM_API.md).
 - **Legal review:** RA 10175 section 4(a) supplies context for unauthorized access and interference; it does not authorize invented institutional sanctions. RA 10173 and its IRR inform privacy-related clauses. See [references and adoption schedule](README.md).
 - **Adoption gate:** confirm operator authority, eligibility, manuscript permissions, contacts, hosting, retention, review procedures and acceptance before institutional use.
 - **Source and assistance:** adapted from the user's App Privacy Policy Generator export and earlier CRM academic policy material. ChatGPT/Codex assisted feature comparison, source review, clause adaptation and document checks. Human institutional review remains pending. The [unchanged generator original](generator-original/terms-generator-original.md) is source evidence, not the operative terms.

@@ -26,7 +26,8 @@ def performance_budget():
  return rows
 
 def main():
- out=Path(__file__).parent;rows=[]
+ out=Path(__file__).resolve().parents[1]/'benchmarks/results/algocom';rows=[]
+ out.mkdir(parents=True,exist_ok=True)
  for kind in KINDS:
   for n in SIZES:
    p=payload(kind,n);a,b=solve(p),solve(p,True);assert equivalent(a,b)
