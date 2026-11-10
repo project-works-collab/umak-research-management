@@ -4,6 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import {createApp} from '../src/app.js';
+import {createSessionTokens} from '../src/security/session-tokens.js';
 
 function fixture({role='student', fail=false}={}) {
   const calls=[];
@@ -16,9 +17,9 @@ function fixture({role='student', fail=false}={}) {
     return {rowCount:0,rows:[]};
   }};
   db.connect=async()=>({query:db.query,release(){}});
-  return {app:createApp(db,{algorithmRunner:async()=>({status:'OK'})}),calls};
+  const sessionTokens=createSessionTokens({key:'ab'.repeat(32)});
+  return {app:createApp(db,{algorithmRunner:async()=>({status:'OK'}),sessionTokens}),calls,auth:`Bearer ${sessionTokens.issue(1)}`};
 }
-const auth='Bearer '+'a'.repeat(64);
 
 test('baseline: anonymous private research denied before record access',async()=>{
   const {app,calls}=fixture();
@@ -27,13 +28,13 @@ test('baseline: anonymous private research denied before record access',async()=
 });
 
 test('baseline: researcher denied staff audit endpoint',async()=>{
-  const {app,calls}=fixture();
+  const {app,calls,auth}=fixture();
   await request(app).get('/api/v1/admin/audit-logs').set('Authorization',auth).expect(403);
   assert.ok(!calls.some(c=>c.sql.includes('audit_logs')));
 });
 
 test('baseline: private research lookup binds identity in parameterized API predicate',async()=>{
-  const {app,calls}=fixture();
+  const {app,calls,auth}=fixture();
   await request(app).get('/api/v1/research/2').set('Authorization',auth).expect(404);
   const query=calls.find(x=>x.sql.includes('FROM research_records'));
   assert.deepEqual(query.params,['2',1]);
@@ -42,7 +43,7 @@ test('baseline: private research lookup binds identity in parameterized API pred
 });
 
 test('baseline: dependency failure returns sanitized JSON',async()=>{
-  const {app}=fixture({fail:true});
+  const {app,auth}=fixture({fail:true});
   const result=await request(app).get('/api/v1/research/2').set('Authorization',auth).expect(500);
   assert.equal(result.body.error,'Internal server error');
   assert.equal(result.body.request_id,result.headers['x-request-id']);
@@ -54,4 +55,11 @@ test('baseline: malformed and oversized JSON rejected',async()=>{
   await request(app).post('/api/v1/research/search').set('Content-Type','application/json').send('{broken').expect(400);
   await request(app).post('/api/v1/research/search').send({keyword:'x'.repeat(20_000)}).expect(413);
   assert.equal(calls.length,0);
+});
+
+test('baseline: legacy opaque tokens rejected before session lookup',async()=>{
+  const {app,calls}=fixture();
+  await request(app).get('/api/v1/research/2').set('Authorization','Bearer '+'a'.repeat(64)).expect(401);
+  assert.ok(!calls.some(c=>c.sql.includes('crm_session_user')));
+  assert.ok(!calls.some(c=>c.sql.includes('FROM research_records')));
 });
