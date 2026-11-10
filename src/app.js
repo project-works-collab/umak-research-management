@@ -10,9 +10,10 @@ import {requestLimiter,reserveLogin} from './security/limiter.js';
 import {z,id,login,research,feedback,member,validate,search,consent,empty,algorithm} from './security/validation.js';
 import {documentRouter} from './storage/routes.js';
 import {publicContentRouter} from './public-content.js';
+import {createSessionTokens} from './security/session-tokens.js';
 const dummyHash = await hashPassword('dummy-unusable-account-password');
 const isId=value=>id.safeParse(value).success;
-export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectStore=null,scanner=null}={}) {
+export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectStore=null,scanner=null,sessionTokens=createSessionTokens()}={}) {
   const {db,storage}=scopedDatabase(pool);
   const app = express();
   app.disable('x-powered-by');
@@ -27,10 +28,11 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
   app.get('/health', (_req,res) => res.json({status:'ok'}));
   app.use('/api/v1/public',publicContentRouter());
   const auth = async (req,res,next) => {
-    const token = req.get('authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
-    if (!token) return res.status(401).json({error:'Authentication required'});
+    const token = req.get('authorization')?.match(/^Bearer ([A-Za-z0-9_.-]{1,2048})$/)?.[1];
+    const claims=sessionTokens.verify(token);
+    if (!claims) return res.status(401).json({error:'Authentication required'});
     const result = await db.query('SELECT id,role FROM crm_session_user($1)',[tokenHash(token)]);
-    if (!result.rowCount) return res.status(401).json({error:'Authentication required'});
+    if (!result.rowCount||String(result.rows[0].id)!==claims.sub) return res.status(401).json({error:'Authentication required'});
     req.user=result.rows[0];storage.getStore().user=req.user;next();
   };
   const staff = (req,res,next) => req.user.role==='staff' ? next() : res.status(403).json({error:'Forbidden'});
@@ -56,7 +58,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     const user=result.rows[0];
     if(needsRehash(user.password_hash))await db.query('SELECT crm_rehash_password($1,$2,$3)',[user.id,user.password_hash,await hashPassword(password)]);
     await db.query('SELECT crm_finish_login($1)',[req.requestId]);
-    const token=randomBytes(32).toString('hex');
+    const token=sessionTokens.issue(user.id);
     await db.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '15 minutes')",[tokenHash(token),user.id]);
     res.json({access_token:token,token_type:'Bearer',expires_in:900});
   });
@@ -124,8 +126,25 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
       await c.query('COMMIT');res.sendStatus(204);
     }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}
   });
+  app.get('/api/v1/admin/audit-history/verify',auth,staff,async(_req,res)=>{
+    res.set('Cache-Control','no-store');res.json((await db.query('SELECT * FROM crm_verify_audit_chain()')).rows[0]);
+  });
   app.get('/api/v1/admin/audit-history',auth,staff,async(_req,res)=>{
-    res.json((await db.query('SELECT id,actor_ref,target_table,target_record_id,action_type,old_value,new_value,recorded_at,request_id,ip_address FROM audit_history ORDER BY id DESC LIMIT 100')).rows);
+    res.json((await db.query('SELECT id,actor_ref,target_table,target_record_id,action_type,old_value,new_value,recorded_at,request_id,ip_address,chain_index,previous_hash,entry_hash FROM audit_history ORDER BY chain_index DESC LIMIT 100')).rows);
+  });
+  app.get('/api/v1/research/:id/lifecycle',auth,validate(z.strictObject({id}),'params'),async(req,res)=>{
+    const result=await db.query("SELECT id,lifecycle_state,lifecycle_version,to_char(completed_at,'YYYY-MM-DD') AS completed_at,to_char(presented_at,'YYYY-MM-DD') AS presented_at,to_char(published_at,'YYYY-MM-DD') AS published_at FROM research_records WHERE id=$1",[req.params.id]);
+    if(!result.rowCount)return res.status(404).json({error:'Record not found'});
+    res.set('Cache-Control','no-store');res.json(result.rows[0]);
+  });
+  app.post('/api/v1/research/:id/lifecycle/events',auth,staff,validate(z.strictObject({id}),'params'),validate(z.strictObject({
+    event:z.enum(['In-Progress','UnderReview','Completed','Presented','Published']),
+    occurred_at:z.iso.date(),expected_version:z.number().int().min(1).max(2147483647)
+  })),async(req,res)=>{
+    const b=req.validated.body;
+    const result=await db.query("SELECT id,lifecycle_state,lifecycle_version,to_char(completed_at,'YYYY-MM-DD') AS completed_at,to_char(presented_at,'YYYY-MM-DD') AS presented_at,to_char(published_at,'YYYY-MM-DD') AS published_at FROM crm_research_event($1,$2,$3,$4)",[req.params.id,b.event,b.occurred_at,b.expected_version]);
+    if(!result.rowCount)return res.status(404).json({error:'Record not found'});
+    res.json(result.rows[0]);
   });
   app.use('/api/v1/consultations',consultationRouter(db,auth,staff));
   app.use('/api/v1/research/:studyId/documents',documentRouter(db,auth,{objectStore,scanner}));
@@ -182,8 +201,8 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     if(err.type==='entity.parse.failed') return res.status(400).json({error:'Invalid JSON'});
     if(err.type==='entity.too.large') return res.status(413).json({error:'Request too large'});
     console.error(JSON.stringify({request_id:_req.requestId,code:err.code??err.name}));
-    const status=err.code==='23505'?409:[400,413,415,503].includes(err.httpStatus)?err.httpStatus:500;
-    const message={400:'Invalid document',409:'Record conflicts with an existing record',413:'Request too large',415:'Unsupported media type',503:'Service temporarily unavailable'}[status]??'Internal server error';
+    const status=['23505','40001'].includes(err.code)?409:['22023','22007','22008'].includes(err.code)?400:[400,413,415,503].includes(err.httpStatus)?err.httpStatus:500;
+    const message={400:'Invalid request',409:'Record conflicts with an existing record',413:'Request too large',415:'Unsupported media type',503:'Service temporarily unavailable'}[status]??'Internal server error';
     res.status(status).json({error:message,request_id:_req.requestId});
   });
   return app;

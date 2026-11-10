@@ -13,3 +13,5 @@ __pycache__/
 **/.gradle/
 android-public-cache/build/
 android-public-cache/local.properties
+
+android-public-cache/app/build/

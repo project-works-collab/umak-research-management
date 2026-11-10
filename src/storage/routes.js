@@ -8,7 +8,7 @@ let uploads=0;
 export function documentRouter(db,auth,{objectStore,scanner}){
   const r=Router({mergeParams:true});r.use(auth);
   r.use(validate(z.strictObject({studyId:id}), 'params'));
-  r.post('/',requestLimiter(db,{capacity:5,perSecond:1/180,scope:'uploads'}),validate(z.strictObject({filename:z.string().min(1).max(185)}),'query'),async(req,res,next)=>{
+  r.post('/',requestLimiter(db,{capacity:5,perSecond:1/180,scope:'uploads'}),validate(z.strictObject({filename:z.string().min(1).max(185),previous_document_id:z.uuid().optional()}),'query'),async(req,res,next)=>{
     if(!objectStore||!scanner)return res.status(503).json({error:'Document service unavailable'});
     if(!['student','faculty'].includes(req.user.role))return res.status(403).json({error:'Forbidden'});
     const access=await db.query('SELECT id FROM research_records WHERE id=$1 AND crm_member(id)',[req.params.studyId]);
@@ -29,10 +29,16 @@ export function documentRouter(db,auth,{objectStore,scanner}){
     const documentId=randomUUID(),key=`manuscripts/${randomUUID()}`,digest=createHash('sha256').update(req.body).digest('hex');
     await objectStore.put(key,req.body,mediaType,digest);
     try{
-      const row=await db.query('INSERT INTO documents(id,study_id,object_key,filename,size_bytes,sha256,media_type) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,study_id,filename,size_bytes,media_type,created_at',[documentId,req.params.studyId,key,filename,req.body.length,digest,mediaType]);
+      const row=await db.query('INSERT INTO documents(id,study_id,object_key,filename,size_bytes,sha256,media_type,previous_document_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,study_id,filename,size_bytes,media_type,created_at,sha256,series_id,revision_number,previous_document_id',[documentId,req.params.studyId,key,filename,req.body.length,digest,mediaType,req.validated.query.previous_document_id??null]);
       res.status(201).json(row.rows[0]);
     }catch(e){try{await objectStore.remove(key);}catch{console.error(JSON.stringify({request_id:req.requestId,code:'ORPHAN_OBJECT_CLEANUP_REQUIRED',key}));}throw e;}
     }finally{req.releaseUpload();}
+  });
+  r.get('/',async(req,res)=>{
+    const access=await db.query('SELECT id FROM research_records WHERE id=$1',[req.params.studyId]);
+    if(!access.rowCount)return res.status(404).json({error:'Record not found'});
+    const result=await db.query('SELECT id,study_id,filename,size_bytes,media_type,created_at,sha256,series_id,revision_number,previous_document_id FROM documents WHERE study_id=$1 ORDER BY series_id,revision_number',[req.params.studyId]);
+    res.set('Cache-Control','no-store');res.json(result.rows);
   });
   r.get('/:documentId/url',validate(z.strictObject({studyId:id,documentId:z.uuid()}),'params'),async(req,res)=>{
     if(!objectStore)return res.status(503).json({error:'Document service unavailable'});

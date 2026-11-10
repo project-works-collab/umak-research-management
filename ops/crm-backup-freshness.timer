@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly CRM backup freshness check
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+Unit=crm-backup-freshness.service
+
+[Install]
+WantedBy=timers.target
