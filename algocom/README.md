@@ -195,7 +195,7 @@ $$
 T_{\text{engine,baseline}}=O\bigl(V(V+E)+Q+B\bigr).
 $$
 
-These assume expected constant-time hashing and bounded IDs. Current API limits are 5,000 steps, 25,000 edges and 50,000 requirement memberships/evidence records; see [exact API contract](../docs/ALGORITHM_API.md).
+These assume expected constant-time hashing and bounded IDs. Current API limits are 5,000 steps, 25,000 edges and 50,000 requirement memberships/evidence records; see [exact API contract](../docs/api/ALGORITHM_API.md).
 
 ## 3. Lifecycle FSM with independent outcomes
 
@@ -423,7 +423,7 @@ CLAIM_NEXT(staff):
     return ticket, or no-content when no unlocked candidate exists
 ```
 
-A partial B-tree index supports queued-row ordering. The SQL service is the durable authority: no independent per-server heap can lose a ticket on restart or claim it twice. Contention/locked rows affect search cost, so the SQL transaction is not assigned the heap's O(log n) claim. SKIP LOCKED may bypass a locked earliest row and does not guarantee globally strict dispatch order under concurrency. EDF does not allocate staff/rooms, guarantee meeting deadlines, or implement fairness/abandoned-claim recovery. [API and guarantees](../docs/SEARCH_AND_CONSULTATIONS.md).
+A partial B-tree index supports queued-row ordering. The SQL service is the durable authority: no independent per-server heap can lose a ticket on restart or claim it twice. Contention/locked rows affect search cost, so the SQL transaction is not assigned the heap's O(log n) claim. SKIP LOCKED may bypass a locked earliest row and does not guarantee globally strict dispatch order under concurrency. EDF does not allocate staff/rooms, guarantee meeting deadlines, or implement fairness/abandoned-claim recovery. [API and guarantees](../docs/api/SEARCH_AND_CONSULTATIONS.md).
 
 ## 6. Measured benchmarks
 
@@ -550,8 +550,8 @@ These are different experiments from the November tables:
 
 | Runner | Coverage | Outputs | Overwrite behavior |
 | --- | --- | --- | --- |
-| [bench.py](bench.py) | Original readiness comparison; one seed, fixed method order, one warmup, ten repeats | [results.md](results.md), [results.csv](results.csv) | Overwrites original result files |
-| [bench_extended.py](bench_extended.py) | Readiness + duration comparison; one seed, fixed method order, ten repeats | [extended_results.json](extended_results.json), [extended_results.csv](extended_results.csv) | Overwrites extended result files |
+| [bench.py](bench.py) | Original readiness comparison; one seed, fixed method order, one warmup, ten repeats | [results.md](../benchmarks/results/algocom/results.md), [results.csv](../benchmarks/results/algocom/results.csv) | Overwrites original result files |
+| [bench_extended.py](bench_extended.py) | Readiness + duration comparison; one seed, fixed method order, ten repeats | [extended_results.json](../benchmarks/results/algocom/extended_results.json), [extended_results.csv](../benchmarks/results/algocom/extended_results.csv) | Overwrites extended result files |
 | [benchmark_models.py](../benchmarks/benchmark_models.py) | New five-seed DAG/FSM experiment | New timestamped manifest/samples/summary/report | Preserves earlier runs |
 | [benchmark-features.js](../benchmarks/benchmark-features.js) | Node heap and PostgreSQL trigram queries | New timestamped manifest/samples/summary/plans/report | Preserves earlier runs |
 
@@ -565,8 +565,8 @@ Bcrypt migration and cryptographic SHA-256 audit chaining are still proposals, n
 
 The original prototype was retained when duration support was added. Earlier pasted-code repairs corrected entry-point/filename strings and a malformed randint token; complexity comments were clarified to include requirements and hashing assumptions. ChatGPT/Codex assisted implementation, tests, benchmark runners and documentation. Measured artifacts record source hashes and working-tree status; results are not claimed to come from a committed release. Team review and institutional validation remain separate responsibilities.
 
-- [Algorithm API contract](../docs/ALGORITHM_API.md)
-- [Search and consultation API](../docs/SEARCH_AND_CONSULTATIONS.md)
+- [Algorithm API contract](../docs/api/ALGORITHM_API.md)
+- [Search and consultation API](../docs/api/SEARCH_AND_CONSULTATIONS.md)
 - [DAG/FSM evaluation](../benchmarks/EVALUATION.md)
 - [Implementation plan and remaining work](../docs/plans/SECURITY_LIFECYCLE_SEARCH_QUEUE_PLAN.md)
 - [PostgreSQL 18 pg_trgm documentation](https://www.postgresql.org/docs/18/pgtrgm.html)

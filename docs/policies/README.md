@@ -5,7 +5,7 @@
 - [Privacy Policy](PRIVACY_POLICY.md)
 - [Terms and Conditions](TERMS_AND_CONDITIONS.md)
 - [Generator source archive](generator-original/README.md) — unadapted evidence, not approved policies
-- [Technical privacy handoff](../PRIVACY.md)
+- [Technical privacy handoff](../implementation/PRIVACY.md)
 
 Prepared 10 November 2026 against repository commit `1a305391339b8258ab2f05737717aa0038fd3d97`. This update adds documentation, not application features, deployment or a terms-acceptance mechanism. Original Word/PDF coursework copies remain unchanged and describe their own preparation snapshot. These Markdown copies incorporate the subsequently supplied generator text and corrections.
 
@@ -26,10 +26,10 @@ Before adoption: complete A1–A6, review both documents together, verify actual
 
 | Source at the pinned revision | Policy connection | Evidence boundary |
 | --- | --- | --- |
-| [Application routes](../../src/app.js), [validation](../../src/security/validation.js), [database migrations](../../db/migrations/) | Accounts, research membership, assigned reviewers, separate notes, consent, reviewed deletion and audit metadata | Source inspection; no new deployment or database exercise performed for this documentation update |
+| [Application routes](../../src/app.js), [validation](../../src/security/validation.js), [database migrations](../../db/migrations) | Accounts, research membership, assigned reviewers, separate notes, consent, reviewed deletion and audit metadata | Source inspection; no new deployment or database exercise performed for this documentation update |
 | [Document routes](../../src/storage/routes.js), [storage adapter](../../src/storage/s3.js) | Restricted PDF/DOCX uploads, size limit, temporary access | Adapter implementation does not prove live cloud configuration |
-| [Implementation guide](../IAS_IMPLEMENTATION.md) and [implementation evidence](../../evidence/ias-plan/IMPLEMENTATION.md) | Encryption, recovery, deletion replay, Android library and remaining checks | Existing evidence retains its original scope; timers, object-version expiry and device integration require operational verification |
-| [Algorithm contract](../ALGORITHM_API.md), [search and scheduling](../SEARCH_AND_CONSULTATIONS.md) | Suggestions, structural estimates and consultation ordering | No originality guarantee, guaranteed appointment or automatic academic decision |
+| [Implementation guide](../implementation/IAS_IMPLEMENTATION.md) and [implementation evidence](../../evidence/ias-plan/IMPLEMENTATION.md) | Encryption, recovery, deletion replay, Android library and remaining checks | Existing evidence retains its original scope; timers, object-version expiry and device integration require operational verification |
+| [Algorithm contract](../api/ALGORITHM_API.md), [search and scheduling](../api/SEARCH_AND_CONSULTATIONS.md) | Suggestions, structural estimates and consultation ordering | No originality guarantee, guaranteed appointment or automatic academic decision |
 
 ## Generator corrections
 

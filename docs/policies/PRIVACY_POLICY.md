@@ -77,7 +77,7 @@ Before adoption or material changes, the institution should publish an understan
 
 ## Reviewer appendix
 
-- **Feature baseline:** commit `1a305391339b8258ab2f05737717aa0038fd3d97`; see [technical privacy handoff](../PRIVACY.md) and [implementation guide](../IAS_IMPLEMENTATION.md). Implementation does not establish deployment or legal approval.
+- **Feature baseline:** commit `1a305391339b8258ab2f05737717aa0038fd3d97`; see [technical privacy handoff](../implementation/PRIVACY.md) and [implementation guide](../implementation/IAS_IMPLEMENTATION.md). Implementation does not establish deployment or legal approval.
 - **Legal review:** RA 10173 sections 11–14, 16, 18, 20–21 and its IRR inform purpose limitation, lawful processing, rights, safeguards and accountability. Sensitive data needs separate assessment; the policy does not invent a blanket lawful basis. See the [reference and adoption record](README.md).
 - **Adoption gate:** complete all decisions in the [institutional adoption schedule](README.md#institutional-adoption-schedule), verify actual operations and obtain genuine approval before activation.
 - **Source and assistance:** adapted from the user's App Privacy Policy Generator export and earlier CRM academic policy material. ChatGPT/Codex assisted feature comparison, Philippine-source review, clause adaptation and document checks. Human institutional review remains pending. The [unchanged generator original](generator-original/privacy-generator-original.md) is source evidence, not the operative policy.

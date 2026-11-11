@@ -20,11 +20,11 @@ Repository: https://github.com/project-works-collab/umak-research-management
 
 ## Security assessment reports
 
-Read the [Overall Security Assessment and Remediation Report](OVERALL-SECURITY-ASSESSMENT.md)
+Read the [Overall Security Assessment and Remediation Report](security/reports/OVERALL-SECURITY-ASSESSMENT.md)
 for the combined Cloudflare-method and OWASP AST10 results, implemented changes,
 CI evidence, and remaining validation work. The original
-[application audit](00-INTERIM-SECURITY-AUDIT.md) and
-[OWASP assessment](OWASP-AST10-REPORT.md) retain their assessment snapshots.
+[application audit](security/reports/00-INTERIM-SECURITY-AUDIT.md) and
+[OWASP assessment](security/reports/OWASP-AST10-REPORT.md) retain their assessment snapshots.
 
 ## Start locally
 Requires Python 3.12+, Node 24, npm, Docker Compose (or an existing PostgreSQL 18 instance), and PostgreSQL 18 client tools for the backup exercise.
@@ -75,10 +75,10 @@ All nonpublic endpoints require `Authorization: Bearer <token>`.
 | POST /api/v1/admin/deletion-requests/:id/complete | Staff; `confirm_review: true`; synthetic hard deletion |
 | GET /api/v1/admin/audit-logs | Staff only; last 100 minimal audit events |
 
-Consultation ticketing and PostgreSQL trigram search are implemented; see [search and scheduling API](docs/SEARCH_AND_CONSULTATIONS.md). Private upload adapters and a launchable Android sign-in/offline-resources app are now implemented; see [IAS implementation](docs/IAS_IMPLEMENTATION.md). No complete frontend, SSO, live cloud deployment or Turnitin integration is claimed.
+Consultation ticketing and PostgreSQL trigram search are implemented; see [search and scheduling API](docs/api/SEARCH_AND_CONSULTATIONS.md). Private upload adapters and a launchable Android sign-in/offline-resources app are now implemented; see [IAS implementation](docs/implementation/IAS_IMPLEMENTATION.md). No complete frontend, SSO, live cloud deployment or Turnitin integration is claimed.
 
 ## Team and submission
-Read [team handoff](docs/TEAM_HANDOFF.md), [report corrections](docs/REPORT_CORRECTIONS.md), [privacy behavior](docs/PRIVACY.md), [controls](docs/CONTROLS.md), and [demo instructions](docs/DEMO.md).
+Read [team handoff](docs/team/TEAM_HANDOFF.md), [report corrections](docs/team/REPORT_CORRECTIONS.md), [privacy behavior](docs/implementation/PRIVACY.md), [controls](docs/implementation/CONTROLS.md), and [demo instructions](docs/team/DEMO.md).
 
 Original C-suite roles and writing assignments remain unchanged. Teammates must personally perform their assigned reviews and use their own PRs; initial AI-assisted implementation is not their contribution evidence.
 
@@ -91,13 +91,13 @@ ChatGPT/Codex assisted backend and schema drafting, security tests, isolated dem
 
 ## ALGOCOM integration
 
-The isolated `algocom/` core now includes DAG duration estimates. Staff can call `POST /api/v1/algorithm/solve`; see [exact contract](docs/ALGORITHM_API.md) and [benchmark method](algocom/README.md). No persistent service-workflow approval is implied.
+The isolated `algocom/` core now includes DAG duration estimates. Staff can call `POST /api/v1/algorithm/solve`; see [exact contract](docs/api/ALGORITHM_API.md) and [benchmark method](algocom/README.md). No persistent service-workflow approval is implied.
 
 ## Course submissions
 
-Final report PDFs, editable Markdown and 14-slide PowerPoint decks: [submissions](submissions/README.md). See [completion and team handoff](docs/COMPLETION_CHECKLIST.md), [current evidence](evidence/STATUS.md), and [algorithm API contract](docs/ALGORITHM_API.md). The shared repository is `project-works-collab/umak-research-management`; `algocom/` remains independent of the IAS database.
+Final report PDFs, editable Markdown and 14-slide PowerPoint decks: [submissions](submissions/README.md). See [completion and team handoff](docs/team/COMPLETION_CHECKLIST.md), [current evidence](evidence/STATUS.md), and [algorithm API contract](docs/api/ALGORITHM_API.md). The shared repository is `project-works-collab/umak-research-management`; `algocom/` remains independent of the IAS database.
 
-Next actions for every member: [concise handoff](docs/NEXT_STEPS.md). Financial evidence remains [external](docs/FINANCIAL_EVIDENCE_WORKSHEET.md).
+Next actions for every member: [concise handoff](docs/team/NEXT_STEPS.md). Financial evidence remains [external](docs/team/FINANCIAL_EVIDENCE_WORKSHEET.md).
 
 
 ## Trigram search and consultation scheduling
@@ -111,12 +111,26 @@ atomic claims, versioned rescheduling, resolution and cancellation.
 
 The live queue uses PostgreSQL as its durable authority. An indexed EDF min-heap
 is implemented and benchmarked separately; it is not an authoritative per-server
-cache. See [API and guarantees](docs/SEARCH_AND_CONSULTATIONS.md) and
+cache. See [API and guarantees](docs/api/SEARCH_AND_CONSULTATIONS.md) and
 [benchmark instructions](benchmarks/README.md). Password hashing, auditing and access controls have since been strengthened; see
-[IAS implementation and evidence](docs/IAS_IMPLEMENTATION.md).
+[IAS implementation and evidence](docs/implementation/IAS_IMPLEMENTATION.md).
 
 ## IAS confidentiality, integrity and availability update
 
-See [implementation and deployment guide](docs/IAS_IMPLEMENTATION.md) for native RLS, faculty/membership/reviewer scope, feedback isolation, Argon2id, shared throttling, private documents, TLS, encrypted recovery, Android app/library and evidence commands. Older reports describe their original submission snapshot.
+See [implementation and deployment guide](docs/implementation/IAS_IMPLEMENTATION.md) for native RLS, faculty/membership/reviewer scope, feedback isolation, Argon2id, shared throttling, private documents, TLS, encrypted recovery, Android app/library and evidence commands. Older reports describe their original submission snapshot.
 
-The security/lifecycle update adds database-backed SHA-256 audit chaining, assigned-officer lifecycle events with independent presentation/publication dates, and numbered document revision history. Apply migrations before starting the updated API; see [workflow API and validation notes](docs/IAS_IMPLEMENTATION.md#audit-chains-lifecycle-and-document-revisions-10-november-2026). Run `npm run test:integrity:db` only against a disposable synthetic database.
+The security/lifecycle update adds database-backed SHA-256 audit chaining, assigned-officer lifecycle events with independent presentation/publication dates, and numbered document revision history. Apply migrations before starting the updated API; see [workflow API and validation notes](docs/implementation/IAS_IMPLEMENTATION.md#audit-chains-lifecycle-and-document-revisions-10-november-2026). Run `npm run test:integrity:db` only against a disposable synthetic database.
+
+## Repository layout
+
+- `src/`, `test/`, `db/`: API implementation, regression tests and database migrations.
+- `android/`: Android project with `app/` (launcher) and `core/` (cache, sync and session storage). Open `android/` in Android Studio and use Android view.
+- `algocom/`: Python algorithms, contracts and correctness tests.
+- `benchmarks/`: benchmark tools, datasets, notebooks and saved results; Python results are in `results/algocom/`.
+- `docs/`: API references, implementation guides, team handoff, plans and policies grouped by purpose.
+- `security/`: reports, threat models, diagrams, risk data and audit tooling.
+- `submissions/`: editable `sources/`, approved `final/` artifacts, figures and build tools.
+- `evidence/`: historical verification records; recorded paths and hashes describe their original snapshots.
+- `scripts/`, `ops/`, `demo/`: maintenance tools, deployment configuration and isolated teaching demos.
+
+Audit validator copies and submission diagram copies are retained as portable historical artifacts. Generated local build output and IDE state are ignored.

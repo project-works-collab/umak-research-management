@@ -11,7 +11,13 @@ coverage/
 __pycache__/
 .venv/
 **/.gradle/
-android-public-cache/build/
-android-public-cache/local.properties
+android/build/
+android/local.properties
 
-android-public-cache/app/build/
+android/*/build/
+
+# Local IDE and generated authoring files
+.idea/
+**/.kotlin/
+submissions/build/
+submissions/output/

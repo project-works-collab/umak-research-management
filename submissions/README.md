@@ -16,7 +16,7 @@ Set `RUNTIME_NODE_MODULES`, `RUNTIME_PYTHON`, and `PRESENTATIONS_SKILL` to your 
 ```bash
 mkdir -p .private
 BUILD_DIR=$(mktemp -d "$PWD/.private/submissions.XXXXXX")
-cp submissions/*Report.md submissions/slides.json "$BUILD_DIR/"
+cp submissions/sources/*Report.md submissions/sources/slides.json "$BUILD_DIR/"
 cp -R submissions/figures "$BUILD_DIR/figures"
 node submissions/build-slides.mjs "$BUILD_DIR"
 "$RUNTIME_PYTHON" submissions/build_reports.py --root "$BUILD_DIR"
@@ -28,4 +28,6 @@ After an intentional diagram/model change, reopen the JSON in Threat Dragon, ver
 
 ## Verification and remaining actions
 
-See `../docs/COMPLETION_CHECKLIST.md` for exact pages/slides/artifacts and `../docs/NEXT_STEPS.md` for member commands. Status distinguishes verified artifacts, documented proposals and external actions. Financial estimates lack empirical support and instructor acceptance; team review, signatures and TBL submission remain outstanding.
+See `../docs/team/COMPLETION_CHECKLIST.md` for exact pages/slides/artifacts and `../docs/team/NEXT_STEPS.md` for member commands. Status distinguishes verified artifacts, documented proposals and external actions. Financial estimates lack empirical support and instructor acceptance; team review, signatures and TBL submission remain outstanding.
+
+Sources live in `sources/`; approved PDFs and decks live in `final/`. Build scripts stay here and write generated files to a staging directory.

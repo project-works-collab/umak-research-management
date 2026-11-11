@@ -2,7 +2,7 @@
 
 Prepared 4 November 2026. Status: proposal grounded in repository inspection; no new algorithms or benchmark measurements implemented by this document.
 
-Implementation update: trigram search and consultation EDF ticketing are now implemented; see [API and guarantees](../SEARCH_AND_CONSULTATIONS.md). The original proposal below records the starting state. DAG/FSM benchmark evidence and the pure FSM prototype are also complete. Security changes remain proposed.
+Implementation update: trigram search and consultation EDF ticketing are now implemented; see [API and guarantees](../api/SEARCH_AND_CONSULTATIONS.md). The original proposal below records the starting state. DAG/FSM benchmark evidence and the pure FSM prototype are also complete. Security changes remain proposed.
 
 ## 1. Scope and current implementation
 
@@ -34,7 +34,7 @@ Bitmasks are optional representation, not a security improvement. Prefer a reada
 
 Add a new versioned ledger rather than pretending historical rows were hashed when created. Start a genesis event referencing a deterministic digest of the frozen legacy audit export and a migration timestamp. Preserve legacy rows as read-only history.
 
-New event fields: sequence, event_id, format_version, occurred_at, immutable actor_ref, action, entity_type, entity_id, request_id, minimal payload, previous_hash, event_hash. Use an opaque actor reference without a cascading or SET NULL foreign key: deleting an account must not mutate past hashed bytes. Keep identity mapping separate and reconcile its retention with `docs/PRIVACY.md`. Exclude passwords, tokens, file contents, and unnecessary personal data.
+New event fields: sequence, event_id, format_version, occurred_at, immutable actor_ref, action, entity_type, entity_id, request_id, minimal payload, previous_hash, event_hash. Use an opaque actor reference without a cascading or SET NULL foreign key: deleting an account must not mutate past hashed bytes. Keep identity mapping separate and reconcile its retention with `docs/implementation/PRIVACY.md`. Exclude passwords, tokens, file contents, and unnecessary personal data.
 
 Specify one canonical encoding with exact field order, UTC timestamp precision, UTF-8, null handling and payload key sorting. Store/hash the exact canonical bytes so the Node verifier and database writer cannot disagree about JSON formatting. Define SHA-256(domain/version prefix || previous_hash bytes || canonical event bytes), using unambiguous length framing. Freeze serialization test vectors.
 
@@ -138,7 +138,7 @@ Suggested new commands (to implement, not currently runnable): `npm run db:migra
 
 CI: fast pure algorithm/model tests on every PR; integration checks with PostgreSQL 18 using both owner and crm_app identities; preserve existing security and ALGOCOM checks. Run longer benchmarks manually or on a controlled scheduled runner, upload artifacts, and compare equivalent machine/configuration results. Existing DAG performance budgets remain scoped to their original algorithms.
 
-Each phase should be a separate reviewable change with its own evidence. Do not mark a feature complete based solely on a passing microbenchmark. Update `README.md`, `docs/CONTROLS.md`, `docs/PRIVACY.md`, API docs and `evidence/STATUS.md` to distinguish implemented, measured, and proposed capabilities.
+Each phase should be a separate reviewable change with its own evidence. Do not mark a feature complete based solely on a passing microbenchmark. Update `README.md`, `docs/implementation/CONTROLS.md`, `docs/implementation/PRIVACY.md`, API docs and `evidence/STATUS.md` to distinguish implemented, measured, and proposed capabilities.
 
 ## 5. Reference decisions and open policy items
 

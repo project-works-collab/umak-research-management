@@ -1,9 +1,9 @@
 name: android-library
 on:
   push:
-    paths: ['android-public-cache/**', '.github/workflows/android-library.yml']
+    paths: ['android/**', '.github/workflows/android-library.yml']
   pull_request:
-    paths: ['android-public-cache/**', '.github/workflows/android-library.yml']
+    paths: ['android/**', '.github/workflows/android-library.yml']
 permissions:
   contents: read
 jobs:
@@ -19,4 +19,4 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
           log-accepted-android-sdk-licenses: false
-      - run: android-public-cache/gradlew -p android-public-cache assembleDebug assembleDebugAndroidTest lintDebug --no-daemon
+      - run: android/gradlew -p android :app:assembleDebug :core:assembleDebug :core:assembleDebugAndroidTest :app:lintDebug :core:lintDebug --no-daemon

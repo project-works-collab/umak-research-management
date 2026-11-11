@@ -5,7 +5,8 @@ const root=path.resolve(process.argv[2]||import.meta.dirname),skill=process.env.
 if(!skill||!python||!modules)throw Error('Set PRESENTATIONS_SKILL, RUNTIME_PYTHON, RUNTIME_NODE_MODULES');
 const {Presentation,PresentationFile}=await import(pathToFileURL(path.join(modules,'@oai/artifact-tool/dist/artifact_tool.mjs')).href);
 const {resolvePresentationFont,applyPresentationChartFont,finalizePresentation}=await import(pathToFileURL(path.join(skill,'container_tools/artifact_tool_utils.mjs')).href);
-const family=resolvePresentationFont({fontFamily:'Arial'}),decks=JSON.parse(await fs.readFile(path.join(root,'slides.json'),'utf8'));
+const slidesPath=await fs.access(path.join(root,'sources/slides.json')).then(()=>path.join(root,'sources/slides.json'),()=>path.join(root,'slides.json'));
+const family=resolvePresentationFont({fontFamily:'Arial'}),decks=JSON.parse(await fs.readFile(slidesPath,'utf8'));
 await fs.mkdir(path.join(root,'build'),{recursive:true});await fs.mkdir(path.join(root,process.env.OUTPUT_DIR||'output'),{recursive:true});
 function box(s,t,x,y,w,h,size=28,color='#19364A',bold=false){let a=s.shapes.add({geometry:'textbox',position:{left:x,top:y,width:w,height:h},fill:'none',line:{fill:'none',width:0}});a.text=t;a.text.style={typeface:family,fontSize:size,color,bold,autoFit:'none'};return a;}
 for(const [course,items]of Object.entries(decks)){
