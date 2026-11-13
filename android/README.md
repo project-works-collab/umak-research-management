@@ -7,17 +7,25 @@ Java Android library with a launchable `:app` module, API 26+, compile SDK 35, J
 ./gradlew :core:connectedDebugAndroidTest
 ```
 
-Set `ANDROID_HOME` or an ignored `local.properties` SDK path. The `:app` launcher integrates sign-in, logout, Keystore sessions, public resource refresh/listing, stale/empty indicators and offline plain-text template viewing. Enter the HTTPS API origin; each installation binds its cache/session to that origin. Research editing/review screens are outside this minimal app. `PublicSync.schedule(context, "https://your-crm-host")` installs a 12-hour network-constrained refresh. Query Room on a background thread; display the last-sync time and offline/stale state. A first install without data must show an empty state. Blank-template bytes are app-private files; Room holds only public metadata and file paths. Public API contents in this repository are marked synthetic and require institutional replacement.
+Set `ANDROID_HOME` or an ignored `local.properties` SDK path. The `:app` launcher integrates sign-in, logout, Keystore sessions, public resource refresh/listing, stale/empty indicators and offline plain-text template viewing. Enter the HTTPS API origin; each installation binds its cache/session to that origin. Staff sign-in opens a five-tab workspace with the account profile, live consultation queue and approved-research search. The workspace uses the bundled Marcellus and Metropolis fonts. The staff workspace links back to the public resource screen. Service authoring, full request review and registry corrections are tracked in the [Android implementation plan](../docs/plans/ANDROID_STAFF_PROTOTYPE_PLAN.md). `PublicSync.schedule(context, "https://your-crm-host")` installs a 12-hour network-constrained refresh. Query Room on a background thread; display the last-sync time and offline/stale state. A first install without data must show an empty state. Blank-template bytes are app-private files; Room holds only public metadata and file paths. Public API contents in this repository are marked synthetic and require institutional replacement.
 
 `SessionVault` encrypts optional persistent secrets with an Android Keystore AES-256-GCM key and fresh IV; the ciphertext lives in `noBackupFilesDir`. Keep short-lived access tokens in memory if persistence is unnecessary. Call `clear()` on logout, handle `read()==null` by signing in, and never log the returned secret. The library does not add refresh-token rotation to the server.
 
 Instrumentation tests cover Keystore encryption/tamper/logout and Room reopen without network. For an airplane-mode/process-death UI check in the new launcher: sync content, open a template, force-stop, disable networking, relaunch, then verify directory/instructions/template and stale indication. Use Refresh public resources while online, then verify the saved items after restart in airplane mode. Also test expired sessions and offline logout. The Java app, library and instrumentation APKs were built and both modules passed lint on 11 November 2026. Instrumentation tests have not been executed on a device; no device was attached.
 
+## Startup and staff prototype
+
+Run the `app` configuration in Android Studio. Both build variants open the shared UMak welcome screen. Select **Get Started** to sign in or **Continue as Guest** for public resources. On a fresh installation, the app prompts for the CRM HTTPS origin when connecting. It is also available under **Need Help? Click here → CRM server settings**.
+
+The server determines the account role after sign-in. Staff open the staff workspace. Students and faculty open the signed-in researcher resources screen. **Set up an invited account** opens the password setup flow and uses the one-time activation code issued by CRM. The session-expired prompt follows the server's existing session lifetime.
+
+In the **debug** build, open **Need Help? Click here → Open staff design preview** to explore C-01 through C-05 using sample records without signing in. This preview uses local screen state.
+
 ## Source layout
 
 Open this `android/` folder as the Android Studio project. It contains two modules:
 
-- `app/`: launcher UI, sign-in and offline resource viewing.
+- `app/`: launcher UI, sign-in, staff workspace and offline resource viewing.
 - `core/`: Room cache, WorkManager sync, Keystore session vault and instrumentation tests.
 
 The root Gradle files coordinate the modules; the root contains no application or library source. All source code is Java and Gradle scripts use Groovy. Room uses [Java annotation processing](https://developer.android.com/jetpack/androidx/releases/room).
