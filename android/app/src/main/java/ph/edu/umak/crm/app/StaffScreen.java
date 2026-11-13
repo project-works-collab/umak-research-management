@@ -119,12 +119,12 @@ final class StaffScreen extends LinearLayout {
             String name = TABS[index];
             boolean selected = name.equals(tab);
             Button item = button(name, () -> navigate(name));
-            item.setTextSize(11);
+            ScreenTypography.apply(item, 11);
             item.setMinWidth(0);
             item.setMinimumWidth(0);
             item.setTextColor(selected ? NAVY : MUTED);
             item.setSelected(selected);
-            item.setPadding(0, dp(6), 0, dp(6));
+            item.setPadding(0, dp(8), 0, dp(8));
             Drawable icon = getResources().getDrawable(TAB_ICONS[index], null).mutate();
             icon.setTint(selected ? NAVY : MUTED);
             item.setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null);
@@ -162,7 +162,7 @@ final class StaffScreen extends LinearLayout {
         banner.setOrientation(VERTICAL);
         banner.setGravity(Gravity.CENTER_VERTICAL);
         banner.setPadding(dp(24), dp(24), dp(24), dp(24));
-        banner.setMinimumHeight(dp(140));
+
         banner.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{BLUE, 0xff13354d}));
         if ("Dashboard".equals(tab)) {
@@ -468,6 +468,7 @@ final class StaffScreen extends LinearLayout {
         LinearLayout card = panel();
         addPanel(card);
         TextView heading = text(title, 18, ACCENT, actionFont);
+        ScreenTypography.heading(heading);
         heading.setPadding(0, 0, 0, dp(8));
         card.addView(heading);
         return card;
@@ -488,6 +489,8 @@ final class StaffScreen extends LinearLayout {
         button.setText(label);
         button.setTextColor(NAVY);
         button.setTypeface(actionFont);
+        ScreenTypography.apply(button, 14);
+        button.setMinHeight(dp(48));
         button.setOnClickListener(view -> run.run());
         return button;
     }
@@ -504,7 +507,7 @@ final class StaffScreen extends LinearLayout {
         button.setTextColor(color);
         button.setBackground(ripple(outline ? outlined(fill) : rounded(fill)));
         LayoutParams params = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-        params.topMargin = dp(10);
+        params.topMargin = dp(8);
         card.addView(button, params);
     }
 
@@ -521,9 +524,9 @@ final class StaffScreen extends LinearLayout {
     private TextView text(String value, int size, int color, Typeface font) {
         TextView text = new TextView(activity);
         text.setText(value);
-        text.setTextSize(size);
         text.setTextColor(color);
         text.setTypeface(font);
+        ScreenTypography.apply(text, size);
         return text;
     }
 

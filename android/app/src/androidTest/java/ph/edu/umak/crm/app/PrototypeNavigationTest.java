@@ -38,6 +38,10 @@ public final class PrototypeNavigationTest {
                 assertNotNull(find(activity.getWindow().getDecorView(), "Potential Duplicate"));
                 click(activity, "Milestones and Outcomes");
                 assertNotNull(find(activity.getWindow().getDecorView(), "Target Deliverable & Outcomes"));
+                click(activity, "Back to Editor");
+                assertNotNull(find(activity.getWindow().getDecorView(), "Potential Duplicate"));
+                click(activity, "Back to Registry");
+                assertNotNull(find(activity.getWindow().getDecorView(), "Open Record"));
             });
         }
     }
@@ -49,6 +53,7 @@ public final class PrototypeNavigationTest {
     }
 
     private static View find(View root, String label) {
+        if (label.equals(root.getContentDescription())) return root;
         if (root instanceof TextView && label.contentEquals(((TextView) root).getText())) return root;
         if (root instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) root;
