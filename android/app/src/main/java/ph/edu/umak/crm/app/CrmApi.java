@@ -26,6 +26,10 @@ final class CrmApi {
         return new JSONObject(request(origin, path, body, token));
     }
 
+    static String send(String origin, String path, JSONObject body, String token) throws IOException {
+        return request(origin, path, body, token);
+    }
+
     static String search(String origin, String keyword) throws Exception {
         JSONObject query = new JSONObject().put("keyword", keyword).put("limit", 15);
         return request(origin, "/api/v1/research/search", query, null);

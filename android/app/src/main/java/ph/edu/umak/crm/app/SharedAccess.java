@@ -77,7 +77,7 @@ final class SharedAccess {
         action(form, "Sign In", NAVY, WHITE, () -> activity.signIn(email.getText().toString().trim(), password));
         action(form, "Need Help? Click here", PALE, NAVY, activity::showAccessHelp);
         action(form, "Continue as Guest →", PAPER, INK, activity::showGuest);
-        return scroll(form);
+        return scroll(form, "Back", activity::backFromSignIn);
     }
 
     View activate() {
@@ -90,8 +90,7 @@ final class SharedAccess {
         feedback.setVisibility(View.GONE);
         form.addView(feedback);
         action(form, "Update Password", NAVY, WHITE, () -> activity.activate(code, password, confirm));
-        action(form, "← Go back", PAPER, INK, activity::showSignIn);
-        return scroll(form);
+        return scroll(form, "Back to sign-in", activity::showSignIn);
     }
 
     View passwordUpdated() {
@@ -100,8 +99,8 @@ final class SharedAccess {
         View space = new View(activity);
         form.addView(space, new LinearLayout.LayoutParams(-1, 0, 1));
         action(form, "Continue", NAVY, WHITE, activity::showSignIn);
-        form.setPadding(dp(22), dp(96), dp(22), dp(160));
-        return scroll(form);
+        form.setPadding(dp(24), dp(24), dp(24), dp(32));
+        return scroll(form, "Back to sign-in", activity::showSignIn);
     }
 
     void feedback(String message) {
@@ -116,7 +115,7 @@ final class SharedAccess {
 
     void dialog(String title, String message, String action, Runnable callback, String cancel) {
         LinearLayout card = column();
-        card.setPadding(dp(22), dp(22), dp(22), dp(10));
+        card.setPadding(dp(24), dp(24), dp(24), dp(16));
         card.setBackground(shape(WHITE, 14, 0));
         card.addView(text(title, 23, NAVY, heading));
         TextView description = text(message, 14, MUTED, body);
@@ -137,26 +136,32 @@ final class SharedAccess {
 
     private LinearLayout form(String title, String subtitle) {
         LinearLayout form = column();
-        form.setPadding(dp(22), dp(96), dp(22), dp(30));
+        form.setPadding(dp(24), dp(24), dp(24), dp(32));
         form.setFocusableInTouchMode(true);
-        form.addView(text(title, 32, INK, heading));
+        TextView headline = text(title, 32, INK, heading);
+        ScreenTypography.heading(headline);
+        form.addView(headline);
         TextView description = text(subtitle, 14, MUTED, body);
-        description.setPadding(0, dp(12), 0, dp(30));
+        description.setPadding(0, dp(8), 0, dp(24));
         form.addView(description);
         return form;
     }
 
-    private View scroll(LinearLayout form) {
+    private View scroll(LinearLayout form, String label, Runnable back) {
         ScrollView scroll = new ScrollView(activity);
         scroll.setBackgroundColor(PAPER);
         scroll.setFillViewport(true);
         scroll.addView(form);
-        return scroll;
+        LinearLayout screen = column();
+        screen.setBackgroundColor(PAPER);
+        screen.addView(BackControl.create(activity, label, NAVY, back));
+        screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        return screen;
     }
 
     private EditText field(LinearLayout form, String label, String hint, boolean secret) {
         TextView caption = text(label, 13, MUTED, bold);
-        caption.setPadding(0, dp(10), 0, dp(5));
+        caption.setPadding(0, dp(12), 0, dp(4));
         form.addView(caption);
         LinearLayout row = new LinearLayout(activity);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -165,7 +170,7 @@ final class SharedAccess {
         input.setHint(hint);
         input.setHintTextColor(MUTED);
         input.setTextColor(INK);
-        input.setTextSize(14);
+        ScreenTypography.apply(input, 16);
         input.setSingleLine(true);
         input.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         input.setPadding(dp(12), dp(10), dp(10), dp(10));
@@ -193,7 +198,7 @@ final class SharedAccess {
 
     private void action(LinearLayout parent, String title, int fill, int color, Runnable callback) {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.topMargin = dp(10);
+        params.topMargin = dp(8);
         parent.addView(button(title, fill, color, callback), params);
     }
 
@@ -203,7 +208,7 @@ final class SharedAccess {
         button.setAllCaps(false);
         button.setTypeface(bold);
         button.setTextColor(color);
-        button.setMinHeight(dp(46));
+        button.setMinHeight(dp(48));
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x20395072), shape(fill, 7, 0), null));
         button.setOnClickListener(view -> callback.run());
         return button;
@@ -225,9 +230,9 @@ final class SharedAccess {
     private TextView text(String value, int size, int color, Typeface font) {
         TextView view = new TextView(activity);
         view.setText(value);
-        view.setTextSize(size);
         view.setTextColor(color);
         view.setTypeface(font);
+        ScreenTypography.apply(view, size);
         return view;
     }
 

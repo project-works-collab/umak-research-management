@@ -139,10 +139,21 @@ public final class PrototypeActivity extends Activity {
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         Button notifications = button("", NAVY, WHITE, () -> dialog("Notifications", "You have no new notifications."));
         notifications.setContentDescription("Notifications");
-        notifications.setMinWidth(dp(44));
+        notifications.setMinWidth(dp(48));
         notifications.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_prototype_bell, 0, 0, 0);
-        header.addView(notifications, new LinearLayout.LayoutParams(dp(44), dp(48)));
+        header.addView(notifications, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(header);
+        String parent = switch (screen) {
+            case "workspace" -> "Requests";
+            case "analytics" -> "Dashboard";
+            case "registration", "editor" -> "Registry";
+            case "milestones" -> "Editor";
+            default -> null;
+        };
+        Button back = BackControl.create(this, parent == null ? "Exit staff preview" : "Back to " + parent,
+                NAVY, parent == null ? this::finish : this::onBackPressed);
+        back.setBackgroundColor(WHITE);
+        root.addView(back);
 
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -633,7 +644,7 @@ public final class PrototypeActivity extends Activity {
     private LinearLayout banner(String title) {
         LinearLayout banner = column();
         banner.setGravity(Gravity.CENTER_VERTICAL);
-        banner.setMinimumHeight(dp(140));
+
         banner.setPadding(dp(24), dp(24), dp(24), dp(24));
         banner.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{BLUE, 0xff13364e}));
@@ -751,7 +762,7 @@ public final class PrototypeActivity extends Activity {
         button.setAllCaps(false);
         button.setTextColor(foreground);
         button.setTypeface(bold);
-        button.setMinHeight(dp(46));
+        button.setMinHeight(dp(48));
         button.setPadding(dp(10), dp(8), dp(10), dp(8));
         button.setBackground(new android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(0x26131c4b),
@@ -763,8 +774,8 @@ public final class PrototypeActivity extends Activity {
     private TextView text(String value, int size, int color, Typeface font) {
         TextView text = new TextView(this);
         text.setText(value);
-        text.setTextSize(size);
         text.setTypeface(font);
+        ScreenTypography.apply(text, size);
         text.setTextColor(color);
         return text;
     }

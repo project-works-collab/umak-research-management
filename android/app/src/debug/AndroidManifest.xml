@@ -2,5 +2,7 @@
     <application>
         <activity android:name=".PrototypeActivity" android:label="UMak CRM Prototype"
             android:exported="false" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ResearcherPreviewActivity" android:label="Researcher Preview"
+            android:exported="false" android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

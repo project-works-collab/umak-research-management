@@ -44,7 +44,7 @@ import ph.edu.umak.crm.cache.PublicSync;
 import ph.edu.umak.crm.security.SessionVault;
 
 /** Launchable integration for sign-in, Keystore sessions, and public offline resources. */
-public final class MainActivity extends Activity {
+public class MainActivity extends Activity {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable expire = this::showSessionExpired;
@@ -59,7 +59,8 @@ public final class MainActivity extends Activity {
     private SharedAccess access;
     private String page = "welcome";
     private String emailAddress = "";
-    private String researcherEmail;
+    private ResearcherScreen researcherScreen;
+    private String researcherTab = "Dashboard";
     private TextView publicTitle;
     private Button publicAccess;
     private boolean authenticating;
@@ -86,11 +87,13 @@ public final class MainActivity extends Activity {
         buildPublicScreen();
         loadCache();
         if (state != null) {
+            researcherTab = state.getString("researcher_tab", "Dashboard");
             staffTab = state.getString("staff_tab", "Dashboard");
             emailAddress = state.getString("email_address", "");
         }
         switch (state == null ? "welcome" : state.getString("access_page", "welcome")) {
             case "sign-in": showSignIn(); break;
+            case "support": displayAccess("support", ResearcherScreen.support(this)); break;
             case "activation": showActivation(); break;
             case "updated": showPasswordUpdated(); break;
             case "public": showGuest(); break;
@@ -104,18 +107,22 @@ public final class MainActivity extends Activity {
     private void buildPublicScreen() {
         layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        int padding = Math.round(22 * getResources().getDisplayMetrics().density);
+        int padding = Math.round(24 * getResources().getDisplayMetrics().density);
         layout.setPadding(padding, padding, padding, padding);
         publicScreen = new ScrollView(this);
         publicScreen.setBackgroundColor(0xfff5f6f8);
         publicScreen.addView(layout);
         applySystemInsets(publicScreen);
         publicTitle = new TextView(this);
-        publicTitle.setTextSize(29);
         publicTitle.setTypeface(getResources().getFont(R.font.marcellus_regular));
+        ScreenTypography.apply(publicTitle, 28);
+        ScreenTypography.heading(publicTitle);
+        layout.addView(BackControl.create(this, "Back to workspace", 0xff141e4d, this::returnFromPublic));
         layout.addView(publicTitle);
         status = new TextView(this);
         status.setTypeface(getResources().getFont(R.font.metropolis_regular));
+        ScreenTypography.apply(status, 14);
+        status.setPadding(0, padding / 3, 0, padding / 2);
         layout.addView(status);
         staffShortcut = button("Staff workspace", this::showStaff);
         staffShortcut.setVisibility(View.GONE);
@@ -177,16 +184,20 @@ public final class MainActivity extends Activity {
         options.add("Contact CRM");
         if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             options.add("Open staff design preview");
+            options.add("Open researcher design preview");
         }
         new AlertDialog.Builder(this).setTitle("Need Help?")
                 .setItems(options.toArray(new String[0]), (dialog, option) -> {
                     switch (option) {
                         case 0: showActivation(); break;
                         case 1: configureServer(null); break;
-                        case 2: access.information("Contact CRM",
-                                "Contact the Center for Research Management for account and sign-in help."); break;
+                        case 2:
+                            displayAccess("support", ResearcherScreen.support(this));
+                            break;
                         case 3: startActivity(new Intent().setClassName(this,
                                 "ph.edu.umak.crm.app.PrototypeActivity")); break;
+                        case 4: startActivity(new Intent().setClassName(this,
+                                "ph.edu.umak.crm.app.ResearcherPreviewActivity")); break;
                         default: throw new IllegalStateException("Unknown help action");
                     }
                 }).setNegativeButton("Close", null).show();
@@ -238,7 +249,7 @@ public final class MainActivity extends Activity {
     }
 
     @SuppressWarnings("deprecation")
-    private void applySystemInsets(View view) {
+    final void applySystemInsets(View view) {
         view.setOnApplyWindowInsetsListener((target, insets) -> {
             target.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
                     insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
@@ -430,25 +441,29 @@ public final class MainActivity extends Activity {
                 showSessionExpired();
                 return;
             }
-            String role = account.optString("role");
-            if ("staff".equals(role)) {
-                page = "account";
-                staffScreen = new StaffScreen(this, account.optString("email"), staffTab);
-                applySystemInsets(staffScreen);
-                staffScreen.loadInitialData();
-                setContentView(staffScreen);
-                staffScreen.requestApplyInsets();
-            } else if ("student".equals(role) || "faculty".equals(role)) {
-                researcherEmail = account.optString("email");
-                showPublicScreen();
-            } else {
-                showSignIn();
-                showAccessDenied();
-                return;
-            }
+            if (!displayAccount(account)) return;
             handler.removeCallbacks(expire);
             handler.postDelayed(expire, remaining);
         });
+    }
+
+    boolean displayAccount(JSONObject account) {
+        String role = account.optString("role");
+        if ("staff".equals(role)) {
+            page = "account";
+            staffScreen = new StaffScreen(this, account.optString("email"), staffTab);
+            applySystemInsets(staffScreen);
+            staffScreen.loadInitialData();
+            setContentView(staffScreen);
+            staffScreen.requestApplyInsets();
+        } else if ("student".equals(role) || "faculty".equals(role)) {
+            showResearcher(account);
+        } else {
+            showSignIn();
+            showAccessDenied();
+            return false;
+        }
+        return true;
     }
 
     void loadConsultations(StaffScreen screen) {
@@ -510,6 +525,105 @@ public final class MainActivity extends Activity {
         });
     }
 
+    final void showResearcher(JSONObject account) {
+        researcherScreen = new ResearcherScreen(this, account, researcherTab);
+        applySystemInsets(researcherScreen);
+        displayResearcher();
+        researcherScreen.openInitialTab();
+    }
+
+    private void displayResearcher() {
+        page = researcherScreen.isSignedIn() ? "researcher" : "guest";
+        setLightSystemBars(true);
+        if (researcherScreen.getParent() == null) setContentView(researcherScreen);
+        researcherScreen.requestApplyInsets();
+    }
+
+    void showSavedPublicResources() {
+        showPublicScreen();
+    }
+
+    private static final int RESEARCHER_DOCUMENT = 24;
+    private ResearcherScreen pickingScreen;
+    private String pickingField;
+
+    void pickResearcherDocument(ResearcherScreen screen, String field, String[] types) {
+        if (researcherScreen != screen || !"researcher".equals(page)) return;
+        pickingScreen = screen;
+        pickingField = field;
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(types.length == 1 ? types[0] : "*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, types);
+        try {
+            startActivityForResult(intent, RESEARCHER_DOCUMENT);
+        } catch (android.content.ActivityNotFoundException unavailable) {
+            screen.showDocumentName(field, "No document picker available.");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int request, int result, Intent intent) {
+        super.onActivityResult(request, result, intent);
+        if (request != RESEARCHER_DOCUMENT) return;
+        ResearcherScreen screen = pickingScreen;
+        String field = pickingField;
+        pickingScreen = null;
+        pickingField = null;
+        if (screen == null || screen != researcherScreen || result != RESULT_OK || intent == null
+                || intent.getData() == null || !"researcher".equals(page)) return;
+        String name = "Document selected";
+        try (android.database.Cursor row = getContentResolver().query(intent.getData(),
+                new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (row != null && row.moveToFirst() && !row.isNull(0)) name = row.getString(0);
+        } catch (SecurityException unavailable) {
+            name = "Document could not be read";
+        }
+        screen.showDocumentName(field, name);
+    }
+
+    void researcherRequest(ResearcherScreen screen, String path, JSONObject body, boolean authenticated,
+            java.util.function.BiConsumer<String, String> result) {
+        int generation = accountGeneration;
+        executor.execute(() -> {
+            try {
+                JSONObject saved = authenticated ? session() : null;
+                if (authenticated && saved == null) {
+                    runOnUiThread(() -> expireAccount(generation));
+                    return;
+                }
+                String base = authenticated ? saved.getString("server") : preferences.getString("server", "");
+                if (base.isEmpty()) {
+                    deliverResearcher(screen, generation, result, null, "Set the CRM server from shared sign-in to connect.");
+                    return;
+                }
+                String token = authenticated ? saved.getString("token") : null;
+                String data = body == null ? CrmApi.get(base, path, token) : CrmApi.send(base, path, body, token);
+                deliverResearcher(screen, generation, result, data, null);
+            } catch (CrmApi.HttpError error) {
+                if (authenticated && error.status == 401) {
+                    try {
+                        vault.clear();
+                    } catch (Exception unavailable) {
+                        // The rejected token cannot authorize further requests.
+                    }
+                    runOnUiThread(() -> expireAccount(generation));
+                } else {
+                    deliverResearcher(screen, generation, result, null, error.status == 403
+                            ? "Access denied." : "CRM returned an error (" + error.status + ").");
+                }
+            } catch (Exception error) {
+                deliverResearcher(screen, generation, result, null, "Unable to reach CRM. Check your connection.");
+            }
+        });
+    }
+
+    private void deliverResearcher(ResearcherScreen screen, int generation,
+            java.util.function.BiConsumer<String, String> result, String data, String error) {
+        runOnUiThread(() -> {
+            if (!isDestroyed() && researcherScreen == screen && accountGeneration == generation) result.accept(data, error);
+        });
+    }
+
     void showPublicResources() {
         if (staffScreen == null) return;
         staffTab = staffScreen.selectedTab();
@@ -518,19 +632,15 @@ public final class MainActivity extends Activity {
 
     void showGuest() {
         accountGeneration++;
-        showPublicScreen();
+        if (researcherScreen != null && !researcherScreen.isSignedIn()) displayResearcher();
+        else showResearcher(null);
     }
 
     private void showPublicScreen() {
         page = "public";
         setLightSystemBars(true);
-        publicTitle.setText(researcherEmail == null ? "Public Resources" : "Researcher Resources");
-        status.setText(researcherEmail == null ? "Public resources are available offline." : researcherEmail);
-        publicAccess.setText(researcherEmail == null ? "Sign In" : "Sign Out");
-        publicAccess.setOnClickListener(view -> {
-            if (researcherEmail == null) showSignIn();
-            else signOut();
-        });
+        publicTitle.setText("Public Resources");
+        status.setText("Public resources are available offline.");
         publicAccess.setVisibility(staffScreen == null ? View.VISIBLE : View.GONE);
         staffShortcut.setVisibility(staffScreen == null ? View.GONE : View.VISIBLE);
         if (publicScreen.getParent() == null) setContentView(publicScreen);
@@ -544,39 +654,64 @@ public final class MainActivity extends Activity {
         staffScreen.requestApplyInsets();
     }
 
-    private void leaveStaff(String message) {
+    private void leaveAccount(String message) {
         handler.removeCallbacks(expire);
         staffScreen = null;
-        researcherEmail = null;
+        researcherScreen = null;
+        pickingScreen = null;
+        pickingField = null;
+        researcherTab = "Dashboard";
         staffTab = "Dashboard";
         showSignIn();
         access.feedback(message);
     }
 
     private void showSessionExpired() {
-        leaveStaff("");
+        leaveAccount("");
         access.dialog("Session Expired", "Your session has ended. Please sign in again to continue.",
                 "Sign In", null, null);
+    }
+
+    boolean isResearcherPreview() { return false; }
+
+    void backFromSignIn() {
+        if (researcherScreen != null && !researcherScreen.isSignedIn()) displayResearcher();
+        else showWelcome();
+    }
+
+    void leaveGuestPortal() {
+        researcherScreen = null;
+        showSignIn();
+    }
+
+    private void returnFromPublic() {
+        if (staffScreen != null) showStaff();
+        else if (researcherScreen != null) displayResearcher();
+        else showSignIn();
     }
 
     @Override
     public void onBackPressed() {
         switch (page) {
+            case "support": showSignIn(); break;
             case "activation":
-            case "updated":
-            case "public":
-                if (staffScreen != null) showStaff();
-                else if (researcherEmail == null) showSignIn();
-                else super.onBackPressed();
+            case "updated": showSignIn(); break;
+            case "public": returnFromPublic(); break;
+            case "researcher":
+            case "guest":
+                if (!researcherScreen.goBack()) {
+                    if ("guest".equals(page)) leaveGuestPortal();
+                    else super.onBackPressed();
+                }
                 break;
-            case "sign-in": showWelcome(); break;
+            case "sign-in": backFromSignIn(); break;
             default: super.onBackPressed();
         }
     }
 
     void signOut() {
         accountGeneration++;
-        leaveStaff("Signing out…");
+        leaveAccount("Signing out…");
         executor.execute(() -> {
             try {
                 JSONObject saved = session();
@@ -689,7 +824,9 @@ public final class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         state.putString("staff_tab", staffScreen == null ? staffTab : staffScreen.selectedTab());
-        state.putString("access_page", researcherEmail == null ? page : "account");
+        state.putString("researcher_tab", researcherScreen == null ? researcherTab : researcherScreen.selectedTab());
+        boolean signedInResearcher = researcherScreen != null && researcherScreen.isSignedIn();
+        state.putString("access_page", signedInResearcher ? "account" : "guest".equals(page) ? "public" : page);
         state.putString("email_address", emailAddress);
     }
 
