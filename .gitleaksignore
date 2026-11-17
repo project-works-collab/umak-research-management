@@ -8,3 +8,8 @@
 # against that commit; these are source hashes, not authentication secrets.
 d44e926c1405be27041bf4c93043f1956d06d6a6:evidence/ias-plan/source-manifest.json:generic-api-key:43
 d44e926c1405be27041bf4c93043f1956d06d6a6:evidence/ias-plan/source-manifest.json:generic-api-key:52
+
+# Prototype UI mock temporary credential string in StaffDialogs.java in commit 0cad28a.
+# Verified sample placeholder for "Issue Temporary Credential" dialog, not an authentication credential.
+0cad28adceba8d9a8aa3b17ea9e45cef7ce924d3:android/app/src/main/java/ph/edu/umak/crm/app/staff/StaffDialogs.java:generic-api-key:89
+
