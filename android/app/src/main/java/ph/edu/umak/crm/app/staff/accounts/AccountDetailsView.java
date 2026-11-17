@@ -98,7 +98,7 @@ public class AccountDetailsView {
             StaffDialogs.showCantDeactivateLastAdminDialog(context);
         } else if ("5.12".equals(state)) {
             setAccount(findStaffAccount("A1234"));
-            StaffDialogs.showTemporaryCredentialIssuedDialog(context, "TMP-7Q4K-92LX");
+            StaffDialogs.showTemporaryCredentialIssuedDialog(context, "TMP-0000-0000");
         }
     }
 
@@ -167,7 +167,7 @@ public class AccountDetailsView {
 
         // Action Buttons
         Button tempCredBtn = UiButton.outline(context, "Issue Temporary Credential", UiTheme.BORDER, UiTheme.NAVY, () -> {
-            StaffDialogs.showTemporaryCredentialIssuedDialog(context, "TMP-7Q4K-92LX");
+            StaffDialogs.showTemporaryCredentialIssuedDialog(context, "TMP-0000-0000");
         });
         contentLayout.addView(tempCredBtn);
 

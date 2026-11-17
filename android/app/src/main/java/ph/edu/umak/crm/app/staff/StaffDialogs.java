@@ -72,7 +72,7 @@ public final class StaffDialogs {
                 .show();
     }
 
-    public static void showTemporaryCredentialIssuedDialog(Context context, String credential) {
+    public static void showTemporaryCredentialIssuedDialog(Context context, String temporaryCode) {
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = UiTheme.dp(context, 20);
@@ -85,8 +85,12 @@ public final class StaffDialogs {
         ScreenTypography.apply(sub, 13);
         layout.addView(sub);
 
+        String displayCode = (temporaryCode != null && !temporaryCode.trim().isEmpty())
+                ? temporaryCode
+                : "TMP-0000-0000";
+
         TextView code = new TextView(context);
-        code.setText(credential != null ? credential : "TMP-7Q4K-92LX");
+        code.setText(displayCode);
         code.setTextColor(UiTheme.NAVY);
         code.setTypeface(UiTheme.boldFont(context));
         code.setGravity(Gravity.CENTER);
