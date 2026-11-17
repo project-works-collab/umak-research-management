@@ -4,10 +4,10 @@ import android.content.Context;
 import android.view.Gravity;
 import android.widget.Button;
 
-final class BackControl {
+public final class BackControl {
     private BackControl() {}
 
-    static Button create(Context context, String label, int color, Runnable action) {
+    public static Button create(Context context, String label, int color, Runnable action) {
         Button button = new Button(context, null, android.R.attr.borderlessButtonStyle);
         int unit = Math.round(8 * context.getResources().getDisplayMetrics().density);
         button.setText("‹  " + label);

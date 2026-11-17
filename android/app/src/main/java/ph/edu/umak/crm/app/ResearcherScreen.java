@@ -17,6 +17,28 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import ph.edu.umak.crm.app.common.dialogs.SignInGateDialog;
+import ph.edu.umak.crm.app.requests.CorrectRequestView;
+import ph.edu.umak.crm.app.requests.MyRequestsView;
+import ph.edu.umak.crm.app.requests.NotificationsView;
+import ph.edu.umak.crm.app.requests.RequestData;
+import ph.edu.umak.crm.app.requests.RequestDetailView;
+import ph.edu.umak.crm.app.requests.RequestFilterDialog;
+import ph.edu.umak.crm.app.requests.RequestReceiptView;
+import ph.edu.umak.crm.app.requests.SubmitRequestView;
+import ph.edu.umak.crm.app.research.AddCoAuthorDialog;
+import ph.edu.umak.crm.app.research.EditProfileView;
+import ph.edu.umak.crm.app.research.ProfileView;
+import ph.edu.umak.crm.app.research.RegistrationConfirmationView;
+import ph.edu.umak.crm.app.research.RegistrationStep1View;
+import ph.edu.umak.crm.app.research.ResearchData;
+import ph.edu.umak.crm.app.research.ResearchProgressView;
+import ph.edu.umak.crm.app.services.AppNavigationGuidanceView;
+import ph.edu.umak.crm.app.services.ExternalSubmissionView;
+import ph.edu.umak.crm.app.services.FormFailureDialog;
+import ph.edu.umak.crm.app.services.ServiceData;
+import ph.edu.umak.crm.app.services.ServiceDetailView;
+import ph.edu.umak.crm.app.services.ServiceDirectoryView;
 
 final class ResearcherScreen extends LinearLayout {
     private static final int NAVY = 0xff131c4b;
@@ -53,11 +75,51 @@ final class ResearcherScreen extends LinearLayout {
     private int searchGeneration;
     private JSONObject reviewStudy;
 
+    private ServiceDirectoryView serviceDirectoryView;
+    private ServiceDetailView serviceDetailView;
+    private ServiceData.ServiceItem selectedServiceItem;
+    private boolean serviceFormUnavailable;
+
+    private MyRequestsView myRequestsView;
+    private SubmitRequestView submitRequestView;
+    private RequestDetailView requestDetailView;
+    private RequestReceiptView requestReceiptView;
+    private CorrectRequestView correctRequestView;
+    private NotificationsView notificationsView;
+    private RequestData.RequestItem selectedRequestItem;
+    private boolean receiptIsCorrection = false;
+
+    private ProfileView profileView;
+    private EditProfileView editProfileView;
+    private RegistrationStep1View registrationStep1View;
+    private RegistrationConfirmationView registrationConfirmationView;
+    private ResearchProgressView researchProgressView;
+    private ResearchData.UserProfile userProfile;
+    private String selectedProgressState = "4.6c";
+    private boolean profileUpdatedSnackbar = false;
+
     ResearcherScreen(MainActivity activity, JSONObject account, String initialTab) {
         super(activity);
         this.activity = activity;
         this.account = account;
         tab = java.util.Arrays.asList(TABS).contains(initialTab) ? initialTab : "Dashboard";
+
+        String accountName = name();
+        String accountEmail = account != null ? account.optString("email", "ljames.A1234@umak.edu.ph") : "ljames.A1234@umak.edu.ph";
+        String accountRole = account != null && "faculty".equals(account.optString("role")) ? "Faculty Researcher" : "Student Researcher";
+        String accountCategory = account != null && "faculty".equals(account.optString("role")) ? "Faculty" : "Student";
+        userProfile = new ResearchData.UserProfile(
+                accountName.isEmpty() ? "LeBron R. James" : accountName,
+                accountRole,
+                accountCategory,
+                "BS CS",
+                "3rd Year",
+                "College of Computing and Information Sciences",
+                accountEmail.isEmpty() ? "ljames.A1234@umak.edu.ph" : accountEmail,
+                "A1234",
+                "Active",
+                "This session"
+        );
         serif = getResources().getFont(R.font.marcellus_regular);
         regular = getResources().getFont(R.font.metropolis_regular);
         bold = getResources().getFont(R.font.metropolis_bold);
@@ -72,8 +134,8 @@ final class ResearcherScreen extends LinearLayout {
         ImageView bell = new ImageView(activity);
         bell.setImageResource(R.drawable.ic_researcher_bell);
         bell.setScaleType(ImageView.ScaleType.CENTER);
-        bell.setContentDescription("Announcements");
-        bell.setOnClickListener(view -> openDetail("announcements"));
+        bell.setContentDescription("Notifications");
+        bell.setOnClickListener(view -> openDetail("notifications"));
         header.addView(bell, new LayoutParams(dp(48), dp(48)));
         addView(header);
         back = BackControl.create(activity, "Back", NAVY, this::navigateBack);
@@ -142,6 +204,28 @@ final class ResearcherScreen extends LinearLayout {
             previousRegistrationStep.run();
             return true;
         }
+        if ("correct_request".equals(detail)) {
+            detail = "request_detail";
+            render();
+            return true;
+        }
+        if ("edit_profile".equals(detail) || "research_progress".equals(detail)) {
+            detail = "";
+            tab = "Profile";
+            render();
+            return true;
+        }
+        if ("registration_confirmation".equals(detail)) {
+            detail = "";
+            tab = "Dashboard";
+            render();
+            return true;
+        }
+        if ("external_submission".equals(detail) || "app_navigation".equals(detail)) {
+            detail = "service_detail";
+            render();
+            return true;
+        }
         if (!detail.isEmpty()) {
             tab = detailParent;
             documents.remove("revision");
@@ -169,8 +253,17 @@ final class ResearcherScreen extends LinearLayout {
     private void openDetail(String destination) {
         if (detail.isEmpty()) detailParent = tab;
         detail = destination;
-        if ("guidelines".equals(destination)) tab = "Services";
-        else if (!"announcements".equals(destination)) tab = "Requests";
+        if ("guidelines".equals(destination) || "service_detail".equals(destination)
+                || "external_submission".equals(destination) || "app_navigation".equals(destination)) {
+            tab = "Services";
+        } else if ("edit_profile".equals(destination) || "research_progress".equals(destination)) {
+            tab = "Profile";
+        } else if ("registration".equals(destination) || "registration_confirmation".equals(destination)
+                || "review".equals(destination) || "manuscript".equals(destination)) {
+            tab = "Research";
+        } else if (!"announcements".equals(destination) && !"notifications".equals(destination)) {
+            tab = "Requests";
+        }
         render();
     }
 
@@ -189,7 +282,17 @@ final class ResearcherScreen extends LinearLayout {
         switch (detail) {
             case "announcements": announcements(); return;
             case "guidelines": guidelines(); return;
-            case "request": serviceRequest(); return;
+            case "service_detail": renderServiceDetail(); return;
+            case "external_submission": renderExternalSubmission(); return;
+            case "app_navigation": renderAppNavigation(); return;
+            case "request": renderSubmitRequest(); return;
+            case "request_detail": renderRequestDetail(); return;
+            case "request_receipt": renderRequestReceipt(); return;
+            case "correct_request": renderCorrectRequest(); return;
+            case "notifications": renderNotifications(); return;
+            case "edit_profile": renderEditProfile(); return;
+            case "registration_confirmation": renderRegistrationConfirmation(); return;
+            case "research_progress": renderResearchProgress(); return;
             case "manuscript": manuscript(); return;
             case "registration": registration(); return;
             case "review": reviewManuscript(); return;
@@ -310,7 +413,7 @@ final class ResearcherScreen extends LinearLayout {
         LinearLayout card = card(parent);
         ScreenTypography.heading(paragraph(card, title, 18, BLUE, bold));
         paragraph(card, "• " + description.replace("\n", "\n• "), 14, MUTED, regular);
-        TextView signIn = paragraph(card, "Sign In →", 14, ACCENT, bold, 0);
+        TextView signIn = paragraph(card, "Sign In", 14, ACCENT, bold, 0);
         signIn.setMinimumHeight(dp(48));
         signIn.setGravity(Gravity.CENTER_VERTICAL);
         signIn.setOnClickListener(view -> activity.startAccess());
@@ -355,30 +458,134 @@ final class ResearcherScreen extends LinearLayout {
         journal.setBackground(shape(ACCENT, 13, 0));
         paragraph(journal, "UNIVERSITY", 11, YELLOW, bold);
         paragraph(journal, "The UMak Research Journal", 16, WHITE, bold);
-        action(journal, "Learn More →", YELLOW, NAVY, () -> select("Research"));
+        action(journal, "Learn More", YELLOW, NAVY, () -> select("Research"));
     }
 
     private void services() {
-        hero("Research Services &\nProcedures", "The Center for Research Management provides eight core services to support the research journey of every UMAk student and faculty member.", true);
-        LinearLayout steps = section(ACCENT);
-        String[] instructions = {"Log in to your account", "Navigate to Service Requests", "Select and fill out the service form", "Upload required documents", "Track status in real time"};
-        for (int index = 0; index < instructions.length; index++) {
-            paragraph(steps, (index + 1) + "   " + instructions[index], 13, WHITE, bold);
+        serviceDirectoryView = new ServiceDirectoryView(activity, isSignedIn(), new ServiceDirectoryView.Listener() {
+            @Override
+            public void onSelectService(ServiceData.ServiceItem item) {
+                if ("SVC-01".equals(item.code) && !isSignedIn()) {
+                    SignInGateDialog.show(activity, activity::showSignIn, activity::showCreateAccount);
+                    return;
+                }
+                openServiceDetail(item, false);
+            }
+
+            @Override
+            public void onSignInClicked() {
+                activity.startAccess();
+            }
+        });
+        body.addView(serviceDirectoryView.getContentLayout());
+    }
+
+    public void openServiceDetail(ServiceData.ServiceItem item, boolean formUnavailable) {
+        this.selectedServiceItem = item != null ? item : ServiceData.getById(2);
+        this.serviceFormUnavailable = formUnavailable;
+        openDetail("service_detail");
+    }
+
+    private void renderServiceDetail() {
+        if (selectedServiceItem == null) selectedServiceItem = ServiceData.getById(2);
+        serviceDetailView = new ServiceDetailView(activity, selectedServiceItem, new ServiceDetailView.Listener() {
+            @Override
+            public void onBack() {
+                goBack();
+            }
+
+            @Override
+            public void onSubmitRequest(ServiceData.ServiceItem item) {
+                if (!isSignedIn()) {
+                    SignInGateDialog.show(activity, activity::showSignIn, activity::showCreateAccount);
+                } else {
+                    openDetail("request");
+                }
+            }
+
+            @Override
+            public void onViewSubmissionInstructions(ServiceData.ServiceItem item) {
+                openDetail("external_submission");
+            }
+
+            @Override
+            public void onOpenNavigationGuidance() {
+                openDetail("app_navigation");
+            }
+
+            @Override
+            public void onContactCrm() {
+                openDetail("guidelines");
+            }
+
+            @Override
+            public void onOpenForm(ServiceData.ServiceItem item, boolean simulateFailure) {
+                if (simulateFailure || serviceFormUnavailable) {
+                    FormFailureDialog.show(activity, () -> {
+                        serviceFormUnavailable = false;
+                        if (serviceDetailView != null) serviceDetailView.setFormUnavailable(false);
+                    }, () -> {
+                        serviceFormUnavailable = true;
+                        if (serviceDetailView != null) serviceDetailView.setFormUnavailable(true);
+                    });
+                } else {
+                    ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(activity, item.formTitle, "Opening approved form template for download.");
+                }
+            }
+        });
+        serviceDetailView.setFormUnavailable(serviceFormUnavailable);
+        body.addView(serviceDetailView.getContentLayout());
+    }
+
+    private void renderExternalSubmission() {
+        ExternalSubmissionView view = new ExternalSubmissionView(activity, this::goBack);
+        body.addView(view.getContentLayout());
+    }
+
+    private void renderAppNavigation() {
+        AppNavigationGuidanceView view = new AppNavigationGuidanceView(activity, this::goBack);
+        body.addView(view.getContentLayout());
+    }
+
+    public void previewServiceDirectory(String previewState) {
+        detail = "";
+        tab = "Services";
+        render();
+        if (serviceDirectoryView != null) {
+            serviceDirectoryView.configurePreviewState(previewState);
         }
-        LinearLayout directory = section(PAPER);
-        for (int index = 0; index < ResearcherCatalog.SERVICES.length; index++) {
-            String[] service = ResearcherCatalog.SERVICES[index];
-            LinearLayout card = card(directory);
-            paragraph(card, String.format(java.util.Locale.ROOT, "SVC-%02d   ·   %s", index + 1, service[1]), 10, MUTED, bold);
-            heading(card, service[0]);
-            paragraph(card, service[2], 13, MUTED, regular);
-            paragraph(card, "REQUIREMENTS", 10, ACCENT, bold);
-            paragraph(card, service[3], 12, MUTED, regular);
+    }
+
+    public void previewServiceDetail(String state) {
+        detailParent = "Services";
+        if ("2.2a".equals(state)) {
+            openServiceDetail(ServiceData.getById(2), false);
+        } else if ("2.2b".equals(state)) {
+            openServiceDetail(ServiceData.getById(4), false);
+        } else if ("2.2c".equals(state)) {
+            openServiceDetail(ServiceData.getById(2), true);
         }
-        outline(directory, "View Guidelines", () -> openDetail("guidelines"));
-        LinearLayout footer = hero("Submit a Service\nRequest Today", "Log in with your UMAk credentials to access CRM services.", true);
-        action(footer, isSignedIn() ? "Submit Service Request" : "Sign In", YELLOW, NAVY,
-                isSignedIn() ? () -> openDetail("request") : activity::startAccess);
+    }
+
+    public void previewExternalSubmission() {
+        detailParent = "Services";
+        selectedServiceItem = ServiceData.getById(4);
+        openDetail("external_submission");
+    }
+
+    public void previewAppNavigation() {
+        detailParent = "Services";
+        openDetail("app_navigation");
+    }
+
+    public void previewFormFailureModal() {
+        FormFailureDialog.show(activity, () -> {
+            serviceFormUnavailable = false;
+            if (serviceDetailView != null) serviceDetailView.setFormUnavailable(false);
+        }, () -> {
+            serviceFormUnavailable = true;
+            if (serviceDetailView != null) serviceDetailView.setFormUnavailable(true);
+        });
     }
 
     private void guidelines() {
@@ -434,34 +641,299 @@ final class ResearcherScreen extends LinearLayout {
     }
 
     private void requests() {
-        hero("Service Requests", "View your requests and start a new submission.", true);
-        LinearLayout content = section(PAPER);
-        action(content, "Submit Service Request", NAVY, WHITE, () -> openDetail("request"));
-        outline(content, "Research Registration", () -> openDetail("registration"));
-        outline(content, "Upload Manuscript", () -> openDetail("manuscript"));
-        LinearLayout history = card(content);
-        heading(history, "Personal Service Request History");
-        paragraph(history, "Consultation requests", 13, MUTED, regular);
-        TextView state = paragraph(history, "Loading requests…", 13, MUTED, regular);
-        activity.researcherRequest(this, "/api/v1/consultations", null, true, (data, error) -> {
-            if (error != null) {
-                state.setText(error);
-                return;
+        myRequestsView = new MyRequestsView(activity, new MyRequestsView.Listener() {
+            @Override
+            public void onRequestSelected(RequestData.RequestItem item) {
+                openRequestDetail(item);
             }
-            try {
-                consultations = new JSONArray(data);
-                if (consultations.length() == 0) state.setText("No consultation requests yet.");
-                else history.removeView(state);
-                for (int index = 0; index < consultations.length(); index++) {
-                    JSONObject ticket = consultations.getJSONObject(index);
-                    paragraph(history, ticket.optString("service_type") + " · #" + ticket.optInt("id"),
-                            14, BLUE, bold);
-                    paragraph(history, ticket.optString("status"), 12, MUTED, regular);
-                }
-            } catch (JSONException invalid) {
-                state.setText("CRM requests could not be read.");
+
+            @Override
+            public void onSubmitNewRequest() {
+                openDetail("request");
             }
         });
+        body.addView(myRequestsView.getContentLayout());
+    }
+
+    public void openRequestDetail(RequestData.RequestItem item) {
+        this.selectedRequestItem = item;
+        openDetail("request_detail");
+    }
+
+    private void renderSubmitRequest() {
+        submitRequestView = new SubmitRequestView(activity, new SubmitRequestView.Listener() {
+            @Override
+            public void onSubmitSuccess(RequestData.RequestItem request) {
+                selectedRequestItem = request;
+                receiptIsCorrection = false;
+                openDetail("request_receipt");
+            }
+
+            @Override
+            public void onBack() {
+                goBack();
+            }
+        });
+        body.addView(submitRequestView.getContentLayout());
+    }
+
+    private void renderRequestDetail() {
+        if (selectedRequestItem == null) {
+            selectedRequestItem = RequestData.createReq089("For correction");
+        }
+        requestDetailView = new RequestDetailView(activity, selectedRequestItem, new RequestDetailView.Listener() {
+            @Override
+            public void onBack() {
+                goBack();
+            }
+
+            @Override
+            public void onCorrectRequest(RequestData.RequestItem item) {
+                selectedRequestItem = item;
+                openDetail("correct_request");
+            }
+        });
+        body.addView(requestDetailView.getContentLayout());
+    }
+
+    private void renderCorrectRequest() {
+        if (selectedRequestItem == null) {
+            selectedRequestItem = RequestData.createReq089("For correction");
+        }
+        correctRequestView = new CorrectRequestView(activity, selectedRequestItem, new CorrectRequestView.Listener() {
+            @Override
+            public void onSubmitCorrection(RequestData.RequestItem updatedItem) {
+                selectedRequestItem = updatedItem;
+                receiptIsCorrection = true;
+                openDetail("request_receipt");
+            }
+
+            @Override
+            public void onCancel() {
+                goBack();
+            }
+        });
+        body.addView(correctRequestView.getContentLayout());
+    }
+
+    private void renderRequestReceipt() {
+        if (selectedRequestItem == null) {
+            selectedRequestItem = RequestData.createReq089("Submitted");
+        }
+        requestReceiptView = new RequestReceiptView(activity, new RequestReceiptView.Listener() {
+            @Override
+            public void onViewRequest(String requestId) {
+                openRequestDetail(selectedRequestItem);
+            }
+
+            @Override
+            public void onBackToRequests() {
+                detail = "";
+                tab = "Requests";
+                render();
+            }
+        }, receiptIsCorrection, selectedRequestItem);
+        body.addView(requestReceiptView.getContentLayout());
+    }
+
+    private void renderNotifications() {
+        notificationsView = new NotificationsView(activity, new NotificationsView.Listener() {
+            @Override
+            public void onBack() {
+                goBack();
+            }
+
+            @Override
+            public void onNotificationClick(RequestData.NotificationItem item) {
+                RequestData.RequestItem req;
+                if ("REQ-2026-089".equals(item.requestCode)) {
+                    if (item.title != null && item.title.contains("Correction")) {
+                        req = RequestData.createReq089("For correction");
+                    } else if (item.title != null && item.title.contains("Review")) {
+                        req = RequestData.createReq089("In review");
+                    } else {
+                        req = RequestData.createReq089("Submitted");
+                    }
+                } else if ("REQ-2026-081".equals(item.requestCode)) {
+                    req = RequestData.getInitialRequests().get(2);
+                } else if ("REQ-2026-074".equals(item.requestCode)) {
+                    req = RequestData.getInitialRequests().get(3);
+                } else {
+                    req = RequestData.createReq089("Submitted");
+                }
+                openRequestDetail(req);
+            }
+        });
+        body.addView(notificationsView.getContentLayout());
+    }
+
+    public void previewSubmitRequest(String state) {
+        detailParent = "Requests";
+        openDetail("request");
+        if (submitRequestView != null) {
+            submitRequestView.setPreviewState(state);
+        }
+    }
+
+    public void previewMyRequests(String state) {
+        detail = "";
+        tab = "Requests";
+        render();
+        if (myRequestsView != null) {
+            myRequestsView.setPreviewState(state);
+        }
+    }
+
+    public void previewRequestDetail(String status) {
+        detailParent = "Requests";
+        this.selectedRequestItem = RequestData.createReq089(status);
+        openDetail("request_detail");
+    }
+
+    public void previewCorrectRequest() {
+        detailParent = "Requests";
+        this.selectedRequestItem = RequestData.createReq089("For correction");
+        openDetail("correct_request");
+    }
+
+    public void previewRequestReceipt(boolean isCorrection) {
+        detailParent = "Requests";
+        this.selectedRequestItem = RequestData.createReq089("Submitted");
+        this.receiptIsCorrection = isCorrection;
+        openDetail("request_receipt");
+    }
+
+    public void previewNotifications(String state) {
+        detailParent = tab;
+        openDetail("notifications");
+        if (notificationsView != null) {
+            notificationsView.setPreviewState(state);
+        }
+    }
+
+    public void previewRequestFilterDialog() {
+        detail = "";
+        tab = "Requests";
+        render();
+        new RequestFilterDialog(activity, new RequestFilterDialog.FilterListener() {
+            @Override
+            public void onApplyFilters(String status, String fromDate, String toDate) {
+                if (myRequestsView != null) {
+                    myRequestsView.setPreviewState("3.6b_filtered");
+                }
+            }
+
+            @Override
+            public void onClearFilters() {
+                if (myRequestsView != null) {
+                    myRequestsView.clearAllFilters();
+                }
+            }
+        }).show("All", "2026-10-01", "2026-10-31");
+    }
+
+    private void renderEditProfile() {
+        editProfileView = new EditProfileView(activity, userProfile, new EditProfileView.Listener() {
+            @Override
+            public void onSave(String name, String college) {
+                userProfile.name = name;
+                userProfile.college = college;
+                profileUpdatedSnackbar = true;
+                goBack();
+            }
+
+            @Override
+            public void onCancel() {
+                goBack();
+            }
+        });
+        body.addView(editProfileView.getContentLayout());
+    }
+
+    private void renderRegistrationConfirmation() {
+        String regTitle = registration.getOrDefault("Research Title", "Impact of AI on Student Engagement");
+        registrationConfirmationView = new RegistrationConfirmationView(activity, "REG-2026-089", regTitle, new RegistrationConfirmationView.Listener() {
+            @Override
+            public void onViewProgress() {
+                selectedProgressState = "4.6c";
+                openDetail("research_progress");
+            }
+
+            @Override
+            public void onBackToDashboard() {
+                detail = "";
+                tab = "Dashboard";
+                render();
+            }
+        });
+        body.addView(registrationConfirmationView.getContentLayout());
+    }
+
+    private void renderResearchProgress() {
+        researchProgressView = new ResearchProgressView(activity, ResearchData.getStudyProgress(selectedProgressState), new ResearchProgressView.Listener() {
+            @Override
+            public void onBack() {
+                goBack();
+            }
+
+            @Override
+            public void onRegisterResearch() {
+                registrationStep = 0;
+                openDetail("registration");
+            }
+        });
+        body.addView(researchProgressView.getContentLayout());
+    }
+
+    public void previewEditProfile(String state) {
+        detailParent = "Profile";
+        openDetail("edit_profile");
+        if (editProfileView != null) {
+            editProfileView.setPreviewState(state);
+        }
+    }
+
+    public void previewProfile(String state) {
+        detail = "";
+        tab = "Profile";
+        profileUpdatedSnackbar = "4.1_success".equals(state) || "success_snackbar".equals(state);
+        render();
+        if (profileView != null) {
+            profileView.setPreviewState(state);
+        }
+    }
+
+    public void previewRegistrationStep1(String state) {
+        detailParent = "Research";
+        registrationStep = 0;
+        openDetail("registration");
+        if (registrationStep1View != null) {
+            registrationStep1View.setPreviewState(state);
+        }
+    }
+
+    public void previewAddCoAuthorDialog() {
+        new AddCoAuthorDialog(activity, new java.util.ArrayList<>(), new AddCoAuthorDialog.Listener() {
+            @Override
+            public void onTeamUpdated(java.util.List<ResearchData.CoAuthorItem> currentTeam) {}
+
+            @Override
+            public void onDismiss() {}
+        }).show();
+    }
+
+    public void previewRegistrationConfirmation() {
+        detailParent = "Research";
+        openDetail("registration_confirmation");
+    }
+
+    public void previewResearchProgress(String state) {
+        detailParent = "Profile";
+        selectedProgressState = state;
+        openDetail("research_progress");
+        if (researchProgressView != null) {
+            researchProgressView.setPreviewState(state);
+        }
     }
 
     private void consultation() {
@@ -577,6 +1049,24 @@ final class ResearcherScreen extends LinearLayout {
     }
 
     private void registration() {
+        if (registrationStep == 0) {
+            registrationStep1View = new RegistrationStep1View(activity, userProfile, registration, new RegistrationStep1View.Listener() {
+                @Override
+                public void onContinue(java.util.Map<String, String> data) {
+                    registration.putAll(data);
+                    registrationStep++;
+                    render();
+                }
+
+                @Override
+                public void onSaveDraft(java.util.Map<String, String> data) {
+                    registration.putAll(data);
+                    saveRegistrationDraft(null, null);
+                }
+            });
+            body.addView(registrationStep1View.getContentLayout());
+            return;
+        }
         String[] steps = {"General Information", "Abstract & Methodology", "Document Upload & Compliance", "Final Review"};
         LinearLayout intro = hero(registrationStep == 3 ? "Review Registration" : "Research Registration",
                 registrationStep == 3 ? "Please check the submitted details before submitting."
@@ -591,26 +1081,7 @@ final class ResearcherScreen extends LinearLayout {
                 11, WHITE, bold);
         LinearLayout content = section(PAPER);
         java.util.Map<String, EditText> fields = new java.util.LinkedHashMap<>();
-        if (registrationStep == 0) {
-            LinearLayout project = card(content);
-            heading(project, "Project Details");
-            draftField(project, fields, "Research Title", "Enter the full title of your study", false);
-            draftField(project, fields, "Research Type", "Applied Research", false);
-            draftField(project, fields, "Target Completion Date", "YYYY-MM-DD", false);
-            LinearLayout team = card(content);
-            heading(team, "Funding & Collaborators");
-            draftField(team, fields, "Department / College", "College name", false);
-            draftField(team, fields, "Lead Researcher / Author", "Your name, student/faculty ID", false);
-            if (registration.containsKey("Co-Author / Collaborator")) {
-                draftField(team, fields, "Co-Author / Collaborator", "Name", false);
-            } else {
-                outline(team, "Add Co-Author / Collaborator", () -> {
-                    collect(fields);
-                    registration.put("Co-Author / Collaborator", "");
-                    render();
-                });
-            }
-        } else if (registrationStep == 1) {
+        if (registrationStep == 1) {
             LinearLayout abstractCard = card(content);
             heading(abstractCard, "Abstract & Keywords");
             draftField(abstractCard, fields, "Research Abstract / Executive Summary", "Type or paste your abstract here.", true);
@@ -646,8 +1117,9 @@ final class ResearcherScreen extends LinearLayout {
                 render();
             });
         } else {
-            action(content, "Submit", NAVY, WHITE,
-                    () -> feedback.setText("Final registration submission is currently unavailable."));
+            action(content, "Submit", NAVY, WHITE, () -> {
+                openDetail("registration_confirmation");
+            });
         }
         if (registrationStep > 0) {
             previousRegistrationStep = () -> {
@@ -670,27 +1142,30 @@ final class ResearcherScreen extends LinearLayout {
         String summary = registration.getOrDefault("Research Abstract / Executive Summary", "").trim();
         String department = registration.getOrDefault("Department / College", "").trim();
         if (title.isEmpty() || summary.isEmpty() || department.isEmpty()) {
-            feedback.setText("Enter the title, abstract and department before saving to CRM.");
+            if (feedback != null) feedback.setText("Enter the title, abstract and department before saving to CRM.");
+            else android.widget.Toast.makeText(activity, "Enter the title, abstract and department before saving to CRM.", android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
         JSONObject draft = json("title", title);
         put(draft, "abstract", summary);
         put(draft, "department", department);
         put(draft, "research_year", java.time.LocalDate.now().getYear());
-        save.setEnabled(false);
+        if (save != null) save.setEnabled(false);
         activity.researcherRequest(this, "/api/v1/researcher/drafts" + (draftId == 0 ? "" : "/" + draftId),
                 draft, true, (data, error) -> {
-                    save.setEnabled(true);
+                    if (save != null) save.setEnabled(true);
                     if (error != null) {
-                        feedback.setText(error);
+                        if (feedback != null) feedback.setText(error);
+                        else android.widget.Toast.makeText(activity, error, android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
                     try {
                         draftId = new JSONObject(data).getInt("id");
-                        feedback.setText("Core research details saved as a draft.");
+                        if (feedback != null) feedback.setText("Core research details saved as a draft.");
+                        else android.widget.Toast.makeText(activity, "Core research details saved as a draft.", android.widget.Toast.LENGTH_SHORT).show();
                         loadStudies();
                     } catch (JSONException invalid) {
-                        feedback.setText("CRM draft response could not be read.");
+                        if (feedback != null) feedback.setText("CRM draft response could not be read.");
                     }
                 });
     }
@@ -792,54 +1267,28 @@ final class ResearcherScreen extends LinearLayout {
     }
 
     private void profile() {
-        LinearLayout content = section(PAPER);
-        LinearLayout identity = card(content);
-        TextView strip = paragraph(identity, name().isEmpty() ? "?" : name().substring(0, 1).toUpperCase(java.util.Locale.ROOT),
-                27, YELLOW, bold);
-        strip.setBackground(shape(NAVY, 8, 0));
-        strip.setPadding(dp(12), dp(14), dp(12), dp(14));
-        paragraph(identity, name(), 25, ACCENT, bold);
-        paragraph(identity, "faculty".equals(account.optString("role")) ? "Faculty Researcher" : "Student Researcher", 12, ACCENT, bold);
-        paragraph(identity, "EMAIL", 10, MUTED, bold);
-        paragraph(identity, account.optString("email"), 13, BLUE, regular);
-        LinearLayout row = new LinearLayout(activity);
-        LinearLayout left = column();
-        LinearLayout right = column();
-        LayoutParams leftParams = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1);
-        leftParams.setMarginEnd(dp(8));
-        row.addView(left, leftParams);
-        row.addView(right, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
-        content.addView(row);
-        metric(left, R.drawable.ic_staff_profile, studies == null ? "—" : String.valueOf(studies.length()), "Total Studies", "Registered with CRM");
-        metric(right, R.drawable.ic_staff_registry, countStudies("In-Progress"), "Active Studies", "In progress");
-        metric(left, R.drawable.ic_staff_requests, consultations == null ? "—" : String.valueOf(consultations.length()), "Service Requests", "Consultations");
-        metric(right, R.drawable.ic_researcher_services, countStudies("Published"), "Publications", "Peer-reviewed");
-        LinearLayout myStudies = card(content);
-        heading(myStudies, "My Research Studies");
-        if (studies == null || studies.length() == 0) paragraph(myStudies,
-                studyError != null ? studyError : studies == null ? "Loading research studies…" : "No studies registered yet.", 13, MUTED, regular);
-        else for (int index = 0; index < studies.length(); index++) {
-            JSONObject study = studies.optJSONObject(index);
-            if (study == null) continue;
-            if ("Draft".equals(study.optString("status")) && "Registered".equals(study.optString("lifecycle_state"))) {
-                outline(myStudies, study.optString("title") + " · Draft", () -> openDraft(study));
-            } else {
-                outline(myStudies, study.optString("title") + " · " + study.optString("lifecycle_state"), () -> {
-                    reviewStudy = study;
-                    openDetail("review");
-                });
+        profileView = new ProfileView(activity, userProfile, new ProfileView.Listener() {
+            @Override
+            public void onEditProfile() {
+                openDetail("edit_profile");
             }
+
+            @Override
+            public void onOpenStudyProgress(String studyState) {
+                selectedProgressState = studyState;
+                openDetail("research_progress");
+            }
+
+            @Override
+            public void onSignOut() {
+                activity.signOut();
+            }
+        });
+        if (profileUpdatedSnackbar) {
+            profileView.setPreviewState("4.1_success");
+            profileUpdatedSnackbar = false;
         }
-        outline(myStudies, "Research Registration", () -> openDetail("registration"));
-        LinearLayout settings = card(content);
-        heading(settings, "Account Settings");
-        paragraph(settings, "EMAIL ADDRESS", 10, MUTED, bold);
-        paragraph(settings, account.optString("email"), 13, BLUE, regular);
-        paragraph(settings, "ACCOUNT STATUS", 10, MUTED, bold);
-        paragraph(settings, "Active", 13, BLUE, regular);
-        paragraph(settings, "LAST LOGIN", 10, MUTED, bold);
-        paragraph(settings, "This session", 13, BLUE, regular);
-        action(content, "Sign Out", WHITE, 0xffb52934, activity::signOut);
+        body.addView(profileView.getContentLayout());
     }
 
     private void openDraft(JSONObject study) {
@@ -879,6 +1328,7 @@ final class ResearcherScreen extends LinearLayout {
     }
 
     private String name() {
+        if (account == null) return "LeBron R. James";
         String email = account.optString("email");
         return account.optString("display_name", email.isEmpty() ? "Researcher" : email);
     }
