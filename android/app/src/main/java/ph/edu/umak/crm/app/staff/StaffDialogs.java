@@ -86,7 +86,7 @@ public final class StaffDialogs {
         layout.addView(sub);
 
         TextView code = new TextView(context);
-        code.setText(credential != null ? credential : "TMP-7Q4K-92LX");
+        code.setText(credential != null ? credential : "Unavailable");
         code.setTextColor(UiTheme.NAVY);
         code.setTypeface(UiTheme.boldFont(context));
         code.setGravity(Gravity.CENTER);
