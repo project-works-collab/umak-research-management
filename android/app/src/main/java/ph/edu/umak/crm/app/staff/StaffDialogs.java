@@ -90,11 +90,7 @@ public final class StaffDialogs {
                 : "TMP-0000-0000";
 
         TextView code = new TextView(context);
-<<<<<<< HEAD
         code.setText(displayCode);
-=======
-        code.setText(credential != null ? credential : "Unavailable");
->>>>>>> 3d6e2d9302b168781a4f7833f3167678fe16f482
         code.setTextColor(UiTheme.NAVY);
         code.setTypeface(UiTheme.boldFont(context));
         code.setGravity(Gravity.CENTER);
