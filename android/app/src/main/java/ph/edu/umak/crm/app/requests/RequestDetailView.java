@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -18,7 +19,6 @@ import ph.edu.umak.crm.app.common.util.UiTheme;
 public final class RequestDetailView {
 
     public interface Listener {
-        void onBack();
         void onCorrectRequest(RequestData.RequestItem item);
     }
 
@@ -52,75 +52,6 @@ public final class RequestDetailView {
         Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
         int pad = UiTheme.dp(context, 14);
-
-        // Header with Back button
-        LinearLayout headerRow = new LinearLayout(context);
-        headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        Button backBtn = UiButton.text(context, "Back", UiTheme.NAVY, () -> {
-            if (listener != null) listener.onBack();
-        });
-        backBtn.setPadding(0, 0, UiTheme.dp(context, 12), 0);
-        headerRow.addView(backBtn);
-
-        LinearLayout titleCol = new LinearLayout(context);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = new TextView(context);
-        title.setText("Request Details");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 20);
-        titleCol.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Track your request with CRM.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        titleCol.addView(subtitle);
-
-        headerRow.addView(titleCol);
-        layout.addView(headerRow);
-
-        addSpacing(context, layout, 16);
-
-        // Action required card (3.7c For correction)
-        if ("For correction".equalsIgnoreCase(currentItem.status)) {
-            LinearLayout actionCard = new LinearLayout(context);
-            actionCard.setOrientation(LinearLayout.VERTICAL);
-            actionCard.setBackground(UiTheme.shape(context, UiTheme.AMBER_BG, 10, UiTheme.AMBER_BORDER));
-            actionCard.setPadding(pad, pad, pad, pad);
-
-            TextView actionTitle = new TextView(context);
-            actionTitle.setText("Action required");
-            actionTitle.setTextColor(UiTheme.AMBER_TEXT);
-            actionTitle.setTypeface(bold);
-            ScreenTypography.apply(actionTitle, 15);
-            actionCard.addView(actionTitle);
-
-            addSpacing(context, actionCard, 4);
-
-            TextView actionDesc = new TextView(context);
-            actionDesc.setText(currentItem.actionRequiredNotice != null
-                    ? currentItem.actionRequiredNotice
-                    : "Correct the missing items below and resubmit by Nov 4, 2026, 5:00 PM.");
-            actionDesc.setTextColor(UiTheme.AMBER_TEXT);
-            actionDesc.setTypeface(regular);
-            ScreenTypography.apply(actionDesc, 13);
-            actionCard.addView(actionDesc);
-
-            addSpacing(context, actionCard, 12);
-
-            Button correctBtn = UiButton.primary(context, "Add or Replace Attachments", () -> {
-                if (listener != null) listener.onCorrectRequest(currentItem);
-            });
-            actionCard.addView(correctBtn);
-
-            layout.addView(actionCard);
-            addSpacing(context, layout, 16);
-        }
 
         // Overview Card
         LinearLayout overviewCard = new LinearLayout(context);
@@ -165,50 +96,54 @@ public final class RequestDetailView {
 
         addSpacing(context, overviewCard, 12);
 
-        // Linked Study Row
-        if (currentItem.linkedStudyCode != null) {
-            LinearLayout linkedCard = new LinearLayout(context);
-            linkedCard.setOrientation(LinearLayout.VERTICAL);
-            linkedCard.setBackground(UiTheme.shape(context, 0xFFF8FAFC, 8, UiTheme.BORDER));
-            int lPad = UiTheme.dp(context, 10);
-            linkedCard.setPadding(lPad, lPad, lPad, lPad);
-
-            TextView linkedLabel = new TextView(context);
-            linkedLabel.setText("Linked study");
-            linkedLabel.setTextColor(UiTheme.MUTED);
-            linkedLabel.setTypeface(regular);
-            ScreenTypography.apply(linkedLabel, 11);
-            linkedCard.addView(linkedLabel);
-
-            TextView studyTitle = new TextView(context);
-            studyTitle.setText(currentItem.linkedStudyCode + " · " + currentItem.linkedStudyTitle);
-            studyTitle.setTextColor(UiTheme.NAVY);
-            studyTitle.setTypeface(bold);
-            ScreenTypography.apply(studyTitle, 13);
-            linkedCard.addView(studyTitle);
-
-            if (currentItem.linkedStudyStage != null) {
-                addSpacing(context, linkedCard, 4);
-                TextView stagePill = new TextView(context);
-                stagePill.setText("Stage " + currentItem.linkedStudyStage);
-                stagePill.setTextColor(UiTheme.MUTED);
-                stagePill.setTypeface(regular);
-                ScreenTypography.apply(stagePill, 11);
-                linkedCard.addView(stagePill);
-            }
-
-            overviewCard.addView(linkedCard);
+        if (currentItem.previewTitle != null) {
+            addSectionHeader(overviewCard, currentItem.previewTitle);
+            TextView previewDetails = new TextView(context);
+            previewDetails.setText(currentItem.previewDetails);
+            previewDetails.setTextColor(UiTheme.NAVY);
+            previewDetails.setTypeface(regular);
+            ScreenTypography.apply(previewDetails, 13);
+            overviewCard.addView(previewDetails);
         }
-
         layout.addView(overviewCard);
 
-        addSpacing(context, layout, 16);
+        // Action required card (3.7c For correction)
+        if ("For correction".equalsIgnoreCase(currentItem.status)) {
+            LinearLayout actionCard = new LinearLayout(context);
+            actionCard.setOrientation(LinearLayout.VERTICAL);
+            actionCard.setBackground(UiTheme.shape(context, UiTheme.AMBER_BG, 10, UiTheme.AMBER_BORDER));
+            actionCard.setPadding(pad, pad, pad, pad);
 
-        // Details & Progress Card
-        LinearLayout detailsCard = new LinearLayout(context);
-        detailsCard.setOrientation(LinearLayout.VERTICAL);
-        detailsCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        detailsCard.setPadding(pad, pad, pad, pad);
+            TextView actionTitle = new TextView(context);
+            actionTitle.setText("Action required");
+            actionTitle.setTextColor(UiTheme.AMBER_TEXT);
+            actionTitle.setTypeface(bold);
+            ScreenTypography.apply(actionTitle, 15);
+            actionCard.addView(actionTitle);
+
+            addSpacing(context, actionCard, 4);
+
+            TextView actionDesc = new TextView(context);
+            actionDesc.setText(currentItem.actionRequiredNotice != null
+                    ? currentItem.actionRequiredNotice
+                    : "Correct the missing items below and resubmit by Nov 4, 2026, 5:00 PM.");
+            actionDesc.setTextColor(UiTheme.AMBER_TEXT);
+            actionDesc.setTypeface(regular);
+            ScreenTypography.apply(actionDesc, 13);
+            actionCard.addView(actionDesc);
+
+            addSpacing(context, actionCard, 12);
+
+            Button correctBtn = UiButton.primary(context, "Add or Replace Attachments", () -> {
+                if (listener != null) listener.onCorrectRequest(currentItem);
+            });
+            actionCard.addView(correctBtn);
+
+            addSpacing(context, layout, 8);
+            layout.addView(actionCard);
+        }
+
+        LinearLayout detailsCard = addDetailsCard(pad);
 
         // Processing Step
         addSectionHeader(detailsCard, "Processing step");
@@ -219,7 +154,7 @@ public final class RequestDetailView {
         ScreenTypography.apply(stepVal, 13);
         detailsCard.addView(stepVal);
 
-        addSpacing(context, detailsCard, 14);
+        detailsCard = addDetailsCard(pad);
 
         // Submitted files
         addSectionHeader(detailsCard, "Submitted files");
@@ -260,7 +195,7 @@ public final class RequestDetailView {
             detailsCard.addView(noFiles);
         }
 
-        addSpacing(context, detailsCard, 14);
+        detailsCard = addDetailsCard(pad);
 
         // Feedback from CRM
         addSectionHeader(detailsCard, "Feedback from CRM");
@@ -276,7 +211,7 @@ public final class RequestDetailView {
         }
         detailsCard.addView(feedbackVal);
 
-        addSpacing(context, detailsCard, 14);
+        detailsCard = addDetailsCard(pad);
 
         // Missing Items
         addSectionHeader(detailsCard, "Missing items");
@@ -299,7 +234,7 @@ public final class RequestDetailView {
             detailsCard.addView(noMissing);
         }
 
-        addSpacing(context, detailsCard, 14);
+        detailsCard = addDetailsCard(pad);
 
         // Next Action
         addSectionHeader(detailsCard, "Next action");
@@ -311,16 +246,17 @@ public final class RequestDetailView {
         detailsCard.addView(nextVal);
 
         if (currentItem.deadline != null) {
-            addSpacing(context, detailsCard, 4);
+            detailsCard = addDetailsCard(pad);
+            addSectionHeader(detailsCard, "Deadline");
             TextView deadlineText = new TextView(context);
-            deadlineText.setText("Deadline: " + currentItem.deadline);
+            deadlineText.setText(currentItem.deadline);
             deadlineText.setTextColor(UiTheme.ERROR_RED);
             deadlineText.setTypeface(bold);
             ScreenTypography.apply(deadlineText, 13);
             detailsCard.addView(deadlineText);
         }
 
-        addSpacing(context, detailsCard, 14);
+        detailsCard = addDetailsCard(pad);
 
         // Review History
         addSectionHeader(detailsCard, "Review history");
@@ -343,7 +279,40 @@ public final class RequestDetailView {
             detailsCard.addView(noHist);
         }
 
-        layout.addView(detailsCard);
+        // Linked Study Row
+        if (currentItem.linkedStudyCode != null) {
+            LinearLayout linkedCard = addDetailsCard(pad);
+
+            addSectionHeader(linkedCard, "Linked study");
+
+            TextView studyTitle = new TextView(context);
+            studyTitle.setText(currentItem.linkedStudyCode + " · " + currentItem.linkedStudyTitle);
+            studyTitle.setTextColor(UiTheme.NAVY);
+            studyTitle.setTypeface(bold);
+            ScreenTypography.apply(studyTitle, 13);
+            linkedCard.addView(studyTitle);
+
+            if (currentItem.linkedStudyStage != null) {
+                addSpacing(context, linkedCard, 4);
+                TextView stagePill = new TextView(context);
+                stagePill.setText("Stage " + currentItem.linkedStudyStage);
+                stagePill.setTextColor(UiTheme.MUTED);
+                stagePill.setTypeface(regular);
+                ScreenTypography.apply(stagePill, 11);
+                linkedCard.addView(stagePill);
+            }
+
+        }
+    }
+
+    private LinearLayout addDetailsCard(int padding) {
+        addSpacing(context, layout, 8);
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
+        card.setPadding(padding, padding, padding, padding);
+        layout.addView(card);
+        return card;
     }
 
     private void addSectionHeader(LinearLayout parent, String title) {
@@ -402,6 +371,6 @@ public final class RequestDetailView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Request Details", "Track your request with CRM.", false);
     }
 }

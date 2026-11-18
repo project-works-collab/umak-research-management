@@ -20,6 +20,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -33,7 +34,7 @@ public class RequestWorkspaceView {
 
     public interface Callbacks {
         void onBackToQueue();
-        void onReviewSaved(StaffQueueData.QueueRequestItem request);
+        void onSessionDraftKept();
     }
 
     private final Context context;
@@ -42,6 +43,7 @@ public class RequestWorkspaceView {
 
     private StaffQueueData.QueueRequestItem requestItem;
     private String previewState = "6.3a_workspace";
+    private final java.util.Map<String, StaffQueueData.QueueRequestItem> sessionDrafts = new java.util.HashMap<>();
 
     // Form controls for Decision
     private String selectedNextStatus = "For correction";
@@ -76,10 +78,16 @@ public class RequestWorkspaceView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "Request Workspace", "Review and process service requests.", false);
     }
 
     public void setRequest(StaffQueueData.QueueRequestItem request) {
+        previewState = "6.3a_workspace";
+        request = request == null ? null : sessionDrafts.getOrDefault(request.id, request);
+        bindRequest(request);
+    }
+
+    private void bindRequest(StaffQueueData.QueueRequestItem request) {
         this.requestItem = request;
         if (request != null) {
             this.selectedNextStatus = request.targetStatus != null ? request.targetStatus : "For correction";
@@ -97,7 +105,7 @@ public class RequestWorkspaceView {
             // Find REQ-2026-074
             for (StaffQueueData.QueueRequestItem item : StaffQueueData.getInitialQueue()) {
                 if ("REQ-2026-074".equalsIgnoreCase(item.id)) {
-                    setRequest(item);
+                    bindRequest(item);
                     return;
                 }
             }
@@ -105,7 +113,7 @@ public class RequestWorkspaceView {
             // REQ-2026-089
             for (StaffQueueData.QueueRequestItem item : StaffQueueData.getInitialQueue()) {
                 if ("REQ-2026-089".equalsIgnoreCase(item.id)) {
-                    setRequest(item);
+                    bindRequest(item);
                     return;
                 }
             }
@@ -120,26 +128,6 @@ public class RequestWorkspaceView {
         Typeface bold = UiTheme.boldFont(context);
         Typeface regular = UiTheme.bodyFont(context);
 
-        // Success Banner if 6.6 Review saved
-        if ("6.6_review_saved".equalsIgnoreCase(previewState)) {
-            LinearLayout successBanner = new LinearLayout(context);
-            successBanner.setOrientation(LinearLayout.HORIZONTAL);
-            successBanner.setGravity(Gravity.CENTER_VERTICAL);
-            successBanner.setPadding(UiTheme.dp(context, 14), UiTheme.dp(context, 12),
-                    UiTheme.dp(context, 14), UiTheme.dp(context, 12));
-            successBanner.setBackground(UiTheme.shape(context, UiTheme.SUCCESS_BG, 8, UiTheme.SUCCESS_GREEN));
-
-            TextView successText = new TextView(context);
-            successText.setText("Review saved.");
-            successText.setTextColor(UiTheme.SUCCESS_GREEN);
-            successText.setTypeface(bold);
-            ScreenTypography.apply(successText, 14);
-            successBanner.addView(successText);
-
-            contentLayout.addView(successBanner);
-            addSpacing(12);
-        }
-
         // Back button row
         if (callbacks != null) {
             TextView backBtn = new TextView(context);
@@ -151,30 +139,6 @@ public class RequestWorkspaceView {
             backBtn.setOnClickListener(v -> callbacks.onBackToQueue());
             contentLayout.addView(backBtn);
         }
-
-        // Header Title
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        TextView title = new TextView(context);
-        title.setText("Request Workspace");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 2));
-        contentLayout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Review and process service requests.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        subtitle.setPadding(0, 0, 0, UiTheme.dp(context, 14));
-        contentLayout.addView(subtitle);
 
         // Request Summary Banner Card
         contentLayout.addView(createRequestHeaderCard());
@@ -641,19 +605,26 @@ public class RequestWorkspaceView {
                 showStaleDialog();
                 return;
             }
-            if (callbacks != null) {
-                callbacks.onReviewSaved(requestItem);
-            }
-            setPreviewState("6.6_review_saved");
+            ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(context, "Review not sent",
+                    "This workspace can’t submit a review to CRM yet. You can keep these changes for this session.");
         });
         section.addView(saveBtn);
 
         addSpacing(section, 10);
 
-        Button draftBtn = UiButton.outline(context, "Save as Draft", UiTheme.BORDER, UiTheme.NAVY, () -> {
-            if (callbacks != null) {
-                callbacks.onBackToQueue();
-            }
+        Button draftBtn = UiButton.outline(context, "Keep draft for this session", UiTheme.BORDER, UiTheme.NAVY, () -> {
+            requestItem.targetStatus = selectedNextStatus;
+            requestItem.feedbackToResearcher = feedbackInput.getText().toString();
+            requestItem.missingItems = new ArrayList<>(missingItemsList);
+            requestItem.nextAction = nextActionInput.getText().toString();
+            requestItem.deadlineDate = deadlineDateInput.getText().toString();
+            requestItem.deadlineTime = deadlineTimeInput.getText().toString();
+            requestItem.internalRemarks = internalRemarksInput.getText().toString();
+            requestItem.checkpointName = checkpointNameInput.getText().toString();
+            requestItem.checkpointDate = checkpointDateInput.getText().toString();
+            requestItem.checkpointRef = checkpointRefInput.getText().toString();
+            sessionDrafts.put(requestItem.id, requestItem);
+            if (callbacks != null) callbacks.onSessionDraftKept();
         });
         section.addView(draftBtn);
 
@@ -1233,11 +1204,9 @@ public class RequestWorkspaceView {
 
         addSpacing(card, 20);
 
-        Button saveCorrBtn = UiButton.primary(context, "Save Correction", () -> {
-            if (callbacks != null) {
-                callbacks.onBackToQueue();
-            }
-        });
+        Button saveCorrBtn = UiButton.primary(context, "Save Correction", () ->
+                ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(context, "Correction not saved",
+                        "This workspace can’t send review corrections to CRM yet."));
         card.addView(saveCorrBtn);
 
         addSpacing(card, 10);

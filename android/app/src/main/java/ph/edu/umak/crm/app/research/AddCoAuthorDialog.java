@@ -2,19 +2,15 @@ package ph.edu.umak.crm.app.research;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -22,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -58,18 +55,16 @@ public final class AddCoAuthorDialog {
 
     public void show() {
         final Dialog dialog = new Dialog(context);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
 
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setBackground(UiTheme.shape(context, UiTheme.WHITE, 16, 0));
         int pad = UiTheme.dp(context, 20);
         layout.setPadding(pad, pad, pad, pad);
 
-        // Header Row: Title on left, Done button on right
+        // Sheet title
         LinearLayout header = new LinearLayout(context);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -79,18 +74,11 @@ public final class AddCoAuthorDialog {
         LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
 
         TextView title = new TextView(context);
-        title.setText("Add Co-Author / Collaborator");
+        title.setText("Add Co-Author");
         title.setTextColor(UiTheme.NAVY);
         title.setTypeface(bold);
         ScreenTypography.apply(title, 18);
         titleCol.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Search existing researcher accounts to add members. Duplicate selections are not added.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 12);
-        titleCol.addView(subtitle);
 
         header.addView(titleCol, tLp);
 
@@ -102,7 +90,6 @@ public final class AddCoAuthorDialog {
             }
         });
         doneBtn.setPadding(UiTheme.dp(context, 16), 0, UiTheme.dp(context, 16), 0);
-        header.addView(doneBtn);
 
         layout.addView(header);
 
@@ -137,16 +124,10 @@ public final class AddCoAuthorDialog {
 
         addSpacing(context, layout, 12);
 
-        // Scrollable candidates list
-        ScrollView listScroll = new ScrollView(context);
-        LinearLayout.LayoutParams scLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 260));
-        listScroll.setLayoutParams(scLp);
-
+        // Candidate results
         listContainer = new LinearLayout(context);
         listContainer.setOrientation(LinearLayout.VERTICAL);
-        listScroll.addView(listContainer);
-
-        layout.addView(listScroll);
+        layout.addView(listContainer);
 
         // Empty Search text
         emptyText = new TextView(context);
@@ -176,12 +157,9 @@ public final class AddCoAuthorDialog {
 
         renderResults();
 
-        dialog.setContentView(layout);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-        dialog.show();
+        addSpacing(context, layout, 12);
+        layout.addView(doneBtn);
+        BottomSheet.show(dialog, layout);
     }
 
     private void renderResults() {

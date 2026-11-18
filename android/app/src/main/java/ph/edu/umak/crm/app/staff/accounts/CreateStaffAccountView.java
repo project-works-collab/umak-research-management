@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -67,7 +68,7 @@ public class CreateStaffAccountView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "Create Staff Account", "Accounts created here always receive the CRM Staff role.", false);
     }
 
     public void setPreviewState(String state) {
@@ -91,30 +92,6 @@ public class CreateStaffAccountView {
             backBtn.setOnClickListener(v -> callbacks.onBack());
             contentLayout.addView(backBtn);
         }
-
-        // Header Title
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        TextView title = new TextView(context);
-        title.setText("Create Staff Account");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 2));
-        contentLayout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Accounts created here always receive the CRM Staff role.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        subtitle.setPadding(0, 0, 0, UiTheme.dp(context, 16));
-        contentLayout.addView(subtitle);
 
         // Name Field
         TextView nameLabel = new TextView(context);

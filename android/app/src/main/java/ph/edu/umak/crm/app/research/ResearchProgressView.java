@@ -9,6 +9,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -50,30 +51,6 @@ public final class ResearchProgressView {
         Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
         int pad = UiTheme.dp(context, 14);
-
-        // Header Row: Back button on left
-        LinearLayout headerRow = new LinearLayout(context);
-        headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        Button backBtn = UiButton.text(context, "Back", UiTheme.NAVY, () -> {
-            if (listener != null) listener.onBack();
-        });
-        backBtn.setPadding(0, 0, UiTheme.dp(context, 12), 0);
-        headerRow.addView(backBtn);
-
-        LinearLayout titleCol = new LinearLayout(context);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = new TextView(context);
-        title.setText("Research Progress");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 20);
-        titleCol.addView(title);
-
-        headerRow.addView(titleCol);
-        layout.addView(headerRow);
 
         addSpacing(context, layout, 16);
 
@@ -391,6 +368,6 @@ public final class ResearchProgressView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Research Progress", null, false);
     }
 }

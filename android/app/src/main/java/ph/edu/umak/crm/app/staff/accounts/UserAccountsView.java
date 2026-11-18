@@ -9,7 +9,6 @@ import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -22,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -83,46 +83,12 @@ public class UserAccountsView {
             contentLayout.addView(backBtn);
         }
 
-        // Header Title Row with "Create Staff Account" button
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        LinearLayout titleRow = new LinearLayout(context);
-        titleRow.setOrientation(LinearLayout.HORIZONTAL);
-        titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        titleRow.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 8));
-
-        LinearLayout titleCol = new LinearLayout(context);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-
-        TextView title = new TextView(context);
-        title.setText("User Accounts");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        titleCol.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Staff and researcher access.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        titleCol.addView(subtitle);
-
-        titleRow.addView(titleCol, tLp);
-
-        Button createBtn = UiButton.primary(context, "Create Staff Account", () -> {
-            if (callbacks != null) {
-                callbacks.onCreateStaffAccount();
-            }
-        });
-        titleRow.addView(createBtn);
-        contentLayout.addView(titleRow);
+        contentLayout.addView(UiButton.primary(context, "Create Staff Account", () -> {
+            if (callbacks != null) callbacks.onCreateStaffAccount();
+        }));
+        // Separate the create action from search.
+        View spacing = new View(context);
+        contentLayout.addView(spacing, new LinearLayout.LayoutParams(1, UiTheme.dp(context, 8)));
 
         // Search bar
         searchInput = new EditText(context);
@@ -192,7 +158,7 @@ public class UserAccountsView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "User Accounts", "Staff and researcher access.", false);
     }
 
     private View createFilterChip(String filterName) {

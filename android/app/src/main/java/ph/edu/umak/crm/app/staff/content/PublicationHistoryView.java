@@ -13,6 +13,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.StaffData;
@@ -56,7 +57,7 @@ public class PublicationHistoryView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "Publication History", "Services and approved form versions.", false);
     }
 
     private void buildView() {
@@ -75,30 +76,6 @@ public class PublicationHistoryView {
             backBtn.setOnClickListener(v -> callbacks.onBack());
             contentLayout.addView(backBtn);
         }
-
-        // Header Title
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        TextView title = new TextView(context);
-        title.setText("Publication History");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 2));
-        contentLayout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Services and approved form versions.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        subtitle.setPadding(0, 0, 0, UiTheme.dp(context, 12));
-        contentLayout.addView(subtitle);
 
         // Account audit history link
         TextView auditLink = new TextView(context);

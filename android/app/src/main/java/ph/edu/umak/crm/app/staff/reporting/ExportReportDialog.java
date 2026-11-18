@@ -1,13 +1,26 @@
 package ph.edu.umak.crm.app.staff.reporting;
 
-import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.format.Formatter;
+import android.util.Log;
+
+import androidx.core.content.FileProvider;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.util.TypedValue;
-import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -16,6 +29,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import ph.edu.umak.crm.app.common.components.UiButton;
+import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -31,41 +46,52 @@ public class ExportReportDialog {
         FAILURE        // 9.4d
     }
 
+    private static final ExecutorService EXPORTS = Executors.newSingleThreadExecutor();
+    private static final String XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
     private final Context context;
-    private AlertDialog dialog;
+    private final ReportExportData report;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private File exportedFile;
+    private Dialog dialog;
     private LinearLayout container;
     private ExportState currentState = ExportState.FORMAT_PICKER;
     private String selectedFormat = "XLSX"; // Default selected format
 
-    public ExportReportDialog(Context context) {
+    ExportReportDialog(Context context, ReportExportData report) {
         this.context = context;
+        this.report = report;
     }
 
-    public void show() {
-        show(ExportState.FORMAT_PICKER);
+    public static void showLiveReport(Context context, org.json.JSONObject report) {
+        try {
+            new ExportReportDialog(context, ReportExportData.fromLive(report)).show(ExportState.FORMAT_PICKER);
+        } catch (org.json.JSONException invalid) {
+            Toast.makeText(context, "Unable to export. Try again.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public static void showDirectory(Context context,
+                                     java.util.List<ph.edu.umak.crm.app.staff.registry.StaffRegistryData.RegistryRecordItem> records,
+                                     String college, String period) {
+        new ExportReportDialog(context, ReportExportData.directory(records, college, period))
+                .show(ExportState.FORMAT_PICKER);
     }
 
     public void show(ExportState initialMode) {
-        this.currentState = initialMode;
+        boolean generate = initialMode == ExportState.PENDING || initialMode == ExportState.SUCCESS;
+        currentState = generate ? ExportState.PENDING : initialMode;
 
         container = new LinearLayout(context);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setBackgroundColor(UiTheme.WHITE);
         int pad = dp(20);
         container.setPadding(pad, pad, pad, pad);
 
         renderCurrentState();
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setView(container);
-        dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            GradientDrawable winBg = new GradientDrawable();
-            winBg.setColor(UiTheme.WHITE);
-            winBg.setCornerRadius(dp(12));
-            dialog.getWindow().setBackgroundDrawable(winBg);
-        }
-        dialog.show();
+        dialog = new Dialog(context);
+        BottomSheet.show(dialog, container);
+        if (generate) startExport();
     }
 
     private void renderCurrentState() {
@@ -76,12 +102,14 @@ public class ExportReportDialog {
         title.setText("Export report");
         title.setTextColor(UiTheme.NAVY);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTypeface(UiTheme.headingFont(context));
         container.addView(title);
 
         // 2. Subtitle 1
         TextView sub1 = new TextView(context);
-        sub1.setText("Uses the same filters and metric definitions as this report.");
+        sub1.setText("research-directory".equals(report.type)
+                ? "Exports the research records in the current directory results."
+                : "Uses the same filters and metric definitions as this report.");
         sub1.setTextColor(UiTheme.MUTED);
         sub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         LinearLayout.LayoutParams sub1Params = new LinearLayout.LayoutParams(
@@ -89,16 +117,14 @@ public class ExportReportDialog {
         sub1Params.topMargin = dp(4);
         container.addView(sub1, sub1Params);
 
-        // 3. Subtitle 2
-        TextView sub2 = new TextView(context);
-        sub2.setText("Generated Nov 14, 2026, 10:30 AM.");
-        sub2.setTextColor(UiTheme.MUTED);
-        sub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        LinearLayout.LayoutParams sub2Params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        sub2Params.topMargin = dp(2);
-        sub2Params.bottomMargin = dp(14);
-        container.addView(sub2, sub2Params);
+        if (report.timestamp != null) {
+            TextView timestamp = new TextView(context);
+            timestamp.setText(report.timestamp);
+            timestamp.setTextColor(UiTheme.MUTED);
+            timestamp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            container.addView(timestamp);
+        }
+        sub1Params.bottomMargin = dp(8);
 
         // 4. Middle content based on current state
         switch (currentState) {
@@ -153,6 +179,7 @@ public class ExportReportDialog {
         pdfBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         boolean isPdf = "PDF".equals(selectedFormat);
         styleFormatButton(pdfBtn, isPdf);
+        pdfBtn.setEnabled(currentState == ExportState.FORMAT_PICKER);
         pdfBtn.setOnClickListener(v -> {
             selectedFormat = "PDF";
             renderCurrentState();
@@ -167,6 +194,7 @@ public class ExportReportDialog {
         xlsxBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         boolean isXlsx = "XLSX".equals(selectedFormat);
         styleFormatButton(xlsxBtn, isXlsx);
+        xlsxBtn.setEnabled(currentState == ExportState.FORMAT_PICKER);
         xlsxBtn.setOnClickListener(v -> {
             selectedFormat = "XLSX";
             renderCurrentState();
@@ -213,16 +241,15 @@ public class ExportReportDialog {
         container.addView(progressContainer, pParams);
 
         TextView label = new TextView(context);
-        label.setText("Preparing export … 60%");
+        label.setText("Preparing export …");
         label.setTextColor(UiTheme.NAVY);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         label.setTypeface(Typeface.DEFAULT_BOLD);
         progressContainer.addView(label);
 
         ProgressBar bar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
-        bar.setProgress(60);
-        bar.setMax(100);
-        bar.setProgressTintList(ColorStateList.valueOf(UiTheme.ACCENT));
+        bar.setIndeterminate(true);
+        bar.setIndeterminateTintList(ColorStateList.valueOf(UiTheme.ACCENT));
         LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(8));
         barParams.topMargin = dp(8);
@@ -253,7 +280,7 @@ public class ExportReportDialog {
         successCard.addView(status);
 
         TextView fileName = new TextView(context);
-        fileName.setText("research-report_2026-11-14_1030." + selectedFormat.toLowerCase());
+        fileName.setText(exportedFile.getName());
         fileName.setTextColor(UiTheme.NAVY);
         fileName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         fileName.setTypeface(Typeface.DEFAULT_BOLD);
@@ -263,7 +290,7 @@ public class ExportReportDialog {
         successCard.addView(fileName, fParams);
 
         TextView fileSize = new TextView(context);
-        fileSize.setText("48 KB");
+        fileSize.setText(Formatter.formatShortFileSize(context, exportedFile.length()));
         fileSize.setTextColor(UiTheme.MUTED);
         fileSize.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams sParams = new LinearLayout.LayoutParams(
@@ -297,99 +324,86 @@ public class ExportReportDialog {
     }
 
     private void renderActionButtons() {
-        LinearLayout btnRow = new LinearLayout(context);
-        btnRow.setOrientation(LinearLayout.HORIZONTAL);
-        btnRow.setGravity(Gravity.END);
-        container.addView(btnRow);
-
         switch (currentState) {
             case FORMAT_PICKER:
-                Button cancelBtn = createButton("Cancel", false);
-                cancelBtn.setOnClickListener(v -> dialog.dismiss());
-                btnRow.addView(cancelBtn);
-
-                Button exportBtn = createButton("Export", true);
-                exportBtn.setOnClickListener(v -> {
-                    currentState = ExportState.PENDING;
-                    renderCurrentState();
-                });
-                LinearLayout.LayoutParams expParams = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
-                expParams.leftMargin = dp(8);
-                btnRow.addView(exportBtn, expParams);
+                container.addView(UiButton.primary(context, "Export", this::startExport));
                 break;
-
             case PENDING:
-                Button exportingBtn = createButton("Exporting …", true);
-                exportingBtn.setEnabled(false);
-                exportingBtn.setAlpha(0.6f);
-                btnRow.addView(exportingBtn);
+                Button pending = UiButton.primary(context, "Exporting …", null);
+                pending.setEnabled(false);
+                pending.setAlpha(0.6f);
+                container.addView(pending);
                 break;
-
             case SUCCESS:
-                Button closeBtn = createButton("Close", false);
-                closeBtn.setOnClickListener(v -> dialog.dismiss());
-                btnRow.addView(closeBtn);
-
-                Button shareBtn = createButton("Share", false);
-                shareBtn.setOnClickListener(v -> {
-                    Toast.makeText(context, "Sharing export file...", Toast.LENGTH_SHORT).show();
-                });
+                LinearLayout actions = new LinearLayout(context);
+                actions.setOrientation(LinearLayout.HORIZONTAL);
+                Button open = UiButton.primary(context, "Open", () -> openOrShare(false));
+                actions.addView(open, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                Button share = UiButton.outline(context, "Share", UiTheme.NAVY, UiTheme.NAVY,
+                        () -> openOrShare(true));
                 LinearLayout.LayoutParams shareParams = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
-                shareParams.leftMargin = dp(8);
-                btnRow.addView(shareBtn, shareParams);
-
-                Button openBtn = createButton("Open", true);
-                openBtn.setOnClickListener(v -> {
-                    Toast.makeText(context, "Opening report...", Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                });
-                LinearLayout.LayoutParams openParams = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
-                openParams.leftMargin = dp(8);
-                btnRow.addView(openBtn, openParams);
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+                shareParams.setMarginStart(dp(8));
+                actions.addView(share, shareParams);
+                container.addView(actions);
                 break;
-
             case FAILURE:
-                Button failCancelBtn = createButton("Cancel", false);
-                failCancelBtn.setOnClickListener(v -> dialog.dismiss());
-                btnRow.addView(failCancelBtn);
-
-                Button retryBtn = createButton("Retry", true);
-                retryBtn.setOnClickListener(v -> {
-                    currentState = ExportState.PENDING;
-                    renderCurrentState();
-                });
-                LinearLayout.LayoutParams retParams = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
-                retParams.leftMargin = dp(8);
-                btnRow.addView(retryBtn, retParams);
+                container.addView(UiButton.primary(context, "Retry", this::startExport));
                 break;
         }
     }
 
-    private Button createButton(String label, boolean isPrimary) {
-        Button btn = new Button(context);
-        btn.setText(label);
-        btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        int padH = dp(16);
-        btn.setPadding(padH, 0, padH, 0);
+    private void startExport() {
+        currentState = ExportState.PENDING;
+        renderCurrentState();
+        boolean pdf = "PDF".equals(selectedFormat);
+        File cache = context.getCacheDir();
+        EXPORTS.execute(() -> {
+            File result = null;
+            try {
+                result = ReportExportWriter.write(cache, report, pdf);
+            } catch (IOException | RuntimeException failure) {
+                Log.w("ReportExport", "Could not generate " + report.type, failure);
+            }
+            File file = result;
+            main.post(() -> {
+                if (!dialog.isShowing()) {
+                    if (file != null) {
+                        file.delete();
+                        file.getParentFile().delete();
+                    }
+                    return;
+                }
+                exportedFile = file;
+                currentState = file == null ? ExportState.FAILURE : ExportState.SUCCESS;
+                renderCurrentState();
+            });
+        });
+    }
 
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(6));
-        if (isPrimary) {
-            bg.setColor(UiTheme.NAVY);
-            btn.setTextColor(UiTheme.WHITE);
-            btn.setTypeface(Typeface.DEFAULT_BOLD);
-        } else {
-            bg.setColor(UiTheme.WHITE);
-            bg.setStroke(dp(1), UiTheme.BORDER);
-            btn.setTextColor(UiTheme.NAVY);
-            btn.setTypeface(Typeface.DEFAULT);
+    private void openOrShare(boolean share) {
+        if (!exportedFile.isFile()) {
+            currentState = ExportState.FAILURE;
+            renderCurrentState();
+            return;
         }
-        btn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22000000), bg, null));
-        return btn;
+        Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".report-exports", exportedFile);
+        String mimeType = exportedFile.getName().endsWith(".pdf") ? "application/pdf" : XLSX_MIME;
+        Intent intent = new Intent(share ? Intent.ACTION_SEND : Intent.ACTION_VIEW);
+        if (share) {
+            intent.setType(mimeType);
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+        } else {
+            intent.setDataAndType(uri, mimeType);
+        }
+        intent.setClipData(ClipData.newRawUri(exportedFile.getName(), uri));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            context.startActivity(share ? Intent.createChooser(intent, "Share report") : intent);
+        } catch (ActivityNotFoundException noViewer) {
+            Toast.makeText(context, "No app can open this format. You can share the report instead.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private int dp(float value) {

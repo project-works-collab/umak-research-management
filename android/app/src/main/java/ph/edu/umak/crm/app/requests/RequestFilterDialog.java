@@ -2,13 +2,10 @@ package ph.edu.umak.crm.app.requests;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -17,6 +14,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -44,14 +42,12 @@ public final class RequestFilterDialog {
         }
 
         final Dialog dialog = new Dialog(context);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
 
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setBackground(UiTheme.shape(context, UiTheme.WHITE, 16, 0));
         int pad = UiTheme.dp(context, 20);
         layout.setPadding(pad, pad, pad, pad);
 
@@ -86,6 +82,9 @@ public final class RequestFilterDialog {
         closeBtn.setTypeface(bold);
         ScreenTypography.apply(closeBtn, 14);
         closeBtn.setPadding(UiTheme.dp(context, 8), UiTheme.dp(context, 4), UiTheme.dp(context, 8), UiTheme.dp(context, 4));
+        closeBtn.setMinHeight(UiTheme.dp(context, 48));
+        closeBtn.setMinWidth(UiTheme.dp(context, 48));
+        closeBtn.setGravity(Gravity.CENTER);
         closeBtn.setOnClickListener(v -> dialog.dismiss());
         header.addView(closeBtn);
 
@@ -148,7 +147,8 @@ public final class RequestFilterDialog {
         ScreenTypography.apply(fromLabel, 12);
         layout.addView(fromLabel);
 
-        EditText fromInput = createDateInput(context, currentFrom != null ? currentFrom : "2026-10-01");
+        EditText fromInput = createDateInput(context, currentFrom != null ? currentFrom : "");
+        fromInput.setContentDescription("From date");
         layout.addView(fromInput);
 
         addSpacing(context, layout, 8);
@@ -161,17 +161,23 @@ public final class RequestFilterDialog {
         ScreenTypography.apply(toLabel, 12);
         layout.addView(toLabel);
 
-        EditText toInput = createDateInput(context, currentTo != null ? currentTo : "2026-10-31");
+        EditText toInput = createDateInput(context, currentTo != null ? currentTo : "");
+        toInput.setContentDescription("To date");
         layout.addView(toInput);
 
         addSpacing(context, layout, 20);
 
         // Buttons: Apply Filters and Clear Filters
         Button applyBtn = UiButton.primary(context, "Apply Filters", () -> {
-            dialog.dismiss();
-            if (listener != null) {
-                listener.onApplyFilters(selectedStatus, fromInput.getText().toString().trim(), toInput.getText().toString().trim());
+            String from = fromInput.getText().toString().trim();
+            String to = toInput.getText().toString().trim();
+            if (!validDate(fromInput, from) || !validDate(toInput, to)) return;
+            if (!from.isEmpty() && !to.isEmpty() && from.compareTo(to) > 0) {
+                toInput.setError("End date must be on or after the start date.");
+                return;
             }
+            dialog.dismiss();
+            if (listener != null) listener.onApplyFilters(selectedStatus, from, to);
         });
         layout.addView(applyBtn);
 
@@ -185,18 +191,17 @@ public final class RequestFilterDialog {
         });
         layout.addView(clearBtn);
 
-        dialog.setContentView(layout);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-        dialog.show();
+        BottomSheet.show(dialog, layout);
     }
 
     private TextView createChip(String text) {
         TextView chip = new TextView(context);
         chip.setText(text);
         chip.setTag(text);
+        chip.setMinHeight(UiTheme.dp(context, 48));
+        chip.setMinWidth(UiTheme.dp(context, 48));
+        chip.setGravity(Gravity.CENTER);
+        chip.setFocusable(true);
         ScreenTypography.apply(chip, 13);
         int px = UiTheme.dp(context, 12);
         int py = UiTheme.dp(context, 6);
@@ -218,6 +223,7 @@ public final class RequestFilterDialog {
         for (TextView chip : chipViews) {
             String text = (String) chip.getTag();
             boolean isSelected = text.equalsIgnoreCase(selectedStatus);
+            chip.setSelected(isSelected);
             if (isSelected) {
                 chip.setBackground(UiTheme.shape(context, UiTheme.NAVY, 16, 0));
                 chip.setTextColor(UiTheme.WHITE);
@@ -230,9 +236,22 @@ public final class RequestFilterDialog {
         }
     }
 
+    private static boolean validDate(EditText input, String value) {
+        if (value.isEmpty()) return true;
+        try {
+            if (value.length() == 10 && java.time.LocalDate.parse(value).toString().equals(value)) return true;
+        } catch (java.time.format.DateTimeParseException invalid) {
+            // Keep the input available for correction.
+        }
+        input.setError("Enter a date in YYYY-MM-DD format.");
+        return false;
+    }
+
     private static EditText createDateInput(Context context, String defaultValue) {
         EditText input = new EditText(context);
         input.setText(defaultValue);
+        input.setHint("YYYY-MM-DD");
+        input.setMinHeight(UiTheme.dp(context, 48));
         input.setTextColor(UiTheme.NAVY);
         input.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(input, 14);

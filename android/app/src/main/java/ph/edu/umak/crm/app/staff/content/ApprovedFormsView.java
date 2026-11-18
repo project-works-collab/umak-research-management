@@ -9,6 +9,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -53,30 +54,6 @@ public final class ApprovedFormsView {
         layout.addView(topHeader);
 
         addSpacing(context, layout, 4);
-
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
-        // Title
-        TextView screenTitle = new TextView(context);
-        screenTitle.setText("Approved Forms & Resources");
-        screenTitle.setTextColor(UiTheme.NAVY);
-        screenTitle.setTypeface(bold);
-        ScreenTypography.apply(screenTitle, 22);
-        screenTitle.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
-        layout.addView(screenTitle);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Researchers only see the current version.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        layout.addView(subtitle);
 
         addSpacing(context, layout, 16);
 
@@ -236,6 +213,6 @@ public final class ApprovedFormsView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Approved Forms & Resources", "Researchers only see the current version.", false);
     }
 }

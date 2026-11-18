@@ -12,8 +12,9 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -24,6 +25,7 @@ public class RegistryDocumentsView {
 
     public interface Callbacks {
         void onBackToRecord();
+        void onChooseAttachment(Runnable onChecking, java.util.function.BiConsumer<ph.edu.umak.crm.app.MainActivity.SelectedAttachment, String> result);
     }
 
     private final Activity activity;
@@ -49,7 +51,7 @@ public class RegistryDocumentsView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, "Documents", record.id + " · " + record.title, false);
     }
 
     private int dp(int value) {
@@ -67,33 +69,7 @@ public class RegistryDocumentsView {
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
         // 1. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
 
-        TextView title = new TextView(activity);
-        title.setText("Documents");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(4);
-        rootLayout.addView(title, titleParams);
-
-        TextView contextText = new TextView(activity);
-        contextText.setText(record.id + " · " + record.title);
-        contextText.setTextColor(UiTheme.NAVY);
-        contextText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        contextText.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams ctxParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        ctxParams.bottomMargin = dp(12);
-        rootLayout.addView(contextText, ctxParams);
 
         // 2. Privacy Banner
         LinearLayout privacyCard = new LinearLayout(activity);
@@ -144,9 +120,22 @@ public class RegistryDocumentsView {
         attachBtnParams.bottomMargin = dp(8);
         attachCard.addView(attachBtn, attachBtnParams);
 
-        attachBtn.setOnClickListener(v ->
-                Toast.makeText(activity, "File picker opened. Select PDF or DOCX file.", Toast.LENGTH_SHORT).show()
-        );
+        PendingStatus attachmentFeedback = new PendingStatus(activity);
+        attachCard.addView(attachmentFeedback);
+        attachBtn.setOnClickListener(v -> {
+            if (callbacks == null) return;
+            callbacks.onChooseAttachment(() -> {
+                attachBtn.setEnabled(false);
+                attachBtn.setText("Checking file…");
+                attachmentFeedback.working("Checking the selected file…");
+            }, (file, error) -> {
+                if (!attachmentFeedback.isAttachedToWindow()) return;
+                attachBtn.setEnabled(true);
+                attachBtn.setText("Attach file");
+                attachmentFeedback.result(error != null ? error
+                        : "Selected " + file.name() + ". This registry record does not support uploads to CRM.", error != null);
+            });
+        });
 
         TextView formatNote = new TextView(activity);
         formatNote.setText("PDF or DOCX, up to 10 MB each");
@@ -155,7 +144,7 @@ public class RegistryDocumentsView {
         attachCard.addView(formatNote);
 
         TextView instructionNote = new TextView(activity);
-        instructionNote.setText("Uploading keeps the research ID. The new file becomes the current version.");
+        instructionNote.setText("Online version uploads aren’t available for this registry record.");
         instructionNote.setTextColor(UiTheme.INK);
         instructionNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams instParams = new LinearLayout.LayoutParams(

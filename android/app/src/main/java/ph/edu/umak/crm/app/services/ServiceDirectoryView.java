@@ -14,6 +14,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -32,6 +33,9 @@ public final class ServiceDirectoryView {
     private final EditText searchInput;
     private final Button clearBtn;
     private final TextView statusText;
+    private final Button retryBtn;
+    private List<ServiceData.ServiceItem> services = List.of();
+    private String loadStatus = "Loading services…";
     private final LinearLayout cardsContainer;
     private final LinearLayout emptyStateContainer;
     private final LinearLayout guestFooterCard;
@@ -41,7 +45,6 @@ public final class ServiceDirectoryView {
         this.isSignedIn = isSignedIn;
         this.listener = listener;
 
-        Typeface heading = UiTheme.headingFont(context);
         Typeface body = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
 
@@ -49,30 +52,6 @@ public final class ServiceDirectoryView {
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = UiTheme.dp(context, 24);
         layout.setPadding(pad, pad, pad, UiTheme.dp(context, 32));
-
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(bold);
-        ScreenTypography.apply(institution, 12);
-        institution.setPadding(0, 0, 0, UiTheme.dp(context, 4));
-        layout.addView(institution);
-
-        TextView title = new TextView(context);
-        title.setText("Research Services &\nProcedures");
-        title.setTextColor(UiTheme.INK);
-        title.setTypeface(heading);
-        ScreenTypography.apply(title, 26);
-        ScreenTypography.heading(title);
-        layout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("The Center for Research Management provides eight core services to support the research journey of every UMak student and faculty member — from initial registration through publication.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(body);
-        ScreenTypography.apply(subtitle, 14);
-        subtitle.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 16));
-        layout.addView(subtitle);
 
         // Search Bar with Clear button
         LinearLayout searchBox = new LinearLayout(context);
@@ -114,6 +93,9 @@ public final class ServiceDirectoryView {
         ScreenTypography.apply(statusText, 13);
         statusText.setPadding(0, UiTheme.dp(context, 12), 0, UiTheme.dp(context, 8));
         layout.addView(statusText);
+        retryBtn = UiButton.outline(context, "Retry", UiTheme.BORDER, UiTheme.NAVY, null);
+        retryBtn.setVisibility(View.GONE);
+        layout.addView(retryBtn);
 
         // Cards container
         cardsContainer = new LinearLayout(context);
@@ -195,10 +177,36 @@ public final class ServiceDirectoryView {
         filterServices("");
     }
 
+    public void showServices(List<ServiceData.ServiceItem> items) {
+        services = List.copyOf(items);
+        loadStatus = null;
+        retryBtn.setVisibility(View.GONE);
+        filterServices(searchInput.getText().toString().trim());
+    }
+
+    public void showLoading() {
+        loadStatus = "Loading services…";
+        retryBtn.setVisibility(View.GONE);
+        filterServices("");
+    }
+
+    public void showFailure(Runnable retry) {
+        loadStatus = "Unable to load services. Try again.";
+        retryBtn.setVisibility(View.VISIBLE);
+        retryBtn.setOnClickListener(view -> retry.run());
+        filterServices("");
+    }
+
     public void filterServices(String query) {
         cardsContainer.removeAllViews();
+        if (loadStatus != null) {
+            statusText.setText(loadStatus);
+            cardsContainer.setVisibility(View.GONE);
+            emptyStateContainer.setVisibility(View.GONE);
+            return;
+        }
         List<ServiceData.ServiceItem> matches = new ArrayList<>();
-        for (ServiceData.ServiceItem item : ServiceData.ALL_SERVICES) {
+        for (ServiceData.ServiceItem item : services) {
             if (query.isEmpty() || item.name.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))
                     || item.code.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
                 matches.add(item);
@@ -319,6 +327,7 @@ public final class ServiceDirectoryView {
     }
 
     public void configurePreviewState(String state) {
+        showServices(ServiceData.ALL_SERVICES);
         if ("2.1".equals(state)) {
             searchInput.setText("");
             filterServices("");
@@ -339,6 +348,6 @@ public final class ServiceDirectoryView {
         if (layout.getParent() instanceof android.view.ViewGroup) {
             ((android.view.ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Research Services &\nProcedures", "The Center for Research Management provides eight core services to support the research journey of every UMak student and faculty member — from initial registration through publication.", true);
     }
 }

@@ -2,6 +2,9 @@ package ph.edu.umak.crm.app.services;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public final class ServiceData {
     public static class DocumentItem {
@@ -32,6 +35,8 @@ public final class ServiceData {
         public final DocumentItem[] documents;
         public final String formTitle;
         public final String formVersion;
+        public final int revisionId;
+        public final String formMime;
 
         public ServiceItem(int id, String code, String name, String[] tags, String turnaround,
                 String cardDescription, String[] cardRequirements, String channel,
@@ -39,6 +44,16 @@ public final class ServiceData {
                 String responsibleContact, String contactEmail,
                 String[] instructions, DocumentItem[] documents,
                 String formTitle, String formVersion) {
+            this(id, code, name, tags, turnaround, cardDescription, cardRequirements, channel, purpose,
+                    whoCanApplyText, whoCanApplyTags, responsibleContact, contactEmail,
+                    instructions, documents, formTitle, formVersion, 0, null);
+        }
+
+        private ServiceItem(int id, String code, String name, String[] tags, String turnaround,
+                String cardDescription, String[] cardRequirements, String channel,
+                String purpose, String whoCanApplyText, String[] whoCanApplyTags,
+                String responsibleContact, String contactEmail, String[] instructions, DocumentItem[] documents,
+                String formTitle, String formVersion, int revisionId, String formMime) {
             this.id = id;
             this.code = code;
             this.name = name;
@@ -56,7 +71,39 @@ public final class ServiceData {
             this.documents = documents;
             this.formTitle = formTitle;
             this.formVersion = formVersion;
+            this.revisionId = revisionId;
+            this.formMime = formMime;
         }
+    }
+
+    public static ServiceItem fromPublished(JSONObject row) throws JSONException {
+        JSONObject details = row.getJSONObject("details");
+        String[] applicants = strings(details.getJSONArray("applicants"));
+        JSONArray requirements = details.getJSONArray("requirements");
+        DocumentItem[] documents = new DocumentItem[requirements.length()];
+        String[] cardRequirements = new String[Math.min(3, requirements.length())];
+        for (int i = 0; i < documents.length; i++) {
+            JSONObject item = requirements.getJSONObject(i);
+            documents[i] = new DocumentItem(item.getString("title"), item.getBoolean("required"));
+            if (i < cardRequirements.length) cardRequirements[i] = documents[i].title;
+        }
+        boolean hasForm = !row.isNull("form_name");
+        String updated = hasForm ? row.getString("form_updated_at").split("T", 2)[0] : "";
+        return new ServiceItem(row.getInt("service_id"), row.getString("code"), details.getString("name"),
+                applicants, details.optString("turnaround", ""), details.getString("description"), cardRequirements,
+                "external".equals(details.getString("channel")) ? "External channel" : "Submit in app",
+                details.getString("purpose"), details.getString("eligibility"), applicants,
+                details.getString("contact_name"), details.getString("contact_email"),
+                strings(details.getJSONArray("instructions")), documents,
+                hasForm ? row.getString("form_name") : "No approved form available",
+                hasForm ? "Version " + row.getInt("version") + " · Updated " + updated : "",
+                row.getInt("id"), hasForm ? row.getString("form_mime") : null);
+    }
+
+    private static String[] strings(JSONArray array) throws JSONException {
+        String[] result = new String[array.length()];
+        for (int i = 0; i < result.length; i++) result[i] = array.getString(i);
+        return result;
     }
 
     public static final List<ServiceItem> ALL_SERVICES = new ArrayList<>();

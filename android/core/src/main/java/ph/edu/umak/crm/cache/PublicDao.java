@@ -14,6 +14,9 @@ public abstract class PublicDao {
     @Query("DELETE FROM public_content")
     public abstract void clear();
 
+    @Query("UPDATE public_content SET syncedAt = :time")
+    public abstract void markSynced(long time);
+
     @Insert
     public abstract void insert(List<PublicItem> rows);
 

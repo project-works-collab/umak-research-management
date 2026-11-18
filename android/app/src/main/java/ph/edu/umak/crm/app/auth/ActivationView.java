@@ -13,6 +13,7 @@ import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiBanner;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.components.UiInput;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class ActivationView {
@@ -23,6 +24,8 @@ public final class ActivationView {
     private final UiInput.FormField newPasswordField;
     private final UiInput.FormField confirmPasswordField;
     private final AuthCallbacks callbacks;
+    private final Button updateBtn;
+    private final PendingStatus updateStatus;
 
     public ActivationView(Context context, AuthCallbacks callbacks) {
         this.context = context;
@@ -65,10 +68,12 @@ public final class ActivationView {
         newPasswordField.setHelper("At least 12 characters");
         confirmPasswordField = UiInput.field(context, form, "Confirm Password", "Re-enter your new password", true);
 
-        Button updateBtn = UiButton.primary(context, "Update Password", this::attemptUpdate);
+        updateBtn = UiButton.primary(context, "Update Password", this::attemptUpdate);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.topMargin = UiTheme.dp(context, 16);
         form.addView(updateBtn, params);
+        updateStatus = new PendingStatus(context);
+        form.addView(updateStatus);
 
         Button backBtn = UiButton.text(context, "Go back", UiTheme.INK, () -> {
             if (callbacks != null) callbacks.onShowSignIn();
@@ -91,6 +96,10 @@ public final class ActivationView {
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
         root = screen;
+    }
+
+    public void setTemporaryPassword(String value) {
+        tempPasswordField.getInput().setText(value);
     }
 
     private void attemptUpdate() {
@@ -131,6 +140,20 @@ public final class ActivationView {
         newPasswordField.clearError();
         newPasswordField.setHelper("At least 12 characters");
         confirmPasswordField.clearError();
+    }
+
+    public void setUpdating(boolean updating) {
+        updateBtn.setEnabled(!updating);
+        updateBtn.setText(updating ? "Updating password…" : "Update Password");
+        tempPasswordField.getInput().setEnabled(!updating);
+        newPasswordField.getInput().setEnabled(!updating);
+        confirmPasswordField.getInput().setEnabled(!updating);
+        if (updating) {
+            clearErrors();
+            updateStatus.working("Updating your temporary password…");
+        } else {
+            updateStatus.clear();
+        }
     }
 
     public void setFeedback(String message) {

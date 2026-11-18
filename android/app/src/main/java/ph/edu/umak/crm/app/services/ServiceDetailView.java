@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiBanner;
 import ph.edu.umak.crm.app.common.components.UiButton;
@@ -49,7 +50,6 @@ public final class ServiceDetailView {
         this.listener = listener;
         this.currentItem = service != null ? service : ServiceData.getById(2);
 
-        Typeface heading = UiTheme.headingFont(context);
         Typeface body = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
 
@@ -58,21 +58,8 @@ public final class ServiceDetailView {
         int pad = UiTheme.dp(context, 24);
         layout.setPadding(pad, pad, pad, UiTheme.dp(context, 32));
 
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(bold);
-        ScreenTypography.apply(institution, 12);
-        institution.setPadding(0, 0, 0, UiTheme.dp(context, 4));
-        layout.addView(institution);
-
         titleView = new TextView(context);
         titleView.setText(currentItem.name);
-        titleView.setTextColor(UiTheme.INK);
-        titleView.setTypeface(heading);
-        ScreenTypography.apply(titleView, 26);
-        ScreenTypography.heading(titleView);
-        layout.addView(titleView);
 
         // Badges row: Code badge + Channel badge
         LinearLayout badgesRow = new LinearLayout(context);
@@ -210,6 +197,7 @@ public final class ServiceDetailView {
         formUnavailableRow.addView(retryFormBtn);
         approvedFormBox.addView(formUnavailableRow);
 
+        approvedFormBox.setFocusable(true);
         approvedFormBox.setOnClickListener(v -> {
             if (listener != null) listener.onOpenForm(currentItem, formUnavailableBanner.getVisibility() == View.VISIBLE);
         });
@@ -316,6 +304,10 @@ public final class ServiceDetailView {
         // Approved form
         formTitleText.setText(item.formTitle);
         formVersionText.setText(item.formVersion);
+        boolean canDownload = item.revisionId == 0 || item.formMime != null;
+        approvedFormBox.setClickable(canDownload);
+        approvedFormBox.setFocusable(canDownload);
+        approvedFormBox.setContentDescription(canDownload ? "Download " + item.formTitle : null);
 
         setFormUnavailable(formUnavailable);
 
@@ -327,7 +319,19 @@ public final class ServiceDetailView {
         }
     }
 
+    public boolean isAttached() {
+        return layout.isAttachedToWindow();
+    }
+
+    public void showFormLoading() {
+        setFormUnavailable(false);
+        approvedFormBox.setClickable(false);
+        formVersionText.setText("Downloading form…");
+    }
+
     public void setFormUnavailable(boolean unavailable) {
+        approvedFormBox.setClickable(currentItem.revisionId == 0 || currentItem.formMime != null);
+        formVersionText.setText(currentItem.formVersion);
         if (unavailable) {
             formUnavailableBanner.setVisibility(View.VISIBLE);
             formUnavailableRow.setVisibility(View.VISIBLE);
@@ -403,6 +407,6 @@ public final class ServiceDetailView {
         if (layout.getParent() instanceof android.view.ViewGroup) {
             ((android.view.ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, titleView, null, false);
     }
 }

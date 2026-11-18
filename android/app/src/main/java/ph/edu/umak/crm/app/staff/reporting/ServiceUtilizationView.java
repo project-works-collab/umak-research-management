@@ -16,6 +16,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -26,8 +27,7 @@ public class ServiceUtilizationView {
 
     public interface Callbacks {
         void onBackToFilters();
-        void onExport();
-        void onOpenRequest(String requestId);
+        void onOpenRequest(StaffReportingData.RequestSummary request);
     }
 
     private final Activity activity;
@@ -63,7 +63,7 @@ public class ServiceUtilizationView {
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
-        scrollView.addView(rootLayout);
+        scrollView.addView(PageTitle.wrap(rootLayout, "Service Utilization", null, false));
         buildLayout();
 
         return scrollView;
@@ -71,25 +71,6 @@ public class ServiceUtilizationView {
 
     private void buildLayout() {
         rootLayout.removeAllViews();
-
-        // 1. Top Header
-        TextView orgLabel = new TextView(activity);
-        orgLabel.setText("Center for Research Management");
-        orgLabel.setTextColor(UiTheme.NAVY);
-        orgLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        orgLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(orgLabel);
-
-        TextView screenTitle = new TextView(activity);
-        screenTitle.setText("Service Utilization");
-        screenTitle.setTextColor(UiTheme.NAVY);
-        screenTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        screenTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(12);
-        rootLayout.addView(screenTitle, titleParams);
 
         // 2. Applied Filters Card
         renderAppliedFilters();
@@ -133,21 +114,9 @@ public class ServiceUtilizationView {
         header.setTypeface(Typeface.DEFAULT_BOLD);
         filtersCard.addView(header);
 
-        if (model.requesterCollegeFilter != null || model.submittedPeriodFilter != null) {
-            String line1 = (model.requesterCollegeFilter != null ? model.requesterCollegeFilter : "") +
-                    (model.submittedPeriodFilter != null ? "    " + model.submittedPeriodFilter : "");
-            filtersCard.addView(createFilterText(line1));
-        }
-
-        if (model.serviceFilter != null || model.statusFilter != null) {
-            String line2 = (model.serviceFilter != null ? model.serviceFilter : "") +
-                    (model.statusFilter != null ? "    " + model.statusFilter : "");
-            filtersCard.addView(createFilterText(line2));
-        }
-
-        if (model.requesterCategoryFilter != null) {
-            filtersCard.addView(createFilterText(model.requesterCategoryFilter));
-        }
+        ReportFilterChips.addRow(filtersCard, model.requesterCollegeFilter, model.submittedPeriodFilter);
+        ReportFilterChips.addRow(filtersCard, model.serviceFilter, model.statusFilter);
+        ReportFilterChips.addRow(filtersCard, model.requesterCategoryFilter);
 
         if (model.generatedTimestamp != null) {
             TextView ts = new TextView(activity);
@@ -161,34 +130,23 @@ public class ServiceUtilizationView {
         }
     }
 
-    private TextView createFilterText(String text) {
-        TextView tv = new TextView(activity);
-        tv.setText(text);
-        tv.setTextColor(UiTheme.NAVY);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p.topMargin = dp(4);
-        tv.setLayoutParams(p);
-        return tv;
-    }
-
     private void renderMetrics() {
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams rParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rParams.bottomMargin = dp(16);
+        rParams.bottomMargin = dp(8);
         rootLayout.addView(row, rParams);
 
-        // Tile 1: 2 Distinct requests
         row.addView(createMetricTile(String.valueOf(model.distinctRequests), "Distinct requests", null, 0));
-
-        // Tile 2: — Pending
-        row.addView(createMetricTile(model.pendingValue, "Pending", model.pendingNote, dp(8)));
-
-        // Tile 3: 1 Completed
         row.addView(createMetricTile(String.valueOf(model.completed), "Completed", null, dp(8)));
+
+        LinearLayout pendingRow = new LinearLayout(activity);
+        LinearLayout.LayoutParams pendingParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        pendingParams.bottomMargin = dp(16);
+        rootLayout.addView(pendingRow, pendingParams);
+        pendingRow.addView(createMetricTile(model.pendingValue, "Pending", model.pendingNote, 0));
     }
 
     private View createMetricTile(String value, String label, String subNote, int leftMargin) {
@@ -428,10 +386,14 @@ public class ServiceUtilizationView {
         row.addView(srvTv, tParams);
 
         row.setOnClickListener(v -> {
-            if (callbacks != null) callbacks.onOpenRequest(req.id);
+            if (callbacks != null) callbacks.onOpenRequest(req);
         });
 
         return row;
+    }
+
+    public void showExport(ExportReportDialog.ExportState state) {
+        new ExportReportDialog(activity, ReportExportData.from(model)).show(state);
     }
 
     private void renderActionButtons() {
@@ -452,7 +414,7 @@ public class ServiceUtilizationView {
         exportBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), expBg, null));
 
         exportBtn.setOnClickListener(v -> {
-            if (callbacks != null) callbacks.onExport();
+            showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
         });
         LinearLayout.LayoutParams expParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44));

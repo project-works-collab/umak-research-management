@@ -10,6 +10,7 @@ import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -58,31 +59,6 @@ public final class ServiceAuthoringStep3View {
         layout.addView(topHeader);
 
         addSpacing(context, layout, 4);
-
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
-        // Screen Title
-        TextView screenTitle = new TextView(context);
-        screenTitle.setText("Service Authoring");
-        screenTitle.setTextColor(UiTheme.NAVY);
-        screenTitle.setTypeface(bold);
-        ScreenTypography.apply(screenTitle, 22);
-        screenTitle.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
-        layout.addView(screenTitle);
-
-        // Subtitle
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Set visibility, configure role-based access, and publish your research service catalog form.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        layout.addView(subtitle);
 
         addSpacing(context, layout, 8);
 
@@ -331,6 +307,6 @@ public final class ServiceAuthoringStep3View {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Service Authoring", "Set visibility, configure role-based access, and publish your research service catalog form.", false);
     }
 }

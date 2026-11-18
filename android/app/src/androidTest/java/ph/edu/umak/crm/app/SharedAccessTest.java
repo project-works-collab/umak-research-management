@@ -20,20 +20,15 @@ public final class SharedAccessTest {
             scenario.onActivity(activity -> {
                 assertNotNull(find(activity.getWindow().getDecorView(), "UNIVERSITY OF MAKATI"));
                 click(activity, "Get Started");
-                assertNotNull(find(activity.getWindow().getDecorView(), "Institutional Email"));
+                assertNotNull(find(activity.getWindow().getDecorView(), "Username or Institutional Email"));
                 assertNotNull(find(activity.getWindow().getDecorView(), "Password"));
                 assertNull(find(activity.getWindow().getDecorView(), "CRM server (https://…)"));
-                click(activity, "Continue as Guest →");
+                click(activity, "Continue as Guest");
                 assertNotNull(find(activity.getWindow().getDecorView(), "Center for Research Management"));
                 click(activity, "Services");
                 assertNotNull(find(activity.getWindow().getDecorView(), "Research Services &\nProcedures"));
-                click(activity, "View Guidelines");
-                assertNotNull(find(activity.getWindow().getDecorView(), "Guideline library"));
-                click(activity, "Open saved public resources");
-                assertNotNull(find(activity.getWindow().getDecorView(), "Public Resources"));
-                click(activity, "Back to workspace");
                 click(activity, "Requests");
-                assertNotNull(find(activity.getWindow().getDecorView(), "Institutional Email"));
+                assertNotNull(find(activity.getWindow().getDecorView(), "Username or Institutional Email"));
             });
         }
     }
@@ -44,23 +39,17 @@ public final class SharedAccessTest {
             scenario.onActivity(activity -> {
                 for (String role : new String[]{"student", "faculty"}) {
                     org.json.JSONObject account = new org.json.JSONObject(
-                            java.util.Map.of("email", "researcher@example.test", "role", role));
+                            java.util.Map.of("id", role.equals("student") ? 91823 : 91824,
+                                    "email", "access-test-" + role + "@example.test", "role", role));
                     assertTrue(activity.displayAccount(account));
                     assertNotNull(find(activity.getWindow().getDecorView(), "Research Progress Tracker"));
                     click(activity, "Profile");
                     assertNotNull(find(activity.getWindow().getDecorView(), "Account Settings"));
-                    click(activity, "Research Registration");
+                    View resume = find(activity.getWindow().getDecorView(), "Resume local draft");
+                    click(activity, resume == null ? "Start a draft" : "Resume local draft");
                     assertNotNull(find(activity.getWindow().getDecorView(), "Step 1 of 3: General Information"));
                     click(activity, "Continue");
-                    assertNotNull(find(activity.getWindow().getDecorView(), "Step 2 of 3: Abstract & Methodology"));
-                    click(activity, "Continue");
-                    assertNotNull(find(activity.getWindow().getDecorView(), "Step 3 of 3: Document Upload & Compliance"));
-                    click(activity, "Continue");
-                    assertNotNull(find(activity.getWindow().getDecorView(), "Review Registration"));
-                    click(activity, "Previous step");
-                    assertNotNull(find(activity.getWindow().getDecorView(), "Step 3 of 3: Document Upload & Compliance"));
-                    click(activity, "Previous step");
-                    click(activity, "Previous step");
+                    assertNotNull(find(activity.getWindow().getDecorView(), "Please enter the research title."));
                     click(activity, "Back to Profile");
                     assertNotNull(find(activity.getWindow().getDecorView(), "Account Settings"));
                 }

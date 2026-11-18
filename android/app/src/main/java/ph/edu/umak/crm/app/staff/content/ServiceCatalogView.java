@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -73,45 +74,9 @@ public final class ServiceCatalogView {
         layout.addView(topHeader);
         addSpacing(context, layout, 4);
 
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
-        // Title Row with "New Service" button
-        LinearLayout titleRow = new LinearLayout(context);
-        titleRow.setOrientation(LinearLayout.HORIZONTAL);
-        titleRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        LinearLayout titleCol = new LinearLayout(context);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-
-        TextView title = new TextView(context);
-        title.setText("Service Catalog");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        titleCol.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Manage the services researchers can browse.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        titleCol.addView(subtitle);
-
-        titleRow.addView(titleCol, tLp);
-
-        Button newServiceBtn = UiButton.primary(context, "New Service", () -> {
+        layout.addView(UiButton.primary(context, "New Service", () -> {
             if (listener != null) listener.onNewService();
-        });
-        titleRow.addView(newServiceBtn);
-
-        layout.addView(titleRow);
+        }));
 
         addSpacing(context, layout, 16);
 
@@ -353,6 +318,6 @@ public final class ServiceCatalogView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Service Catalog", "Manage the services researchers can browse.", false);
     }
 }

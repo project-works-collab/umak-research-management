@@ -16,6 +16,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -26,7 +27,6 @@ public class ResearchReportView {
 
     public interface Callbacks {
         void onBackToFilters();
-        void onExport();
         void onOpenRecord(String recordId);
     }
 
@@ -63,7 +63,7 @@ public class ResearchReportView {
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
-        scrollView.addView(rootLayout);
+        scrollView.addView(PageTitle.wrap(rootLayout, "Research Report", null, false));
         buildLayout();
 
         return scrollView;
@@ -71,25 +71,6 @@ public class ResearchReportView {
 
     private void buildLayout() {
         rootLayout.removeAllViews();
-
-        // 1. Top Header
-        TextView orgLabel = new TextView(activity);
-        orgLabel.setText("Center for Research Management");
-        orgLabel.setTextColor(UiTheme.NAVY);
-        orgLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        orgLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(orgLabel);
-
-        TextView screenTitle = new TextView(activity);
-        screenTitle.setText("Research Report");
-        screenTitle.setTextColor(UiTheme.NAVY);
-        screenTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        screenTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(12);
-        rootLayout.addView(screenTitle, titleParams);
 
         // 2. Applied Filters Card
         renderAppliedFilters();
@@ -130,31 +111,9 @@ public class ResearchReportView {
         header.setTypeface(Typeface.DEFAULT_BOLD);
         filtersCard.addView(header);
 
-        if (model.collegeFilter != null) {
-            String line1 = model.collegeFilter;
-            if (model.registrantCategoryFilter != null) {
-                line1 += "    " + model.registrantCategoryFilter;
-            }
-            TextView l1 = createFilterText(line1);
-            filtersCard.addView(l1);
-        }
-
-        if (model.stageFilter != null || model.linkedServicesFilter != null) {
-            String line2 = (model.stageFilter != null ? model.stageFilter : "") +
-                    (model.linkedServicesFilter != null ? "    " + model.linkedServicesFilter : "");
-            TextView l2 = createFilterText(line2);
-            filtersCard.addView(l2);
-        }
-
-        if (model.academicPeriodFilter != null) {
-            TextView l3 = createFilterText(model.academicPeriodFilter);
-            filtersCard.addView(l3);
-        }
-
-        if (model.outcomeFilter != null) {
-            TextView l4 = createFilterText(model.outcomeFilter);
-            filtersCard.addView(l4);
-        }
+        ReportFilterChips.addRow(filtersCard, model.collegeFilter, model.registrantCategoryFilter);
+        ReportFilterChips.addRow(filtersCard, model.stageFilter, model.linkedServicesFilter);
+        ReportFilterChips.addRow(filtersCard, model.academicPeriodFilter, model.outcomeFilter);
 
         if (model.generatedTimestamp != null) {
             TextView ts = new TextView(activity);
@@ -168,20 +127,8 @@ public class ResearchReportView {
         }
     }
 
-    private TextView createFilterText(String text) {
-        TextView tv = new TextView(activity);
-        tv.setText(text);
-        tv.setTextColor(UiTheme.NAVY);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p.topMargin = dp(4);
-        tv.setLayoutParams(p);
-        return tv;
-    }
-
     private void renderMetrics() {
-        // Row 1: Distinct studies (left), Presented (right)
+        // Distinct studies and completion
         LinearLayout row1 = new LinearLayout(activity);
         row1.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams r1Params = new LinearLayout.LayoutParams(
@@ -190,9 +137,9 @@ public class ResearchReportView {
         rootLayout.addView(row1, r1Params);
 
         row1.addView(createMetricTile(String.valueOf(model.distinctStudies), "Distinct studies", 0));
-        row1.addView(createMetricTile(String.valueOf(model.presented), "Presented", dp(8)));
+        row1.addView(createMetricTile(String.valueOf(model.completed), "Completed", dp(8)));
 
-        // Row 2: Distinct linked researchers (left), Completed (right)
+        // Presentation and publication
         LinearLayout row2 = new LinearLayout(activity);
         row2.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams r2Params = new LinearLayout.LayoutParams(
@@ -200,10 +147,10 @@ public class ResearchReportView {
         r2Params.bottomMargin = dp(8);
         rootLayout.addView(row2, r2Params);
 
-        row2.addView(createMetricTile(String.valueOf(model.distinctLinkedResearchers), "Distinct linked researchers", 0));
-        row2.addView(createMetricTile(String.valueOf(model.completed), "Completed", dp(8)));
+        row2.addView(createMetricTile(String.valueOf(model.presented), "Presented", 0));
+        row2.addView(createMetricTile(String.valueOf(model.published), "Published", dp(8)));
 
-        // Row 3: Published (left), empty space (right)
+        // Linked researchers spans the full width
         LinearLayout row3 = new LinearLayout(activity);
         row3.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams r3Params = new LinearLayout.LayoutParams(
@@ -211,11 +158,8 @@ public class ResearchReportView {
         r3Params.bottomMargin = dp(16);
         rootLayout.addView(row3, r3Params);
 
-        row3.addView(createMetricTile(String.valueOf(model.published), "Published", 0));
-        View spacer = new View(activity);
-        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0, 0, 1.0f);
-        sp.leftMargin = dp(8);
-        row3.addView(spacer, sp);
+        row3.addView(createMetricTile(String.valueOf(model.distinctLinkedResearchers),
+                "Distinct linked researchers", 0));
     }
 
     private View createMetricTile(String value, String label, int leftMargin) {
@@ -417,6 +361,10 @@ public class ResearchReportView {
         return row;
     }
 
+    public void showExport(ExportReportDialog.ExportState state) {
+        new ExportReportDialog(activity, ReportExportData.from(model)).show(state);
+    }
+
     private void renderActionButtons() {
         LinearLayout btnCol = new LinearLayout(activity);
         btnCol.setOrientation(LinearLayout.VERTICAL);
@@ -435,7 +383,7 @@ public class ResearchReportView {
         exportBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), expBg, null));
 
         exportBtn.setOnClickListener(v -> {
-            if (callbacks != null) callbacks.onExport();
+            showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
         });
         LinearLayout.LayoutParams expParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44));

@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -22,30 +23,6 @@ public final class AppNavigationGuidanceView {
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = UiTheme.dp(context, 24);
         layout.setPadding(pad, pad, pad, UiTheme.dp(context, 32));
-
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(bold);
-        ScreenTypography.apply(institution, 12);
-        institution.setPadding(0, 0, 0, UiTheme.dp(context, 4));
-        layout.addView(institution);
-
-        TextView title = new TextView(context);
-        title.setText("App Navigation Guidance");
-        title.setTextColor(UiTheme.INK);
-        title.setTypeface(heading);
-        ScreenTypography.apply(title, 26);
-        ScreenTypography.heading(title);
-        layout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Use the bottom tabs to move around RMLIS.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(body);
-        ScreenTypography.apply(subtitle, 14);
-        subtitle.setPadding(0, UiTheme.dp(context, 6), 0, UiTheme.dp(context, 20));
-        layout.addView(subtitle);
 
         TextView navSectionLabel = new TextView(context);
         navSectionLabel.setText("BOTTOM NAVIGATION");
@@ -102,6 +79,6 @@ public final class AppNavigationGuidanceView {
         if (layout.getParent() instanceof android.view.ViewGroup) {
             ((android.view.ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "App Navigation Guidance", "Use the bottom tabs to move around RMLIS.", false);
     }
 }

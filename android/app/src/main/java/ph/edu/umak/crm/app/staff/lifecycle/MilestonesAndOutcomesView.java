@@ -17,10 +17,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -34,6 +34,8 @@ public class MilestonesAndOutcomesView {
     public interface Callbacks {
         void onViewStageHistory();
         void onClose();
+        void onCorrectCompletion(String recordId, String title, String date, CompletionCorrectionView.Callbacks onSaved);
+        void onStageSaved();
         void onStageUpdated(StaffLifecycleData.ResearchLifecycleState state);
     }
 
@@ -105,7 +107,7 @@ public class MilestonesAndOutcomesView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, "Milestone and Outcomes", null, false);
     }
 
     private int dp(int value) {
@@ -117,36 +119,20 @@ public class MilestonesAndOutcomesView {
     }
 
     private void buildUi() {
-        rootLayout = new LinearLayout(activity);
-        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        if (rootLayout == null) {
+            rootLayout = new LinearLayout(activity);
+            rootLayout.setOrientation(LinearLayout.VERTICAL);
+        } else {
+            rootLayout.removeAllViews();
+        }
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
         // 1. Top Banners (Error or Confirmation)
         if (!"none".equals(previewErrorMode)) {
             rootLayout.addView(createTopErrorBanner());
-        } else if (state.savedBannerMessage != null) {
-            rootLayout.addView(createTopSuccessBanner());
+
         }
-
-        // 2. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
-
-        TextView title = new TextView(activity);
-        title.setText("Milestone and Outcomes");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(4);
-        rootLayout.addView(title, titleParams);
 
         // 3. Study title, ID, stage & View stage history link
         TextView studyTitle = new TextView(activity);
@@ -289,28 +275,6 @@ public class MilestonesAndOutcomesView {
         TextView text = new TextView(activity);
         text.setText("Not saved. The saved record is unchanged.");
         text.setTextColor(UiTheme.PEACH_TEXT);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        text.setTypeface(Typeface.DEFAULT_BOLD);
-        banner.addView(text);
-        return banner;
-    }
-
-    private View createTopSuccessBanner() {
-        LinearLayout banner = new LinearLayout(activity);
-        banner.setOrientation(LinearLayout.VERTICAL);
-        banner.setPadding(dp(14), dp(10), dp(14), dp(10));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.SUCCESS_BG);
-        bg.setCornerRadius(dp(8));
-        banner.setBackground(bg);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.bottomMargin = dp(14);
-        banner.setLayoutParams(params);
-
-        TextView text = new TextView(activity);
-        text.setText(state.savedBannerMessage);
-        text.setTextColor(UiTheme.SUCCESS_GREEN);
         text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         text.setTypeface(Typeface.DEFAULT_BOLD);
         banner.addView(text);
@@ -554,8 +518,6 @@ public class MilestonesAndOutcomesView {
         row.setFocusable(true);
         row.setOnClickListener(v -> MilestoneEditorDialog.show(
                 activity,
-                state.recordId,
-                state.title,
                 item,
                 updated -> buildUi()
         ));
@@ -630,7 +592,7 @@ public class MilestonesAndOutcomesView {
             card.addView(errDate);
         }
 
-        if (state.completion.isSaved) {
+        if (state.completion.isSaved && callbacks != null) {
             TextView corrLink = new TextView(activity);
             corrLink.setText("Correct completion record →");
             corrLink.setTextColor(UiTheme.ACCENT);
@@ -639,28 +601,30 @@ public class MilestonesAndOutcomesView {
             corrLink.setClickable(true);
             corrLink.setFocusable(true);
             corrLink.setPadding(0, dp(6), 0, dp(4));
-            corrLink.setOnClickListener(v -> CompletionCorrectionDialog.show(
-                    activity,
-                    state.recordId,
-                    state.title,
-                    state.completion.completionDate,
-                    (correctedDate, reason) -> {
-                        state.completion.completionDate = correctedDate;
-                        state.stageHistory.add(0, new StaffLifecycleData.StageHistoryEntry(
-                                "Completed (Date corrected)",
-                                correctedDate,
-                                "Correction: " + reason,
-                                "Corrected completion date from earlier entry.",
-                                "LeBron James (CRM Staff) · Recorded Nov 6, 2026, 3:00 PM",
-                                true
-                        ));
-                        buildUi();
-                    }
-            ));
+            corrLink.setOnClickListener(v -> requestCompletionCorrection());
             card.addView(corrLink);
         }
 
         return card;
+    }
+
+    public void requestCompletionCorrection() {
+        if (callbacks == null || !state.completion.isSaved) return;
+
+        callbacks.onCorrectCompletion(state.recordId, state.title, state.completion.completionDate,
+                (correctedDate, reason) -> {
+                    state.completion.completionDate = correctedDate;
+                    state.stageHistory.add(0, new StaffLifecycleData.StageHistoryEntry(
+                            "Completed (Date corrected)",
+                            correctedDate,
+                            "Correction: " + reason,
+                            "Corrected completion date from earlier entry.",
+                            "LeBron James (CRM Staff) · Recorded Nov 6, 2026, 3:00 PM",
+                            true
+                    ));
+                    buildUi();
+                    callbacks.onStageUpdated(state);
+                });
     }
 
     private View createPresentationCard() {
@@ -833,7 +797,7 @@ public class MilestonesAndOutcomesView {
         state.noNextActionRecorded = noNextActionCheckBox.isChecked();
 
         buildUi();
-        Toast.makeText(activity, "Stage updated.", Toast.LENGTH_SHORT).show();
+        if (callbacks != null) callbacks.onStageSaved();
         if (callbacks != null) {
             callbacks.onStageUpdated(state);
         }
