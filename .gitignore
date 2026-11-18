@@ -21,3 +21,6 @@ android/*/build/
 **/.kotlin/
 submissions/build/
 submissions/output/
+
+# Generated local demo credentials and emulator-specific APK
+outputs/manual-demo/

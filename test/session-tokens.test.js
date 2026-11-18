@@ -30,3 +30,12 @@ test('production refuses missing or malformed signing keys',()=>{
   assert.throws(()=>createSessionTokens({production:true,key:undefined}));
   for(const value of ['','password','ab'.repeat(16)])assert.throws(()=>createSessionTokens({key:value}));
 });
+
+test('interactive session lease expires exactly at thirty minutes',()=>{
+  let instant=1000;
+  const codec=createSessionTokens({key,now:()=>instant});
+  const token=codec.issue(7,{lifetimeSeconds:1800});
+  instant=2799;assert.equal(codec.verify(token).sub,'7');
+  instant=2800;assert.equal(codec.verify(token),null);
+  assert.throws(()=>codec.issue(7,{lifetimeSeconds:3600}));
+});

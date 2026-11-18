@@ -1,0 +1,55 @@
+{
+  "identity": {
+    "domain": "example.test",
+    "sender": "crm-verification@example.test",
+    "freshSignup": "new-researcher@example.test",
+    "people": [
+      {"key": "student", "email": "demo.student@example.test", "name": "Demo Student", "role": "student", "verification": "verified"},
+      {"key": "faculty", "email": "demo.faculty@example.test", "name": "Demo Faculty", "role": "faculty", "verification": "verified"},
+      {"key": "member", "email": "demo.member@example.test", "name": "Demo Member", "role": "faculty", "verification": "verified"},
+      {"key": "other", "email": "demo.other@example.test", "name": "Demo Other", "role": "student", "verification": "verified"},
+      {"key": "empty", "email": "demo.empty@example.test", "name": "Demo Empty", "role": "student", "verification": "verified"},
+      {"key": "unverified", "email": "demo.unverified@example.test", "name": "Demo Unverified", "role": "student", "verification": "pending"},
+      {"key": "inactive", "email": "demo.inactive@example.test", "name": "Demo Inactive", "role": "student", "verification": "verified", "active": false},
+      {"key": "content", "email": "demo.content@example.test", "name": "Demo Content", "role": "staff", "permissions": ["content_management"]},
+      {"key": "processing", "email": "demo.processing@example.test", "name": "Demo Processing", "role": "staff", "permissions": ["request_processing"]},
+      {"key": "registry", "email": "demo.registry@example.test", "name": "Demo Registry", "role": "staff", "permissions": ["registry_management"]},
+      {"key": "progress", "email": "demo.progress@example.test", "name": "Demo Progress", "role": "staff", "permissions": ["progress_updates"]},
+      {"key": "reporting", "email": "demo.reporting@example.test", "name": "Demo Reporting", "role": "staff", "permissions": ["reporting"]},
+      {"key": "admin", "email": "demo.admin@example.test", "name": "Demo Administrator", "role": "staff", "permissions": ["account_administration"]},
+      {"key": "limited", "email": "demo.limited@example.test", "name": "Demo Limited Staff", "role": "staff", "permissions": []},
+      {"key": "invite", "email": "demo.invite@example.test", "name": "Demo Invite", "role": "faculty", "activation": "invited"}
+    ]
+  },
+  "catalog": {
+    "publishedInApp": {"code": "SVC-DEMO-A", "name": "Demo Service A", "requirements": [{"label": "Application form", "required": true}, {"label": "Supporting document", "required": false}], "formVersions": ["1", "2"]},
+    "publishedExternal": {"code": "SVC-DEMO-B", "name": "Demo Service B", "channel": "external"},
+    "publishedSimple": {"code": "SVC-DEMO-SIMPLE", "name": "Demo Simple Service"},
+    "draft": {"code": "SVC-DEMO-DRAFT", "name": "Demo Draft Service"},
+    "withdrawn": {"code": "SVC-DEMO-WITHDRAWN", "name": "Demo Withdrawn Service"}
+  },
+  "D1": {
+    "studies": [
+      {"code": "RES-DEMO-001", "title": "Demo Research A", "owner": "student", "members": ["student", "member"], "registrantCategory": "student", "stage": "Completed", "completedAt": "2026-10-28", "presentedAt": "2026-10-30", "presentation": "Demo Research Forum"},
+      {"code": "RES-DEMO-002", "title": "Demo Research B", "owner": "faculty", "members": ["faculty", "member"], "registrantCategory": "faculty", "stage": "In progress"}
+    ],
+    "requests": [
+      {"code": "REQ-DEMO-001", "owner": "student", "service": "Demo Service A", "study": "RES-DEMO-001", "status": "Completed", "submittedAt": "2026-10-29T01:00:00Z"},
+      {"code": "REQ-DEMO-002", "owner": "student", "service": "Demo Service A", "study": "RES-DEMO-001", "status": "In review", "submittedAt": "2026-10-29T02:00:00Z"}
+    ],
+    "expected": {"studies": 2, "completedStudies": 1, "presented": 1, "published": 0, "distinctResearchers": 3, "studentStudies": 1, "studentDistinctResearchers": 2, "requests": 2, "completedRequests": 1, "pendingRequests": 1, "demoServiceARequests": 2, "studiesLinkedToDemoServiceA": 1}
+  },
+  "edgeCases": {
+    "academicPeriod": "AY 2026-2027",
+    "college": "Demo College",
+    "historicalSource": "DEMO-SOURCE-001",
+    "duplicateOverrideReason": "Distinct study confirmed in source",
+    "stageEvidence": "DEMO-STAGE-01",
+    "researcherFeedback": "Replace the unreadable form",
+    "internalStaffRemark": "Synthetic internal remark for access testing",
+    "searchWithNoResults": "ZZZ",
+    "attachments": ["demo-form.pdf", "supporting-document.docx", "unsupported.png", "over-limit.pdf"],
+    "pendingStatuses": ["Submitted", "In review", "For correction"],
+    "milestoneStatuses": ["Pending", "In progress", "Completed", "Not applicable"]
+  }
+}

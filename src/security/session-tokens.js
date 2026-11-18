@@ -10,10 +10,11 @@ export function createSessionTokens({key=process.env.JWT_SIGNING_KEY||undefined,
   const header=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
   const sign=value=>createHmac('sha256',secret).update(value).digest();
   return {
-    issue(userId){
+    issue(userId,{lifetimeSeconds=900}={}){
+      if(![900,1800].includes(lifetimeSeconds))throw Error('Invalid token lifetime');
       if(!Number.isSafeInteger(userId)||userId<1)throw Error('Invalid session subject');
       const iat=now();
-      const payload=Buffer.from(JSON.stringify({iss:'umak-crm',aud:'umak-crm-api',sub:String(userId),iat,exp:iat+900,jti:randomBytes(32).toString('hex')})).toString('base64url');
+      const payload=Buffer.from(JSON.stringify({iss:'umak-crm',aud:'umak-crm-api',sub:String(userId),iat,exp:iat+lifetimeSeconds,jti:randomBytes(32).toString('hex')})).toString('base64url');
       const content=`${header}.${payload}`;return `${content}.${sign(content).toString('base64url')}`;
     },
     verify(token){
@@ -25,7 +26,7 @@ export function createSessionTokens({key=process.env.JWT_SIGNING_KEY||undefined,
         if(signature.toString('base64url')!==parts[2]||signature.length!==32||!timingSafeEqual(signature,sign(`${parts[0]}.${parts[1]}`)))return null;
         const claims=JSON.parse(Buffer.from(parts[1],'base64url').toString('utf8'));
         const instant=now();
-        if(claims.iss!=='umak-crm'||claims.aud!=='umak-crm-api'||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.exp-claims.iat!==900||claims.iat>instant||claims.exp<=instant||typeof claims.sub!=='string'||!/^\d+$/.test(claims.sub)||!Number.isSafeInteger(Number(claims.sub))||Number(claims.sub)<1||!/^[a-f0-9]{64}$/.test(claims.jti))return null;
+        if(claims.iss!=='umak-crm'||claims.aud!=='umak-crm-api'||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||![900,1800].includes(claims.exp-claims.iat)||claims.iat>instant||claims.exp<=instant||typeof claims.sub!=='string'||!/^\d+$/.test(claims.sub)||!Number.isSafeInteger(Number(claims.sub))||Number(claims.sub)<1||!/^[a-f0-9]{64}$/.test(claims.jti))return null;
         return claims;
       }catch{return null;}
     }

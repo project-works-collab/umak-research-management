@@ -19,5 +19,5 @@ const step=z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const gate=z.enum(['received','verified']);
 export const algorithm=z.strictObject({steps:z.array(step).min(1).max(5000),dependencies:z.array(z.tuple([step,step])).max(25000),completed_actions:z.array(step).max(5000),requirements:z.record(step,z.array(z.strictObject({id:step,gate})).max(50000)),evidence:z.array(z.strictObject({id:step,state:gate})).max(50000),durations:z.record(step,z.number().int().min(0).max(525600))});
 export const deadline=z.string().datetime({precision:3}).or(z.string().datetime({precision:0})).nullable();
-export const ticket=z.strictObject({service_type:text(100),deadline_at:deadline.optional()});
+export const ticket=z.strictObject({service_type:text(100),deadline_at:deadline.optional(),submission_token:z.uuid().optional()});
 export const version=z.strictObject({expected_version:z.number().int().min(1).max(2147483647)});

@@ -21,9 +21,9 @@ The DAG, FSM, search and priority queue have different responsibilities. Keep th
 
 | Algorithm | Purpose | Implementation | Current integration |
 | --- | --- | --- | --- |
-| Kahn + set membership | Reject cycles; report ready/blocked tasks | [prototype.py](prototype.py) | Python core used by staff algorithm API |
-| DAG dynamic programming | Estimate remaining duration and critical-path certificate | [engine.py](engine.py) | Staff planning API; no persisted workflow approval |
-| Lifecycle FSM | Validate transitions; preserve independent outcome dates | [lifecycle.py](lifecycle.py) | Pure Python prototype; no persistent lifecycle API |
+| Kahn + set membership | Reject cycles; report ready/blocked tasks | [prototype.py](prototype.py) | Saved research progress and staff algorithm API |
+| DAG dynamic programming | Estimate remaining duration and critical-path certificate | [engine.py](engine.py) | Saved milestone durations and critical path in Android |
+| Lifecycle FSM | Validate transitions; preserve independent outcome dates | [lifecycle.py](lifecycle.py) | Python prototype for tests and benchmarks; live Android FSM is enforced in PostgreSQL |
 | Trigram + GIN inverted index | Retrieve typo-tolerant titles and possible duplicates | [search.js](../src/research/search.js), [migration](../db/migrations/001_search_consultations.sql) | Express/PostgreSQL search and staff duplicate review |
 | Indexed binary min-heap | Maintain earliest-deadline ordering under updates/cancellation | [edf-heap.js](../src/consultations/edf-heap.js) | Node algorithm implementation and benchmark |
 | Indexed SQL EDF claim | Persist and atomically assign queued consultation tickets | [routes.js](../src/consultations/routes.js) | Live queue authority; not an in-memory heap |

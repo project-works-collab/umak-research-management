@@ -29,7 +29,12 @@
     "backup:freshness": "node --env-file-if-exists=.env scripts/backup-freshness.js",
     "privacy:maintain": "node --env-file-if-exists=.env scripts/privacy-maintenance.js",
     "check:skills": "node scripts/check-skills.js",
-    "test:skills": "node --test test/skill-integrity.test.js"
+    "test:skills": "node --test test/skill-integrity.test.js",
+    "acceptance:synthetic": "node scripts/synthetic-acceptance.js",
+    "acceptance:android": "node scripts/android-synthetic-acceptance.js",
+    "demo:manual": "node scripts/manual-demo.js",
+    "start:demo": "node --env-file-if-exists=.env demo/render-server.js",
+    "test:demo:hosted": "node scripts/synthetic-acceptance.js --hosted-smoke"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
@@ -39,6 +44,7 @@
     "express": "^5.1.0",
     "fast-xml-parser": "^5.12.0",
     "helmet": "^8.1.0",
+    "nodemailer": "^10.6.0",
     "pdf-lib": "^1.17.1",
     "pg": "^8.16.3",
     "yauzl": "^3.4.0",

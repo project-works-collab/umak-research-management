@@ -1,4 +1,5 @@
 import {Router} from 'express';
+import {createHash} from 'node:crypto';
 import {z,id,validate,ticket,empty,version,deadline} from '../security/validation.js';
 export const CLAIM_SQL=`WITH next AS (
   SELECT id FROM consultation_tickets WHERE status='queued'
@@ -6,6 +7,10 @@ export const CLAIM_SQL=`WITH next AS (
   FOR UPDATE SKIP LOCKED LIMIT 1
 ) UPDATE consultation_tickets t SET status='claimed',assigned_staff_id=$1,
   claimed_at=clock_timestamp(),version=version+1 FROM next WHERE t.id=next.id RETURNING t.*`;
+function publicTicket(row) {
+  const {submission_token,submission_fingerprint,...ticket}=row;
+  return ticket;
+}
 const validId=x=>/^[1-9][0-9]*$/.test(String(x))&&Number.isSafeInteger(Number(x))&&Number(x)<=2147483647;
 const object=b=>b&&typeof b==='object'&&!Array.isArray(b);
 const keys=(b,allowed)=>object(b)&&Object.keys(b).every(k=>allowed.includes(k));
@@ -26,31 +31,53 @@ async function transaction(db,actor,action,operation){
 export function consultationRouter(db,auth,staff){
   const router=Router();router.use(auth);
   router.post('/',validate(ticket),async(req,res)=>{
-    const b=req.body;
-    if(!keys(b,['service_type','deadline_at'])||typeof b.service_type!=='string'||!b.service_type.trim()||b.service_type.length>100||!validDeadline(b.deadline_at??null))return res.status(400).json({error:'Provide service_type and optional UTC deadline_at'});
-    const row=await transaction(db,req.user.id,'consultation.created',async c=>(await c.query('INSERT INTO consultation_tickets(requester_id,service_type,deadline_at) VALUES($1,$2,$3) RETURNING *',[req.user.id,b.service_type.trim(),b.deadline_at??null])).rows[0]);
-    res.status(201).json(row);
+    const {service_type,deadline_at=null,submission_token=null}=req.validated.body;
+    if(!validDeadline(deadline_at))return res.status(400).json({error:'Provide an optional UTC deadline_at'});
+    const fingerprint=submission_token===null ? null : createHash('sha256').update(
+      JSON.stringify([service_type,deadline_at===null ? null : new Date(deadline_at).toISOString()])
+    ).digest('hex');
+    const client=await db.connect();
+    try{
+      await client.query('BEGIN');
+      const inserted=await client.query(`INSERT INTO consultation_tickets
+        (requester_id,service_type,deadline_at,submission_token,submission_fingerprint)
+        VALUES($1,$2,$3,$4,$5) ON CONFLICT(requester_id,submission_token) DO NOTHING RETURNING *`,
+        [req.user.id,service_type,deadline_at,submission_token,fingerprint]);
+      const created=inserted.rowCount===1;
+      if(created)await client.query('INSERT INTO audit_logs(actor_id,action) VALUES($1,$2)',[req.user.id,'consultation.created']);
+      const row=created ? inserted.rows[0] : (await client.query(
+        'SELECT * FROM consultation_tickets WHERE requester_id=$1 AND submission_token=$2',
+        [req.user.id,submission_token])).rows[0];
+      await client.query('COMMIT');
+      if(!row||row.submission_fingerprint!==fingerprint)return res.status(409).json({error:'Submission token already used'});
+      res.status(created ? 201 : 200).json(publicTicket(row));
+    }catch(error){
+      await client.query('ROLLBACK');
+      throw error;
+    }finally{
+      client.release();
+    }
   });
   router.get('/queue',staff,validate(z.strictObject({limit:z.coerce.number().int().min(1).max(100).optional()}),'query'),async(req,res)=>{
     const limit=req.query.limit===undefined?100:Number(req.query.limit);
     if(!Number.isInteger(limit)||limit<1||limit>100)return res.status(400).json({error:'limit must be 1..100'});
-    const r=await db.query("SELECT * FROM consultation_tickets WHERE status='queued' ORDER BY deadline_at ASC NULLS LAST,submitted_at,id LIMIT $1",[limit]);res.json(r.rows);
+    const r=await db.query("SELECT * FROM consultation_tickets WHERE status='queued' ORDER BY deadline_at ASC NULLS LAST,submitted_at,id LIMIT $1",[limit]);res.json(r.rows.map(publicTicket));
   });
   router.get('/',validate(z.strictObject({before:id.optional()}),'query'),async(req,res)=>{
     const before=req.query.before===undefined?2147483647:req.query.before;
     if(!validId(before))return res.status(400).json({error:'Invalid before cursor'});
-    const r=await db.query("SELECT * FROM consultation_tickets WHERE (requester_id=$1 OR $2='staff') AND id<$3 ORDER BY id DESC LIMIT 100",[req.user.id,req.user.role,before]);res.json(r.rows);
+    const r=await db.query("SELECT * FROM consultation_tickets WHERE (requester_id=$1 OR $2='staff') AND id<$3 ORDER BY id DESC LIMIT 100",[req.user.id,req.user.role,before]);res.json(r.rows.map(publicTicket));
   });
   router.post('/claim-next',staff,validate(empty),async(req,res)=>{
     if(!keys(req.body??{},[]) )return res.status(400).json({error:'No claim fields accepted'});
     const row=await transaction(db,req.user.id,'consultation.claimed',async c=>(await c.query(CLAIM_SQL,[req.user.id])).rows[0]);
-    if(!row)return res.sendStatus(204);res.json(row);
+    if(!row)return res.sendStatus(204);res.json(publicTicket(row));
   });
   router.patch('/:id/deadline',staff,validate(z.strictObject({deadline_at:deadline,expected_version:version.shape.expected_version})),async(req,res)=>{
     const b=req.body;
     if(!validId(req.params.id)||!keys(b,['deadline_at','expected_version'])||!Object.hasOwn(b,'deadline_at')||!validDeadline(b.deadline_at)||!validId(b.expected_version)||typeof b.expected_version!=='number')return res.status(400).json({error:'Valid ID, UTC deadline_at (or null) and expected_version required'});
     const row=await transaction(db,req.user.id,'consultation.rescheduled',async c=>(await c.query("UPDATE consultation_tickets SET deadline_at=$1,version=version+1 WHERE id=$2 AND status='queued' AND version=$3 RETURNING *",[b.deadline_at,req.params.id,b.expected_version])).rows[0]);
-    if(!row)return res.status(409).json({error:'Ticket unavailable or version changed'});res.json(row);
+    if(!row)return res.status(409).json({error:'Ticket unavailable or version changed'});res.json(publicTicket(row));
   });
   for(const action of ['resolve','cancel'])router.post(`/:id/${action}`,validate(version),async(req,res)=>{
     const b=req.body;
@@ -68,7 +95,7 @@ export function consultationRouter(db,auth,staff){
     });
     if(row?.missing)return res.status(404).json({error:'Ticket not found'});
     if(row?.conflict)return res.status(409).json({error:'Ticket unavailable or version changed'});
-    res.json(row);
+    res.json(publicTicket(row));
   });
   return router;
 }

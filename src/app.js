@@ -11,9 +11,17 @@ import {z,id,login,research,feedback,member,validate,search,consent,empty,algori
 import {documentRouter} from './storage/routes.js';
 import {publicContentRouter} from './public-content.js';
 import {createSessionTokens} from './security/session-tokens.js';
+import {registerResearcherRoutes} from './auth/researcher-registration.js';
+import {serviceCatalogRoutes} from './services/catalog.js';
+import {serviceRequestRoutes} from './requests/service-requests.js';
+import {researchRegistrationRoutes} from './research/registrations.js';
+import {registeredProgressRoutes} from './research/progress.js';
+import {accountAdministrationRoutes} from './auth/account-administration.js';
+import {reportingRoutes} from './reporting/reports.js';
+import {registryRoutes} from './research/registry.js';
 const dummyHash = await hashPassword('dummy-unusable-account-password');
 const isId=value=>id.safeParse(value).success;
-export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectStore=null,scanner=null,sessionTokens=createSessionTokens()}={}) {
+export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectStore=null,scanner=null,verification=null,demo=null,sessionTokens=createSessionTokens()}={}) {
   const {db,storage}=scopedDatabase(pool);
   const app = express();
   app.disable('x-powered-by');
@@ -23,7 +31,11 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     storage.run({requestId:req.requestId,ip:req.ip},next);
   });
   const smallBody=express.json({limit:'16kb'});
-  app.use((req,res,next)=>req.path==='/api/v1/algorithm/solve'?next():smallBody(req,res,next));
+  app.use((req,res,next)=>{
+    const catalog=req.path==='/api/v1/staff/services'||req.path.startsWith('/api/v1/staff/services/');
+    if(req.path==='/api/v1/algorithm/solve'||catalog)return next();
+    return smallBody(req,res,next);
+  });
   app.use((req,res,next)=>req.path==='/health'?next():requestLimiter(db)(req,res,next));
   app.get('/health', (_req,res) => res.json({status:'ok'}));
   app.use('/api/v1/public',publicContentRouter());
@@ -35,6 +47,13 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     if (!result.rowCount||String(result.rows[0].id)!==claims.sub) return res.status(401).json({error:'Authentication required'});
     req.user=result.rows[0];storage.getStore().user=req.user;next();
   };
+  accountAdministrationRoutes(app,db,auth,{verification});
+  reportingRoutes(app,db,auth);
+  registryRoutes(app,db,auth,{scanner});
+  serviceCatalogRoutes(app,db,auth);
+  serviceRequestRoutes(app,db,auth,{scanner});
+  researchRegistrationRoutes(app,db,auth);
+  registeredProgressRoutes(app,db,auth,algorithmRunner);
   const staff = (req,res,next) => req.user.role==='staff' ? next() : res.status(403).json({error:'Forbidden'});
   const solve=algorithmRunner;
   app.post('/api/v1/algorithm/solve',auth,staff,express.json({limit:'2mb'}),validate(algorithm),async(req,res)=>{
@@ -45,24 +64,37 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     catch(e){if(!res.destroyed)res.status(e.httpStatus||500).json({status:'ERROR',error_type:e.code||'WORKER_FAILED',message:'Algorithm job could not complete'});}
     finally {res.removeListener('close',closed);}
   });
+  registerResearcherRoutes(app,db,verification);
   app.post('/api/v1/auth/login',validate(login),async(req,res)=>{
     const {email,password}=req.validated.body;
     if(!await reserveLogin(db,email,req.ip,req.requestId)){
       res.set('Retry-After','900');return res.status(429).json({error:'Too many failed login attempts',request_id:req.requestId});
     }
-    const result=await db.query('SELECT id,password_hash FROM crm_login_user($1)',[email]);
+    const result=await db.query('SELECT id,password_hash,active,email_verified_at,must_change_password FROM crm_login_details($1)',[email]);
     let valid;
     try{valid=await verifyPassword(password,result.rows[0]?.password_hash??dummyHash);}
     catch(e){await db.query('SELECT crm_finish_login($1)',[req.requestId]);throw e;}
     if(!result.rowCount||!valid)return res.status(401).json({error:'Invalid credentials'});
     const user=result.rows[0];
+    if(!user.active)return res.status(403).json({error:'Account unavailable. Contact CRM',code:'account_unavailable'});
+    if(!user.email_verified_at)return res.status(403).json({error:'Verify your institutional email first.',code:'email_unverified'});
+    if(user.must_change_password){
+      const challenge=randomBytes(32).toString('hex');
+      const begin=await db.query('SELECT crm_begin_password_change($1,$2,$3) AS allowed',
+        [user.id,user.password_hash,tokenHash(challenge)]);
+      if(!begin.rows[0].allowed)return res.status(409).json({error:'Account changed. Sign in again.'});
+      await db.query('SELECT crm_finish_login($1)',[req.requestId]);
+      return res.set('Cache-Control','no-store').json({requires_password_change:true,challenge});
+    }
     if(needsRehash(user.password_hash))await db.query('SELECT crm_rehash_password($1,$2,$3)',[user.id,user.password_hash,await hashPassword(password)]);
     await db.query('SELECT crm_finish_login($1)',[req.requestId]);
-    const token=sessionTokens.issue(user.id);
-    await db.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '15 minutes')",[tokenHash(token),user.id]);
-    res.json({access_token:token,token_type:'Bearer',expires_in:900});
+    const token=sessionTokens.issue(user.id,{lifetimeSeconds:1800});
+    await db.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 minutes')",[tokenHash(token),user.id]);
+    res.json({access_token:token,token_type:'Bearer',expires_in:1800});
   });
   app.post('/api/v1/admin/invitations',auth,staff,validate(z.strictObject({email:z.email().max(254).transform(x=>x.toLowerCase()),role:z.enum(['student','faculty'])})),async(req,res)=>{
+    if(!(await db.query('SELECT crm_administers_accounts() AS allowed')).rows[0].allowed)
+      return res.status(403).json({error:'Access denied.'});
     const token=randomBytes(32).toString('hex'),b=req.validated.body;
     const r=await db.query('SELECT crm_invite($1,$2,$3) AS user_id',[b.email,b.role,tokenHash(token)]);
     res.set('Cache-Control','no-store');res.status(201).json({user_id:r.rows[0].user_id,activation_token:token,expires_in:900});
@@ -74,24 +106,43 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     if(!r.rows[0].activated)return res.status(400).json({error:'Invalid or expired activation'});
     await db.query('SELECT crm_finish_login($1)',[req.requestId]);res.sendStatus(204);
   });
+  app.post('/api/v1/auth/activity',auth,validate(empty),async(req,res)=>{
+    const token=sessionTokens.issue(req.user.id,{lifetimeSeconds:1800});
+    const old=tokenHash(req.get('authorization').slice(7));
+    const result=await db.query('SELECT crm_renew_session($1,$2) AS renewed',[old,tokenHash(token)]);
+    if(!result.rows[0].renewed)return res.status(401).json({error:'Session expired. Sign in again.'});
+    res.set('Cache-Control','no-store').json({access_token:token,expires_in:1800,token_type:'Bearer'});
+  });
   app.post('/api/v1/auth/logout',auth,validate(empty),async(req,res)=>{
-    await db.query('DELETE FROM sessions WHERE token_hash=$1',[tokenHash(req.get('authorization').slice(7))]);res.sendStatus(204);
+    await db.query('SELECT crm_end_session($1)',[tokenHash(req.get('authorization').slice(7))]);res.sendStatus(204);
   });
   app.get('/api/v1/users/me',auth,async(req,res)=>{
-    const r=await db.query('SELECT id,email,role FROM users WHERE id=$1',[req.user.id]);res.json(r.rows[0]);
+    const r=await db.query('SELECT id,email,role,display_name,college FROM users WHERE id=$1',[req.user.id]);
+    const permissions=req.user.role==='staff'?(await db.query('SELECT permission FROM crm_staff_permissions WHERE user_id=$1 ORDER BY permission',[req.user.id])).rows.map(row=>row.permission):[];
+    res.json({...r.rows[0],permissions});
+  });
+  app.post('/api/v1/users/me/profile',auth,validate(z.strictObject({
+    display_name:z.string().trim().min(1).max(160),college:z.string().trim().min(1).max(160)
+  })),async(req,res)=>{
+    const {display_name,college}=req.validated.body;
+    const result=await db.query(`UPDATE users SET display_name=$1,college=$2
+      WHERE id=$3 AND role IN ('student','faculty') RETURNING id,email,role,display_name,college`,
+      [display_name,college,req.user.id]);
+    if(!result.rowCount)return res.status(403).json({error:'Access denied'});
+    res.json({...result.rows[0],permissions:[]});
   });
   app.patch('/api/v1/users/me',auth,validate(z.strictObject({email:z.email().max(254).transform(x=>x.toLowerCase())})),async(req,res)=>{
-    const r=await db.query('UPDATE users SET email=$1 WHERE id=$2 RETURNING id,email,role',[req.validated.body.email,req.user.id]);res.json(r.rows[0]);
+    res.status(403).json({error:'Email changes require CRM assistance'});
   });
   app.patch('/api/v1/research/:id',auth,validate(research),async(req,res)=>{
     if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
     const b=req.validated.body;
-    const r=await db.query('UPDATE research_records SET title=$1,abstract=$2,research_year=$3,department=$4 WHERE id=$5 AND crm_member(id) RETURNING id,author_id,title,abstract,status,research_year,department',[b.title,b.abstract,b.research_year,b.department,req.params.id]);
+    const r=await db.query('UPDATE research_records SET title=$1,abstract=$2,research_year=$3,department=$4 WHERE id=$5 AND crm_member(id) AND NOT is_registered RETURNING id,author_id,title,abstract,status,research_year,department',[b.title,b.abstract,b.research_year,b.department,req.params.id]);
     if(!r.rowCount)return res.status(404).json({error:'Record not found'});res.json(r.rows[0]);
   });
   app.post('/api/v1/research/:id/members',auth,validate(member),async(req,res)=>{
     if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
-    const r=await db.query('SELECT id FROM research_records WHERE id=$1 AND author_id=$2',[req.params.id,req.user.id]);
+    const r=await db.query('SELECT id FROM research_records WHERE id=$1 AND author_id=$2 AND NOT is_registered',[req.params.id,req.user.id]);
     if(!r.rowCount)return res.status(404).json({error:'Record not found'});
     const target=await db.query("SELECT 1 WHERE crm_researcher_user($1)",[req.validated.body.user_id]);
     if(!target.rowCount)return res.status(400).json({error:'Invalid member'});
@@ -99,7 +150,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
   });
   app.delete('/api/v1/research/:id/members/:memberId',auth,async(req,res)=>{
     if(!isId(req.params.id)||!isId(req.params.memberId))return res.status(400).json({error:'Invalid ID'});
-    const r=await db.query('DELETE FROM study_members WHERE study_id=$1 AND user_id=$2 AND crm_owns_study(study_id) RETURNING user_id',[req.params.id,req.params.memberId]);
+    const r=await db.query('DELETE FROM study_members WHERE study_id=$1 AND user_id=$2 AND crm_owns_study(study_id) AND EXISTS(SELECT 1 FROM research_records WHERE id=study_id AND NOT is_registered) RETURNING user_id',[req.params.id,req.params.memberId]);
     if(!r.rowCount)return res.status(404).json({error:'Member not found'});res.sendStatus(204);
   });
   app.get('/api/v1/research/:id/feedback',auth,async(req,res)=>{
@@ -141,6 +192,8 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     event:z.enum(['In-Progress','UnderReview','Completed','Presented','Published']),
     occurred_at:z.iso.date(),expected_version:z.number().int().min(1).max(2147483647)
   })),async(req,res)=>{
+    const registered=await db.query('SELECT id FROM research_records WHERE id=$1 AND is_registered',[req.params.id]);
+    if(registered.rowCount)return res.status(409).json({error:'Use the registered research progress workflow.'});
     const b=req.validated.body;
     const result=await db.query("SELECT id,lifecycle_state,lifecycle_version,to_char(completed_at,'YYYY-MM-DD') AS completed_at,to_char(presented_at,'YYYY-MM-DD') AS presented_at,to_char(published_at,'YYYY-MM-DD') AS published_at FROM crm_research_event($1,$2,$3,$4)",[req.params.id,b.event,b.occurred_at,b.expected_version]);
     if(!result.rowCount)return res.status(404).json({error:'Record not found'});
@@ -164,7 +217,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     if (!result.rowCount) return res.status(404).json({error:'Record not found'});
     res.json(result.rows[0]);
   });
-  app.post('/api/v1/research',auth,validate(research),async(req,res)=>{
+  const createResearchDraft = async(req,res)=>{
     if(!['student','faculty'].includes(req.user.role))return res.status(403).json({error:'Forbidden'});
     const {title,abstract,research_year,department}=req.validated.body;
     const client=await db.connect();
@@ -175,6 +228,25 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
       await client.query("INSERT INTO audit_logs(actor_id,action) VALUES($1,'research.created')",[req.user.id]);
       await client.query('COMMIT');res.status(201).json(r.rows[0]);
     } catch(e) {await client.query('ROLLBACK');throw e;} finally {client.release();}
+  };
+  app.post('/api/v1/research',auth,validate(research),createResearchDraft);
+  app.post('/api/v1/researcher/drafts',auth,validate(research),createResearchDraft);
+  app.get('/api/v1/researcher/studies',auth,async(req,res)=>{
+    if(!['student','faculty'].includes(req.user.role))return res.status(403).json({error:'Forbidden'});
+    const result=await db.query(`SELECT id,title,abstract,department,research_year,status,lifecycle_state,published_at,is_registered
+      FROM research_records WHERE author_id=$1 OR (is_registered AND crm_member(id))
+      ORDER BY id DESC LIMIT 50`,[req.user.id]);
+    res.set('Cache-Control','no-store');res.json(result.rows);
+  });
+  app.post('/api/v1/researcher/drafts/:id',auth,validate(z.strictObject({id}),'params'),validate(research),async(req,res)=>{
+    if(!['student','faculty'].includes(req.user.role))return res.status(403).json({error:'Forbidden'});
+    const {title,abstract,department,research_year}=req.validated.body;
+    const result=await db.query(`UPDATE research_records SET title=$1,abstract=$2,department=$3,research_year=$4
+      WHERE id=$5 AND author_id=$6 AND status='Draft' AND lifecycle_state='Registered'
+      AND NOT is_registered
+      RETURNING id`,[title,abstract,department,research_year,req.params.id,req.user.id]);
+    if(!result.rowCount)return res.status(404).json({error:'Draft not found'});
+    res.set('Cache-Control','no-store');res.json(result.rows[0]);
   });
   app.post('/api/v1/users/consent',auth,validate(consent),async(req,res)=>{
     const b=req.body ?? {};const c=b.choices;
@@ -196,6 +268,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
   app.get('/api/v1/admin/audit-logs',auth,staff,async(_req,res)=>{
     const r=await db.query('SELECT id,action,recorded_at FROM audit_logs ORDER BY id DESC LIMIT 100');res.json(r.rows);
   });
+  demo?.mount(app);
   app.use((_req,res)=>res.status(404).json({error:'Route not found'}));
   app.use((err,_req,res,_next)=>{
     if(err.type==='entity.parse.failed') return res.status(400).json({error:'Invalid JSON'});
