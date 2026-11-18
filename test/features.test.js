@@ -39,7 +39,7 @@ test('researcher profile persists permitted edits without changing account ident
 });
 
 test('consultation retry returns one ticket after concurrent sends',async()=>{
- const submission={service_type:'Retry proof',submission_token:'dd0dc09a-7ee0-4c36-a005-9f4043e98ca4'};
+ const submission={service_type:'Retry proof',submission_token:randomUUID()};
  const submit=body=>auth(request(app).post('/api/v1/consultations'),other).send(body);
  const pair=await Promise.all([submit(submission),submit(submission)]);
  assert.deepEqual(pair.map(response=>response.status).sort(),[200,201]);

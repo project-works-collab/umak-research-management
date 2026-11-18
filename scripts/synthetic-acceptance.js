@@ -537,7 +537,7 @@ try{
     assert.equal(uploaded.status,201);
     const file=await uploaded.json();
     const submission={revision_id:services[0].id,study_id:mapping.studies['RES-DEMO-001'],subject:'Synthetic request',
-      submission_token:'837db4ec-8495-468e-b75b-07f0e510c69c',files:[file.id]};
+      submission_token:randomUUID(),files:[file.id]};
     const first=await jsonCall(studentAccess.access_token,requestPath,submission);
     assert.equal(first.status,201);
     const submitted=await first.json();
