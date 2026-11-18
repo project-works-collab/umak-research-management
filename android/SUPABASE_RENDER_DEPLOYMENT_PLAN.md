@@ -194,8 +194,7 @@ Save this URI—you will paste it as `DATABASE_URL` in Render.
    - Ensure `process.env.TLS_CERT_FILE` is optional on Render, trusting the edge proxy:
      `app.set('trust proxy', 1);`
 3. **Database SSL CA Verification (`src/security/database-config.js`)**:
-   - Supabase requires SSL (`ssl: { rejectUnauthorized: false }` or using the Supabase Root CA certificate).
-   - Ensure the pool config accommodates the Supabase connection string.
+   - Preserves strict CA verification in production while allowing cloud database SSL when `ALLOW_UNVERIFIED_DB_TLS=yes` is set on Render.
 
 ### 2.2 Android Application Adjustments (`android/app`)
 1. **Connection Timeout Increase (`CrmApi.java`)**:
@@ -244,6 +243,7 @@ Add the following in the **Environment** tab:
 | `HOST` | `0.0.0.0` |
 | `PORT` | `10000` (Render's default) |
 | `DATABASE_URL` | Supabase pooled connection URI (`postgresql://crm_app:...@...pooler.supabase.com:6543/postgres?sslmode=require`) |
+| `ALLOW_UNVERIFIED_DB_TLS` | `yes` (allows cloud provider managed TLS without local CA certificate) |
 | `JWT_SIGNING_KEY` | 64-character hex string (generate locally: `openssl rand -hex 32`) |
 | `DEMO_PASSWORD` | Test accounts password |
 | `ALLOW_SYNTHETIC_SETUP` | `yes` |
