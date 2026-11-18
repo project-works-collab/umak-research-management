@@ -6,8 +6,11 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import java.util.Locale;
 
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
@@ -25,7 +28,6 @@ public final class ProfileView {
     private final LinearLayout layout;
     private final Listener listener;
     private final ResearchData.UserProfile userProfile;
-    private final TextView successSnackbar;
 
     public ProfileView(Context context, ResearchData.UserProfile profile, Listener listener) {
         this.context = context;
@@ -41,26 +43,6 @@ public final class ProfileView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
-        // Success Snackbar Banner (for 4.1 Success state)
-        successSnackbar = new TextView(context);
-        successSnackbar.setText("Profile updated.");
-        successSnackbar.setTextColor(UiTheme.SUCCESS_GREEN);
-        successSnackbar.setTypeface(bold);
-        ScreenTypography.apply(successSnackbar, 13);
-        successSnackbar.setBackground(UiTheme.shape(context, UiTheme.SUCCESS_BG, 8, UiTheme.SUCCESS_GREEN));
-        int snkPad = UiTheme.dp(context, 10);
-        successSnackbar.setPadding(snkPad, snkPad, snkPad, snkPad);
-        successSnackbar.setVisibility(View.GONE);
-        layout.addView(successSnackbar);
-
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
         addSpacing(context, layout, 12);
 
         // Profile Header Card
@@ -73,10 +55,24 @@ public final class ProfileView {
         topRow.setOrientation(LinearLayout.HORIZONTAL);
         topRow.setGravity(Gravity.CENTER_VERTICAL);
 
+        FrameLayout identity = new FrameLayout(context);
+        View strip = new View(context);
+        strip.setBackground(UiTheme.shape(context, UiTheme.BLUE, 8, 0));
+        identity.addView(strip, new FrameLayout.LayoutParams(-1, UiTheme.dp(context, 54)));
+        FrameLayout.LayoutParams identityRow = new FrameLayout.LayoutParams(-1, -2);
+        identityRow.topMargin = UiTheme.dp(context, 30);
+        identityRow.setMarginStart(UiTheme.dp(context, 8));
+        identity.addView(topRow, identityRow);
+
         // Avatar circle
         TextView avatar = new TextView(context);
-        avatar.setText("LJ");
-        avatar.setTextColor(UiTheme.WHITE);
+        StringBuilder initials = new StringBuilder();
+        String name = userProfile.name == null ? "" : userProfile.name.trim();
+        for (String word : name.split("\\s+")) {
+            if (!word.isEmpty() && initials.length() < 2) initials.appendCodePoint(word.codePointAt(0));
+        }
+        avatar.setText(initials.length() == 0 ? "?" : initials.toString().toUpperCase(Locale.ROOT));
+        avatar.setTextColor(UiTheme.NAVY);
         avatar.setTypeface(bold);
         avatar.setGravity(Gravity.CENTER);
         ScreenTypography.apply(avatar, 18);
@@ -84,12 +80,11 @@ public final class ProfileView {
         LinearLayout.LayoutParams aLp = new LinearLayout.LayoutParams(aSize, aSize);
         aLp.rightMargin = UiTheme.dp(context, 12);
         avatar.setLayoutParams(aLp);
-        avatar.setBackground(UiTheme.shape(context, UiTheme.NAVY, 24, 0));
+        avatar.setBackground(UiTheme.shape(context, UiTheme.YELLOW, 24, 0));
         topRow.addView(avatar);
 
         LinearLayout nameCol = new LinearLayout(context);
         nameCol.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams nLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
 
         TextView nameText = new TextView(context);
         nameText.setText(userProfile.name);
@@ -105,17 +100,19 @@ public final class ProfileView {
         ScreenTypography.apply(roleText, 13);
         nameCol.addView(roleText);
 
-        topRow.addView(nameCol, nLp);
-        profileCard.addView(topRow);
+        profileCard.addView(identity);
+        addSpacing(context, profileCard, 4);
+        profileCard.addView(nameCol);
 
         addSpacing(context, profileCard, 12);
 
         // Details grid / list
-        addDetailRow(profileCard, "Program", userProfile.program);
-        addDetailRow(profileCard, "Year level", userProfile.yearLevel);
-        addDetailRow(profileCard, "College", userProfile.college);
-        addDetailRow(profileCard, "Email", userProfile.email);
-        addDetailRow(profileCard, "Student ID", userProfile.accountId);
+        if (!userProfile.program.isEmpty()) addDetailRow(profileCard, "Program", userProfile.program);
+        if (!userProfile.yearLevel.isEmpty()) addDetailRow(profileCard, "Year level", userProfile.yearLevel);
+        addDetailRow(profileCard, "Researcher category", userProfile.category);
+        addDetailRow(profileCard, "College", userProfile.college.isEmpty() ? "—" : userProfile.college);
+        addDetailRow(profileCard, "Institutional email", userProfile.email);
+        addDetailRow(profileCard, "Account identifier", userProfile.accountId);
 
         addSpacing(context, profileCard, 12);
 
@@ -313,14 +310,6 @@ public final class ProfileView {
         });
 
         return card;
-    }
-
-    public void setPreviewState(String state) {
-        if ("4.1_success".equals(state) || "success_snackbar".equals(state)) {
-            successSnackbar.setVisibility(View.VISIBLE);
-        } else {
-            successSnackbar.setVisibility(View.GONE);
-        }
     }
 
     private static void addSpacing(Context context, LinearLayout parent, int dp) {

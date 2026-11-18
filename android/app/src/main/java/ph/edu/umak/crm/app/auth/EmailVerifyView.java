@@ -187,7 +187,6 @@ public final class EmailVerifyView {
 
         resendBtn = UiButton.text(context, "Resend email", UiTheme.NAVY, () -> {
             if (callbacks != null) callbacks.onResendVerificationCode(emailAddress);
-            startCountdown(45);
         });
         resendBtn.setVisibility(View.GONE);
         codeSection.addView(resendBtn, new LinearLayout.LayoutParams(-1, -2));
@@ -227,7 +226,7 @@ public final class EmailVerifyView {
         startCountdown(45);
     }
 
-    private void startCountdown(int seconds) {
+    public void startCountdown(int seconds) {
         if (countDownTimer != null) countDownTimer.cancel();
         timerText.setVisibility(View.VISIBLE);
         resendBtn.setVisibility(View.GONE);
@@ -261,6 +260,26 @@ public final class EmailVerifyView {
         if (callbacks != null) {
             callbacks.onVerifyEmail(emailAddress, code);
         }
+    }
+
+    public void setSubmitting(boolean pending, String progress) {
+        verifyBtn.setEnabled(!pending);
+        resendBtn.setEnabled(!pending);
+        for (EditText digitBox : digitBoxes) digitBox.setEnabled(!pending);
+        if (pending) {
+            feedbackText.setTextColor(UiTheme.MUTED);
+            feedbackText.setText(progress);
+        }
+    }
+
+    public void showResent(int seconds) {
+        for (EditText digitBox : digitBoxes) {
+            digitBox.getText().clear();
+            digitBox.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        }
+        feedbackText.setTextColor(UiTheme.NAVY);
+        feedbackText.setText("Verification email sent.");
+        startCountdown(seconds);
     }
 
     public void showError(String message) {

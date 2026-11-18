@@ -12,6 +12,8 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -32,6 +34,8 @@ public final class EditProfileView {
     private final TextView nameError;
     private final Spinner collegeSpinner;
     private final TextView collegeError;
+    private final Button saveBtn;
+    private final PendingStatus saveStatus;
 
     private static final String[] COLLEGES = {
             "Select your college or institute",
@@ -40,7 +44,13 @@ public final class EditProfileView {
             "College of Science",
             "College of Business and Financial Science",
             "College of Education",
-            "College of Technology"
+            "College of Technology",
+            "College of Tourism and Hospitality Management",
+            "Center for Governance and Public Policy",
+            "Institute of Imaging Health Sciences",
+            "Institute of Nursing",
+            "Institute of Pharmacy",
+            "School of Law"
     };
 
     public EditProfileView(Context context, ResearchData.UserProfile profile, Listener listener) {
@@ -56,31 +66,6 @@ public final class EditProfileView {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
-
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
-        // Screen Title
-        TextView title = new TextView(context);
-        title.setText("Edit Profile");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
-        layout.addView(title);
-
-        // Subtitle
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Update your name and college or institute.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 14);
-        layout.addView(subtitle);
 
         addSpacing(context, layout, 16);
 
@@ -145,7 +130,7 @@ public final class EditProfileView {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, COLLEGES);
         collegeSpinner.setAdapter(adapter);
         collegeSpinner.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
-        int collegeIdx = 1;
+        int collegeIdx = 0;
         for (int i = 0; i < COLLEGES.length; i++) {
             if (COLLEGES[i].equalsIgnoreCase(userProfile.college)) {
                 collegeIdx = i;
@@ -201,7 +186,9 @@ public final class EditProfileView {
         addSpacing(context, layout, 24);
 
         // Buttons: Save & Cancel
-        Button saveBtn = UiButton.primary(context, "Save", this::handleSave);
+        saveStatus = new PendingStatus(context);
+        layout.addView(saveStatus);
+        saveBtn = UiButton.primary(context, "Save", this::handleSave);
         layout.addView(saveBtn);
 
         addSpacing(context, layout, 12);
@@ -261,12 +248,23 @@ public final class EditProfileView {
         if (hasError) return;
 
         String selectedCollege = COLLEGES[collegePos];
-        userProfile.name = name;
-        userProfile.college = selectedCollege;
-
         if (listener != null) {
             listener.onSave(name, selectedCollege);
         }
+    }
+
+    public void showSaving() {
+        saveBtn.setEnabled(false);
+        nameInput.setEnabled(false);
+        collegeSpinner.setEnabled(false);
+        saveStatus.working("Saving profile to CRM…");
+    }
+
+    public void showSaveError(String error) {
+        saveBtn.setEnabled(true);
+        nameInput.setEnabled(true);
+        collegeSpinner.setEnabled(true);
+        saveStatus.result(error, true);
     }
 
     public void setPreviewState(String state) {
@@ -299,6 +297,6 @@ public final class EditProfileView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Edit Profile", "Update your name and college or institute.", false);
     }
 }

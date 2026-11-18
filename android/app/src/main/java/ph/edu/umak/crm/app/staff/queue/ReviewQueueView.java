@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -41,7 +43,12 @@ public class ReviewQueueView {
     private final LinearLayout activeFilterBanner;
     private final TextView activeFilterText;
 
-    private final List<StaffQueueData.QueueRequestItem> allRequests;
+    private final List<StaffQueueData.QueueRequestItem> allRequests = new ArrayList<>();
+    private final Button refreshBtn;
+    private final PendingStatus refreshStatus;
+    private boolean loading;
+    private boolean loaded;
+    private boolean preview;
     private String selectedTab = "In review";
     private String searchQuery = "";
     private String filterService = null;
@@ -55,7 +62,6 @@ public class ReviewQueueView {
     public ReviewQueueView(Context context, Callbacks callbacks) {
         this.context = context;
         this.callbacks = callbacks;
-        this.allRequests = StaffQueueData.getInitialQueue();
 
         Typeface bold = UiTheme.boldFont(context);
         Typeface regular = UiTheme.bodyFont(context);
@@ -66,21 +72,7 @@ public class ReviewQueueView {
         contentLayout.setPadding(UiTheme.dp(context, 16), UiTheme.dp(context, 16),
                 UiTheme.dp(context, 16), UiTheme.dp(context, 24));
 
-        // Header Title
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        TextView title = new TextView(context);
-        title.setText("Review Queue");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 12));
-        contentLayout.addView(title);
+        refreshStatus = new PendingStatus(context);
 
         // Status Tabs Row
         HorizontalScrollView tabScroll = new HorizontalScrollView(context);
@@ -200,13 +192,15 @@ public class ReviewQueueView {
         addSpacing(16);
 
         // Refresh Button
-        Button refreshBtn = UiButton.outline(context, "Refresh", UiTheme.BORDER, UiTheme.NAVY, () -> {
-            if (callbacks != null) {
+        refreshBtn = UiButton.outline(context, "Refresh", UiTheme.BORDER, UiTheme.NAVY, () -> {
+            if (preview) {
+                refreshStatus.result("Sample queue. Open the staff workspace to refresh CRM requests.", false);
+            } else if (callbacks != null && !loading) {
                 callbacks.onRefreshQueue();
             }
-            renderRequests();
         });
         contentLayout.addView(refreshBtn);
+        contentLayout.addView(refreshStatus);
 
         // Search text watcher
         searchInput.addTextChangedListener(new TextWatcher() {
@@ -226,10 +220,17 @@ public class ReviewQueueView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "Review Queue", null, false);
     }
 
     public void setPreviewState(String state) {
+        preview = true;
+        loading = false;
+        refreshBtn.setText("Refresh");
+        refreshBtn.setEnabled(true);
+        refreshStatus.clear();
+        allRequests.clear();
+        allRequests.addAll(StaffQueueData.getInitialQueue());
         if ("6.1_completed".equalsIgnoreCase(state)) {
             selectedTab = "Completed";
             forceEmptyState = false;
@@ -271,6 +272,44 @@ public class ReviewQueueView {
         renderRequests();
     }
 
+    public void endPreview() {
+        if (!preview) return;
+        preview = false;
+        loaded = false;
+        allRequests.clear();
+        refreshStatus.clear();
+        clearFilters();
+    }
+
+    public void showLoading() {
+        if (preview) return;
+        loading = true;
+        refreshBtn.setText("Refreshing…");
+        refreshBtn.setEnabled(false);
+        refreshStatus.working(loaded ? "Refreshing the review queue…" : "Loading the review queue…");
+        renderRequests();
+    }
+
+    public void showLiveRequests(List<StaffQueueData.QueueRequestItem> tickets, String error) {
+        if (preview) return;
+        loading = false;
+        refreshBtn.setText("Refresh");
+        refreshBtn.setEnabled(true);
+        if (error != null) {
+            refreshStatus.result(loaded ? error + " Showing the last loaded requests." : error, true);
+        } else {
+            allRequests.clear();
+            allRequests.addAll(tickets);
+            if (!loaded && getCountForTab(selectedTab) == 0 && getCountForTab("Submitted") > 0) {
+                selectedTab = "Submitted";
+            }
+            loaded = true;
+            refreshStatus.result("Review queue updated.", false);
+            updateTabAppearance();
+        }
+        renderRequests();
+    }
+
     private void clearFilters() {
         filterService = null;
         filterStatus = null;
@@ -306,6 +345,13 @@ public class ReviewQueueView {
     }
 
     private int getCountForTab(String tabName) {
+        if (!preview) {
+            int count = 0;
+            for (StaffQueueData.QueueRequestItem request : allRequests) {
+                if (tabName.equalsIgnoreCase(request.status)) count++;
+            }
+            return count;
+        }
         if ("Completed".equalsIgnoreCase(tabName)) return 12; // Matching wireframe 6.1
         if ("In review".equalsIgnoreCase(tabName)) return 2;
         if ("Submitted".equalsIgnoreCase(tabName)) return 3;
@@ -328,6 +374,8 @@ public class ReviewQueueView {
         } else {
             activeFilterBanner.setVisibility(View.GONE);
         }
+
+        if (!preview && !loaded) return;
 
         if (forceEmptyState) {
             renderEmptyState();
@@ -431,14 +479,16 @@ public class ReviewQueueView {
         ScreenTypography.apply(serviceView, 13);
         card.addView(serviceView);
 
-        // Study Title
-        TextView titleView = new TextView(context);
-        titleView.setText(item.studyTitle);
-        titleView.setTextColor(UiTheme.NAVY);
-        titleView.setTypeface(bold);
-        ScreenTypography.apply(titleView, 15);
-        titleView.setPadding(0, UiTheme.dp(context, 2), 0, UiTheme.dp(context, 4));
-        card.addView(titleView);
+        if (!item.studyTitle.isEmpty()) {
+            // Study Title
+            TextView titleView = new TextView(context);
+            titleView.setText(item.studyTitle);
+            titleView.setTextColor(UiTheme.NAVY);
+            titleView.setTypeface(bold);
+            ScreenTypography.apply(titleView, 15);
+            titleView.setPadding(0, UiTheme.dp(context, 2), 0, UiTheme.dp(context, 4));
+            card.addView(titleView);
+        }
 
         // Submitted info
         TextView subView = new TextView(context);
@@ -448,13 +498,15 @@ public class ReviewQueueView {
         ScreenTypography.apply(subView, 12);
         card.addView(subView);
 
-        // Requester name and role
-        TextView reqView = new TextView(context);
-        reqView.setText(item.requesterName + " (" + item.requesterRole + ")");
-        reqView.setTextColor(UiTheme.MUTED);
-        reqView.setTypeface(regular);
-        ScreenTypography.apply(reqView, 12);
-        card.addView(reqView);
+        if (!item.requesterName.isEmpty()) {
+            // Requester name and role
+            TextView reqView = new TextView(context);
+            reqView.setText(item.requesterName + " (" + item.requesterRole + ")");
+            reqView.setTextColor(UiTheme.MUTED);
+            reqView.setTypeface(regular);
+            ScreenTypography.apply(reqView, 12);
+            card.addView(reqView);
+        }
 
         // Summary snippet
         if (item.summary != null && !item.summary.isEmpty()) {

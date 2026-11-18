@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -56,7 +57,7 @@ public class ResearchRecordDetailView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, "Research Record", null, false);
     }
 
     private int dp(int value) {
@@ -90,23 +91,7 @@ public class ResearchRecordDetailView {
         rootLayout.addView(backBtn);
 
         // 2. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
 
-        TextView title = new TextView(activity);
-        title.setText("Research Record");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(16);
-        rootLayout.addView(title, titleParams);
 
         // 3. Record Summary Card (ID, Title, Stage, Meta)
         rootLayout.addView(createRecordHeaderCard());

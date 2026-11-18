@@ -1,7 +1,6 @@
 package ph.edu.umak.crm.app.staff.lifecycle;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -13,24 +12,24 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
- * Completion Record Correction Dialog (Wireframe 8.4).
+ * Completion Record Correction (Wireframe 8.4).
  * Allows authorized staff to correct a recorded completion date with mandatory reason.
  * Zero emojis compliant.
  */
-public final class CompletionCorrectionDialog {
+public final class CompletionCorrectionView {
 
     public interface Callbacks {
         void onCompletionCorrectionSaved(String correctedDate, String reason);
     }
 
-    private CompletionCorrectionDialog() {}
+    private CompletionCorrectionView() {}
 
     private static int dp(Activity activity, int value) {
         return (int) TypedValue.applyDimension(
@@ -40,39 +39,19 @@ public final class CompletionCorrectionDialog {
         );
     }
 
-    public static void show(Activity activity, String recordId, String studyTitle,
-                            String recordedDate, Callbacks callbacks) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-
-        ScrollView scroll = new ScrollView(activity);
+    public static View create(Activity activity, String recordId, String studyTitle,
+                              String recordedDate, Callbacks callbacks, Runnable onClose) {
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(activity, 20), dp(activity, 20), dp(activity, 20), dp(activity, 24));
-        root.setBackgroundColor(UiTheme.WHITE);
-        scroll.addView(root);
-
-        // Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(topHeader);
-
-        TextView title = new TextView(activity);
-        title.setText("Milestone and Outcomes");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(activity, 4);
-        titleParams.bottomMargin = dp(activity, 2);
-        root.addView(title, titleParams);
+        root.setBackgroundColor(UiTheme.PAPER);
 
         TextView subContext = new TextView(activity);
         subContext.setText(studyTitle + "\n" + recordId + "\nCurrent overall stage: Completed");
-        subContext.setTextColor(UiTheme.MUTED);
+        subContext.setTextColor(UiTheme.NAVY);
+        int summaryPadding = dp(activity, 12);
+        subContext.setPadding(summaryPadding, summaryPadding, summaryPadding, summaryPadding);
+        subContext.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
         subContext.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -84,9 +63,9 @@ public final class CompletionCorrectionDialog {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(activity, 16), dp(activity, 16), dp(activity, 16), dp(activity, 16));
         GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(UiTheme.PAPER);
+        cardBg.setColor(UiTheme.AMBER_BG);
         cardBg.setCornerRadius(dp(activity, 10));
-        cardBg.setStroke(dp(activity, 1), UiTheme.BORDER);
+        cardBg.setStroke(dp(activity, 1), UiTheme.AMBER_BORDER);
         card.setBackground(cardBg);
         root.addView(card);
 
@@ -226,9 +205,6 @@ public final class CompletionCorrectionDialog {
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 48));
         root.addView(cancelBtn, cancelParams);
 
-        builder.setView(scroll);
-        AlertDialog dialog = builder.create();
-
         saveBtn.setOnClickListener(v -> {
             String corrected = corrDateInput.getText().toString().trim();
             String reason = reasonInput.getText().toString().trim();
@@ -240,14 +216,13 @@ public final class CompletionCorrectionDialog {
                 reasonInput.setError("Please explain reason for correction.");
                 return;
             }
-            dialog.dismiss();
             Toast.makeText(activity, "Completion correction saved.", Toast.LENGTH_SHORT).show();
             if (callbacks != null) {
                 callbacks.onCompletionCorrectionSaved(corrected, reason);
             }
         });
 
-        cancelBtn.setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
+        cancelBtn.setOnClickListener(v -> onClose.run());
+        return PageTitle.wrap(root, "Milestone and Outcomes", null, false);
     }
 }

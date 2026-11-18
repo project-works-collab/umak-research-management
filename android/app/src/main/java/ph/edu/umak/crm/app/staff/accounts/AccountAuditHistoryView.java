@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.StaffData;
@@ -56,7 +57,7 @@ public class AccountAuditHistoryView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "Account Audit History", userDisplayName + " · " + userIdentifier, false);
     }
 
     public void setAccount(String name, String identifier) {
@@ -81,30 +82,6 @@ public class AccountAuditHistoryView {
             backBtn.setOnClickListener(v -> callbacks.onBack());
             contentLayout.addView(backBtn);
         }
-
-        // Header Title
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        TextView title = new TextView(context);
-        title.setText("Account Audit History");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 2));
-        contentLayout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText(userDisplayName + " · " + userIdentifier);
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(bold);
-        ScreenTypography.apply(subtitle, 14);
-        subtitle.setPadding(0, 0, 0, UiTheme.dp(context, 16));
-        contentLayout.addView(subtitle);
 
         // Logs
         List<StaffData.AccountAuditLogItem> logs = StaffData.getAccountAuditLogs();

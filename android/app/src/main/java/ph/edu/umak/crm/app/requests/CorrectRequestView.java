@@ -14,6 +14,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -21,7 +23,7 @@ import ph.edu.umak.crm.app.common.util.UiTheme;
 public final class CorrectRequestView {
 
     public interface Listener {
-        void onSubmitCorrection(RequestData.RequestItem updatedItem);
+        void onChooseAttachment(Runnable onChecking, java.util.function.BiConsumer<ph.edu.umak.crm.app.MainActivity.SelectedAttachment, String> result);
         void onCancel();
     }
 
@@ -54,37 +56,6 @@ public final class CorrectRequestView {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
-
-        // Header Row: Cancel on left or Title
-        LinearLayout headerRow = new LinearLayout(context);
-        headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        Button cancelTopBtn = UiButton.text(context, "Cancel", UiTheme.NAVY, () -> {
-            if (listener != null) listener.onCancel();
-        });
-        cancelTopBtn.setPadding(0, 0, UiTheme.dp(context, 12), 0);
-        headerRow.addView(cancelTopBtn);
-
-        LinearLayout titleCol = new LinearLayout(context);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = new TextView(context);
-        title.setText("Correct Request");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 20);
-        titleCol.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Review the feedback and resubmit updated documents.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 13);
-        titleCol.addView(subtitle);
-
-        headerRow.addView(titleCol);
-        layout.addView(headerRow);
 
         addSpacing(context, layout, 14);
 
@@ -295,13 +266,32 @@ public final class CorrectRequestView {
         addSpacing(context, formCard, 8);
 
         // Attach Button / Zone
-        Button attachBtn = UiButton.outline(context, "Attach file", UiTheme.BORDER, UiTheme.NAVY, () -> {
-            if (revisedFiles.size() < 5) {
-                revisedFiles.add(new RequestData.FileItem("REVISED_ADDITIONAL_DOC_" + (revisedFiles.size() + 1) + ".pdf", "320 KB", "Attached", false));
+        PendingStatus attachmentStatus = new PendingStatus(context);
+        Button attachBtn = UiButton.outline(context, "Attach file", UiTheme.BORDER, UiTheme.NAVY, null);
+        attachBtn.setOnClickListener(v -> {
+            if (listener == null || revisedFiles.size() >= 5) return;
+            listener.onChooseAttachment(() -> {
+                attachBtn.setEnabled(false);
+                attachBtn.setText("Checking file…");
+                attachmentStatus.working("Checking the selected file…");
+            }, (file, error) -> {
+                if (!layout.isAttachedToWindow()) return;
+                attachBtn.setEnabled(true);
+                attachBtn.setText("Attach file");
+                attachmentStatus.clear();
+                if (error != null) {
+                    attachmentStatus.result(error, true);
+                    return;
+                }
+                if (revisedFiles.size() >= 5) return;
+                String size = android.text.format.Formatter.formatShortFileSize(context, file.size());
+                revisedFiles.add(new RequestData.FileItem(file.name(), size, "Selected", false));
+                errorBanner.setVisibility(View.GONE);
                 renderRevisedList();
-            }
+            });
         });
         formCard.addView(attachBtn);
+        formCard.addView(attachmentStatus);
 
         addSpacing(context, formCard, 8);
 
@@ -363,7 +353,7 @@ public final class CorrectRequestView {
             row.addView(name, nLp);
 
             TextView statusBadge = new TextView(context);
-            statusBadge.setText("Attached");
+            statusBadge.setText(file.status);
             statusBadge.setTextColor(UiTheme.SUCCESS_GREEN);
             statusBadge.setTypeface(UiTheme.boldFont(context));
             ScreenTypography.apply(statusBadge, 11);
@@ -395,16 +385,8 @@ public final class CorrectRequestView {
             return;
         }
 
-        errorBanner.setVisibility(View.GONE);
-        // Resubmitted state
-        requestItem.status = "Submitted";
-        requestItem.submittedFiles = new ArrayList<>(revisedFiles);
-        requestItem.processingStep = "Correction submitted · Nov 3, 2026";
-        requestItem.actionRequiredNotice = null;
-
-        if (listener != null) {
-            listener.onSubmitCorrection(requestItem);
-        }
+        errorBanner.setText("Online correction submission is unavailable. Contact CRM to submit these files.");
+        errorBanner.setVisibility(View.VISIBLE);
     }
 
     private static void addSpacing(Context context, LinearLayout parent, int dp) {
@@ -417,6 +399,6 @@ public final class CorrectRequestView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Correct Request", "Review the feedback and resubmit updated documents.", true);
     }
 }

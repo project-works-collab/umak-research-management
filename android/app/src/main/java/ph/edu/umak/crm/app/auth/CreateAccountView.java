@@ -258,10 +258,31 @@ public final class CreateAccountView {
         }
 
         if (callbacks != null) {
-            String college = COLLEGES[collegeIndex];
+            String college = COLLEGES[collegeIndex].split(" - ", 2)[1];
             String category = isStudent ? "student" : "faculty";
-            callbacks.onAccountCreated(email, name, college, category);
+            callbacks.onAccountCreated(email, name, college, category, password, confirm);
         }
+    }
+
+    public void setSubmitting(boolean submitting) {
+        submitBtn.setEnabled(!submitting);
+        submitBtn.setText(submitting ? "Creating account…" : "Create Account");
+        nameField.setEnabled(!submitting);
+        emailField.setEnabled(!submitting);
+        passwordField.setEnabled(!submitting);
+        confirmField.setEnabled(!submitting);
+        collegeSpinner.setEnabled(!submitting);
+        studentBtn.setEnabled(!submitting);
+        facultyBtn.setEnabled(!submitting);
+    }
+
+    public void clearPasswords() {
+        passwordField.getInput().getText().clear();
+        confirmField.getInput().getText().clear();
+    }
+
+    public void showEmailError(String error) {
+        emailField.setError(error);
     }
 
     public void clearErrors() {

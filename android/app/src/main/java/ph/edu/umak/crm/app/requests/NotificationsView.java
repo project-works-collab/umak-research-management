@@ -5,13 +5,13 @@ import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -48,40 +48,15 @@ public final class NotificationsView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
-        // Header Row: Back button on left
-        LinearLayout headerRow = new LinearLayout(context);
-        headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        Button backBtn = UiButton.text(context, "Back", UiTheme.NAVY, () -> {
-            if (listener != null) listener.onBack();
-        });
-        backBtn.setPadding(0, 0, UiTheme.dp(context, 12), 0);
-        headerRow.addView(backBtn);
-
-        LinearLayout titleCol = new LinearLayout(context);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-
-        TextView title = new TextView(context);
-        title.setText("Notifications");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 20);
-        titleCol.addView(title);
-
+        LinearLayout actions = new LinearLayout(context);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
         subtitle = new TextView(context);
         subtitle.setTextColor(UiTheme.MUTED);
         subtitle.setTypeface(regular);
         ScreenTypography.apply(subtitle, 13);
-        titleCol.addView(subtitle);
-
-        headerRow.addView(titleCol, tLp);
-
-        Button markReadBtn = UiButton.text(context, "Mark read", UiTheme.ACCENT, this::markAllRead);
-        headerRow.addView(markReadBtn);
-
-        layout.addView(headerRow);
+        actions.addView(subtitle, new LinearLayout.LayoutParams(0, -2, 1));
+        actions.addView(UiButton.text(context, "Mark read", UiTheme.ACCENT, this::markAllRead));
+        layout.addView(actions);
 
         addSpacing(context, layout, 16);
 
@@ -237,6 +212,6 @@ public final class NotificationsView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Notifications", null, false);
     }
 }

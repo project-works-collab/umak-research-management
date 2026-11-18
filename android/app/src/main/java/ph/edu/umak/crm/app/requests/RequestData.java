@@ -5,6 +5,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public final class RequestData {
     private RequestData() {}
 
@@ -26,6 +29,9 @@ public final class RequestData {
         public final String id;
         public final String service;
         public final String submittedDate;
+        public int serviceRequestId;
+        String previewTitle;
+        String previewDetails;
         public String status; // "Submitted", "In review", "For correction", "Completed"
         public final String linkedStudyCode;
         public final String linkedStudyTitle;
@@ -60,6 +66,10 @@ public final class RequestData {
             this.reviewHistory = reviewHistory != null ? new ArrayList<>(reviewHistory) : new ArrayList<>();
             this.actionRequiredNotice = actionRequiredNotice;
         }
+
+        public boolean isPreviewSubmission() {
+            return id.startsWith("PREVIEW-");
+        }
     }
 
     public static class NotificationItem {
@@ -73,6 +83,63 @@ public final class RequestData {
             this.requestCode = requestCode;
             this.date = date;
             this.unread = unread;
+        }
+    }
+
+    static RequestItem previewSubmission(String service, String title, String details, List<FileItem> files) {
+        List<FileItem> attached = new ArrayList<>();
+        for (FileItem file : files) {
+            if (!file.isError) attached.add(file);
+        }
+        String id = "PREVIEW-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        RequestItem item = new RequestItem(id, service, displayTimestamp(java.time.Instant.now().toString()), "Submitted",
+                null, null, null, null, attached, null, null, null, null, null, null);
+        item.previewTitle = title;
+        item.previewDetails = details;
+        return item;
+    }
+
+    public static RequestItem serviceRequestReference(int id, String service) {
+        RequestItem item = new RequestItem("REQ-" + id, service, "", "", null, null, null,
+                "No processing step recorded", null, null, null, null, null, null, null);
+        item.serviceRequestId = id;
+        return item;
+    }
+
+    public static RequestItem fromServiceRequest(JSONObject request) throws JSONException {
+        int serviceRequest = request.getInt("id");
+        RequestItem item = new RequestItem("REQ-" + serviceRequest, request.getString("service"),
+                displayTimestamp(request.has("resubmitted_at") ? request.getString("resubmitted_at")
+                        : request.getString("submitted_at")), request.getString("status"),
+                request.isNull("study_id") ? null : "#" + request.getInt("study_id"), null, null,
+                "No processing step recorded", null, null, null, null, null, null, null);
+        item.serviceRequestId = serviceRequest;
+        return item;
+    }
+
+    public static RequestItem fromConsultation(JSONObject ticket) throws JSONException {
+        int id = ticket.getInt("id");
+        if (id <= 0) throw new JSONException("Invalid consultation ID");
+        String status = switch (ticket.getString("status")) {
+            case "queued" -> "Submitted";
+            case "claimed" -> "In review";
+            case "resolved" -> "Completed";
+            case "cancelled" -> "Cancelled";
+            default -> ticket.getString("status");
+        };
+        String submitted = displayTimestamp(ticket.optString("submitted_at", ""));
+        String deadline = ticket.isNull("deadline_at") ? null : displayTimestamp(ticket.getString("deadline_at"));
+        return new RequestItem("#" + id, ticket.getString("service_type"), submitted, status,
+                null, null, null, null, null, null, null, null, deadline, null, null);
+    }
+
+    private static String displayTimestamp(String timestamp) {
+        try {
+            return java.time.format.DateTimeFormatter.ofPattern("MMM d, uuuu, h:mm a", java.util.Locale.ENGLISH)
+                    .withZone(java.time.ZoneId.systemDefault())
+                    .format(java.time.Instant.parse(timestamp));
+        } catch (java.time.format.DateTimeParseException invalid) {
+            return timestamp;
         }
     }
 

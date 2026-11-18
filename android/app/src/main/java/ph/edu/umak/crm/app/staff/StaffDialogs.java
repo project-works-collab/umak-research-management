@@ -6,6 +6,7 @@ import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.dialogs.CenteredActionDialog;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
@@ -13,47 +14,27 @@ public final class StaffDialogs {
     private StaffDialogs() {}
 
     public static void showWithdrawServiceDialog(Context context, String serviceId, String serviceName, Runnable onConfirm) {
-        new AlertDialog.Builder(context)
-                .setTitle("Withdraw service?")
-                .setMessage("Hide " + serviceId + " " + serviceName + " from researchers. Existing requests keep their history. Cancel leaves the service unchanged.")
-                .setPositiveButton("Confirm", (dialog, which) -> {
-                    if (onConfirm != null) onConfirm.run();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        CenteredActionDialog.show(context, "Withdraw service?",
+                "Hide " + serviceId + " " + serviceName + " from researchers. Existing requests keep their history. Cancel leaves the service unchanged.",
+                "Confirm", "Cancel", onConfirm, null);
     }
 
     public static void showReplaceFormVersionDialog(Context context, Runnable onConfirm) {
-        new AlertDialog.Builder(context)
-                .setTitle("Replace form version?")
-                .setMessage("Make CRM_Form_004_v4.pdf Version 4, the current CRM Form 004 – Ethics Application. Version 3 moves to superseded versions (staff only). Cancel leaves the current version unchanged.")
-                .setPositiveButton("Confirm", (dialog, which) -> {
-                    if (onConfirm != null) onConfirm.run();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        CenteredActionDialog.show(context, "Replace form version?",
+                "Make CRM_Form_004_v4.pdf Version 4, the current CRM Form 004 – Ethics Application. Version 3 moves to superseded versions (staff only). Cancel leaves the current version unchanged.",
+                "Confirm", "Cancel", onConfirm, null);
     }
 
     public static void showDeactivateAccountDialog(Context context, String name, String role, Runnable onConfirm) {
-        new AlertDialog.Builder(context)
-                .setTitle("Deactivate account?")
-                .setMessage(name + " (" + role + ") will lose access to RMLIS until the account is activated again. Cancel leaves the account unchanged.")
-                .setPositiveButton("Confirm", (dialog, which) -> {
-                    if (onConfirm != null) onConfirm.run();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        CenteredActionDialog.show(context, "Deactivate account?",
+                name + " (" + role + ") will lose access to RMLIS until the account is activated again. Cancel leaves the account unchanged.",
+                "Confirm", "Cancel", onConfirm, null);
     }
 
     public static void showActivateAccountDialog(Context context, String name, String role, Runnable onConfirm) {
-        new AlertDialog.Builder(context)
-                .setTitle("Activate account?")
-                .setMessage(name + " (" + role + ") will be able to sign in to RMLIS again. Cancel leaves the account unchanged.")
-                .setPositiveButton("Confirm", (dialog, which) -> {
-                    if (onConfirm != null) onConfirm.run();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        CenteredActionDialog.show(context, "Activate account?",
+                name + " (" + role + ") will be able to sign in to RMLIS again. Cancel leaves the account unchanged.",
+                "Confirm", "Cancel", onConfirm, null);
     }
 
     public static void showCantDeactivateOwnAccountDialog(Context context) {

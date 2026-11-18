@@ -26,6 +26,8 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import ph.edu.umak.crm.app.common.dialogs.CenteredActionDialog;
+import ph.edu.umak.crm.app.common.components.SaveSnackbar;
 import ph.edu.umak.crm.app.staff.ManageHubView;
 import ph.edu.umak.crm.app.staff.StaffData;
 import ph.edu.umak.crm.app.staff.StaffDialogs;
@@ -48,7 +50,7 @@ import ph.edu.umak.crm.app.staff.registry.RegistryDocumentsView;
 import ph.edu.umak.crm.app.staff.registry.ResearchRecordDetailView;
 import ph.edu.umak.crm.app.staff.registry.ResearchRegistryView;
 import ph.edu.umak.crm.app.staff.registry.StaffRegistryData;
-import ph.edu.umak.crm.app.staff.lifecycle.CompletionCorrectionDialog;
+import ph.edu.umak.crm.app.staff.lifecycle.CompletionCorrectionView;
 import ph.edu.umak.crm.app.staff.lifecycle.MilestoneEditorDialog;
 import ph.edu.umak.crm.app.staff.lifecycle.MilestonesAndOutcomesView;
 import ph.edu.umak.crm.app.staff.lifecycle.StageHistoryView;
@@ -85,6 +87,7 @@ final class StaffScreen extends LinearLayout {
     private final LinearLayout content;
     private final LinearLayout navigation;
     private final ScrollView scroll;
+    private final SaveSnackbar snackbar;
     private String tab;
     private JSONArray consultations;
     private String consultationMessage;
@@ -119,6 +122,7 @@ final class StaffScreen extends LinearLayout {
     private AddResearchEntryView addResearchEntryView;
     private RegistryDocumentsView registryDocumentsView;
     private RegistryCorrectionHistoryView registryCorrectionHistoryView;
+    private View completionCorrectionView;
     private StaffRegistryData.RegistryRecordItem selectedRegistryRecord;
 
     // Lifecycle Sub-Pages (Part 8, C-04)
@@ -131,10 +135,23 @@ final class StaffScreen extends LinearLayout {
     private ServiceUtilizationView serviceUtilizationView;
     private AccessDeniedReportingView accessDeniedReportingView;
 
+    private final boolean liveWorkspace;
+    private final java.util.Set<String> permissions = new java.util.HashSet<>();
+
     StaffScreen(MainActivity activity, String email, String initialTab) {
+        this(activity, email, initialTab, false);
+    }
+
+    StaffScreen(MainActivity activity, String email, String initialTab, boolean liveWorkspace) {
+        this(activity, email, initialTab, liveWorkspace, null);
+    }
+
+    StaffScreen(MainActivity activity, String email, String initialTab, boolean liveWorkspace, JSONArray permissions) {
         super(activity);
         this.activity = activity;
         this.email = email;
+        this.liveWorkspace = liveWorkspace;
+        if (permissions != null) for (int i = 0; i < permissions.length(); i++) this.permissions.add(permissions.optString(i));
         headingFont = getResources().getFont(R.font.marcellus_regular);
         bodyFont = getResources().getFont(R.font.metropolis_regular);
         actionFont = getResources().getFont(R.font.metropolis_semibold);
@@ -147,10 +164,12 @@ final class StaffScreen extends LinearLayout {
         addView(header);
 
         scroll = new ScrollView(activity);
+        scroll.setFillViewport(true);
         content = new LinearLayout(activity);
         content.setOrientation(VERTICAL);
         scroll.addView(content);
-        addView(scroll, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+        snackbar = new SaveSnackbar(activity, scroll);
+        addView(snackbar, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
 
         navigation = new LinearLayout(activity);
         navigation.setBackgroundColor(WHITE);
@@ -172,21 +191,39 @@ final class StaffScreen extends LinearLayout {
     }
 
     private void navigate(String destination) {
+        if ("Requests".equals(destination) && reviewQueueView != null) reviewQueueView.endPreview();
         select(destination);
         loadTabData();
     }
 
     private void loadTabData() {
-        if ("Requests".equals(tab) || "Dashboard".equals(tab)) {
+        if (!liveWorkspace && hasPermission("request_processing") && ("Requests".equals(tab) || "Dashboard".equals(tab))) {
             activity.loadConsultations(this);
         }
     }
 
+    void updatePermissions(JSONArray current) {
+        java.util.Set<String> updated = new java.util.HashSet<>();
+        for (int i = 0; i < current.length(); i++) updated.add(current.optString(i));
+        if (permissions.equals(updated)) return;
+        permissions.clear(); permissions.addAll(updated);
+        select("Dashboard");
+    }
+
+    private boolean hasPermission(String permission) { return !liveWorkspace || permissions.contains(permission); }
+
     private void select(String destination) {
+        snackbar.clear();
+        if (!"Registry".equals(destination) && "completion_correction".equals(registrySubPage)) {
+            registrySubPage = "lifecycle";
+            completionCorrectionView = null;
+        }
         tab = destination;
         navigation.removeAllViews();
         for (int index = 0; index < TABS.length; index++) {
             String name = TABS[index];
+            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
+            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
             boolean selected = name.equals(tab);
             Button item = button(name, () -> navigate(name));
             ScreenTypography.apply(item, 11);
@@ -246,6 +283,17 @@ final class StaffScreen extends LinearLayout {
     }
 
     private void showDashboard() {
+        if (liveWorkspace) {
+            content.removeAllViews();
+            LinearLayout panel = card("Staff workspace");
+            panel.addView(text("Open an authorized workspace to view current CRM records.", 14, MUTED, bodyFont));
+            if (hasPermission("request_processing")) action(panel, "Service requests", () -> navigate("Requests"));
+            if (hasPermission("registry_management")) action(panel, "Research registry", () -> openRegistrySubPage("registered_live"));
+            if (hasPermission("progress_updates")) action(panel, "Research progress", () -> openRegistrySubPage("progress_live"));
+            if (hasPermission("reporting")) action(panel, "Reports", () -> openManageSubPage("live_reports"));
+            action(panel, "Manage authorized workspaces", () -> navigate("Manage"));
+            return;
+        }
         clearAfter(1);
         LinearLayout metrics = new LinearLayout(activity);
         LayoutParams metricParams = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
@@ -326,7 +374,8 @@ final class StaffScreen extends LinearLayout {
 
         LinearLayout links = card("Navigation");
         action(links, "Staff Dashboard", () -> navigate("Dashboard"));
-        action(links, "Research Registry", () -> navigate("Registry"));
+        if (hasPermission("registry_management") || hasPermission("progress_updates"))
+            action(links, "Research Registry", () -> navigate("Registry"));
         action(links, "Public resources", activity::showPublicResources);
         LinearLayout settings = card("Account Settings");
         settings.addView(text("Email", 12, MUTED, actionFont));
@@ -336,23 +385,49 @@ final class StaffScreen extends LinearLayout {
 
     private void showRequestQueue() {
         content.removeAllViews();
-        if ("workspace".equals(requestsSubPage)) {
+        if ("live_service_requests".equals(requestsSubPage) || (liveWorkspace && "queue".equals(requestsSubPage))) {
+            var view = new ph.edu.umak.crm.app.staff.queue.LiveStaffRequestsView(activity,
+                    new ph.edu.umak.crm.app.staff.queue.LiveStaffRequestsView.Actions() {
+                        @Override
+                        public void request(String path, org.json.JSONObject body,
+                                java.util.function.BiConsumer<String, String> result) {
+                            activity.staffRequest(StaffScreen.this, "/api/v1/staff/service-requests" + path, body, result);
+                        }
+
+                        @Override
+                        public void download(String path, String filename, String mime, Runnable failure) {
+                            activity.downloadRequestAttachment("/api/v1/staff/service-requests" + path, filename, mime,
+                                    () -> "Requests".equals(tab) && ("live_service_requests".equals(requestsSubPage) || (liveWorkspace && "queue".equals(requestsSubPage))),
+                                    failure);
+                        }
+
+                        @Override
+                        public void back() { if (liveWorkspace) navigate("Dashboard"); else openRequestsSubPage("queue"); }
+                    });
+            content.addView(view);
+            view.load();
+        } else if ("workspace".equals(requestsSubPage)) {
             ensureRequestWorkspaceView();
             content.addView(requestWorkspaceView.getContentLayout());
         } else {
             ensureReviewQueueView();
+            if (consultationsLoading) reviewQueueView.showLoading();
+            if (liveWorkspace) content.addView(button("Full service requests", () -> openRequestsSubPage("live_service_requests")));
             content.addView(reviewQueueView.getContentLayout());
         }
         scroll.scrollTo(0, 0);
     }
 
     void openRequestsSubPage(String subPage) {
+        snackbar.clear();
         this.requestsSubPage = subPage;
         if (!"Requests".equals(tab)) {
             tab = "Requests";
             navigation.removeAllViews();
             for (int index = 0; index < TABS.length; index++) {
                 String name = TABS[index];
+            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
+            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
                 boolean selected = name.equals(tab);
                 Button item = button(name, () -> navigate(name));
                 ScreenTypography.apply(item, 11);
@@ -377,6 +452,11 @@ final class StaffScreen extends LinearLayout {
             reviewQueueView = new ReviewQueueView(activity, new ReviewQueueView.Callbacks() {
                 @Override
                 public void onOpenRequest(StaffQueueData.QueueRequestItem request) {
+                    if (request.id.startsWith("#")) {
+                        ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(activity, request.id,
+                                request.serviceType + "\n" + request.status + "\nSubmitted " + request.submittedAt);
+                        return;
+                    }
                     ensureRequestWorkspaceView();
                     requestWorkspaceView.setRequest(request);
                     openRequestsSubPage("workspace");
@@ -399,19 +479,46 @@ final class StaffScreen extends LinearLayout {
                 }
 
                 @Override
-                public void onReviewSaved(StaffQueueData.QueueRequestItem request) {
-                    // Review saved
+                public void onSessionDraftKept() {
+                    openRequestsSubPage("queue");
+                    snackbar.show("Draft kept for this session.");
                 }
             });
         }
     }
 
-    void showConsultations(JSONArray tickets, String message) {
-        consultations = tickets;
-        consultationMessage = message;
+    private boolean consultationsLoading;
+
+    boolean beginConsultationsRefresh() {
+        if (consultationsLoading) return false;
+        consultationsLoading = true;
         if ("Requests".equals(tab) && "queue".equals(requestsSubPage)) {
-            showRequestQueue();
+            ensureReviewQueueView();
+            reviewQueueView.showLoading();
         }
+        return true;
+    }
+
+    void showConsultations(JSONArray tickets, String message) {
+        consultationsLoading = false;
+        List<StaffQueueData.QueueRequestItem> rows = new ArrayList<>();
+        if (tickets != null) {
+            try {
+                for (int i = 0; i < tickets.length(); i++) {
+                    org.json.JSONObject ticket = tickets.getJSONObject(i);
+                    var request = ph.edu.umak.crm.app.requests.RequestData.fromConsultation(ticket);
+                    if ("Cancelled".equals(request.status)) continue;
+                    rows.add(new StaffQueueData.QueueRequestItem(request.id, request.status,
+                            request.service, "", request.submittedDate,
+                            "", "", "", "", "", null, null, null));
+                }
+                consultations = tickets;
+            } catch (org.json.JSONException invalid) {
+                message = "CRM returned an invalid review queue. Try refreshing again.";
+            }
+        }
+        consultationMessage = message;
+        if (reviewQueueView != null) reviewQueueView.showLiveRequests(rows, message);
         if ("Dashboard".equals(tab)) showDashboard();
     }
 
@@ -488,6 +595,18 @@ final class StaffScreen extends LinearLayout {
             selectedRegistryRecord = StaffRegistryData.getMockRecords().get(0);
         }
         switch (registrySubPage) {
+            case "progress_live":
+                showLiveResearchProgress();
+                break;
+            case "registered_live":
+                showRegisteredResearch();
+                break;
+            case "registered_live_create":
+                liveRegistryRecord().create();
+                break;
+            case "registered_live_detail":
+                showRegisteredResearchDetail();
+                break;
             case "detail":
                 ensureResearchRecordDetailView();
                 researchRecordDetailView.setRecord(selectedRegistryRecord);
@@ -499,7 +618,7 @@ final class StaffScreen extends LinearLayout {
                 break;
             case "edit_entry":
                 ensureAddResearchEntryView();
-                addResearchEntryView.setEditRecord(selectedRegistryRecord, false);
+                addResearchEntryView.setEditRecord(selectedRegistryRecord);
                 content.addView(addResearchEntryView.getContentLayout());
                 break;
             case "documents":
@@ -516,12 +635,20 @@ final class StaffScreen extends LinearLayout {
                 ensureMilestonesAndOutcomesView();
                 content.addView(milestonesAndOutcomesView.getContentLayout());
                 break;
+            case "completion_correction":
+                content.addView(completionCorrectionView);
+                break;
             case "stage_history":
                 ensureStageHistoryView();
                 content.addView(stageHistoryView.getContentLayout());
                 break;
             case "list":
             default:
+                if (liveWorkspace) {
+                    if (hasPermission("registry_management")) content.addView(button("Registered research", () -> openRegistrySubPage("registered_live")));
+                    if (hasPermission("progress_updates")) content.addView(button("Research progress", () -> openRegistrySubPage("progress_live")));
+                    break;
+                }
                 ensureResearchRegistryView();
                 content.addView(researchRegistryView.getContentLayout());
                 break;
@@ -529,13 +656,117 @@ final class StaffScreen extends LinearLayout {
         scroll.scrollTo(0, 0);
     }
 
+    private void showLiveResearchProgress() {
+        var editor = new ph.edu.umak.crm.app.staff.lifecycle.LiveResearchProgressEditor(activity,
+                new ph.edu.umak.crm.app.staff.lifecycle.LiveResearchProgressEditor.Actions() {
+                    @Override
+                    public void request(String path, JSONObject body,
+                            java.util.function.BiConsumer<String, String> result) {
+                        activity.staffRequest(StaffScreen.this, "/api/v1/staff/research-progress" + path, body, result);
+                    }
+
+                    @Override
+                    public void back() { openRegistrySubPage("list"); }
+                });
+        content.addView(editor);
+        editor.load();
+    }
+
+    private static final String REGISTRY_API = "/api/v1/staff/research-registrations";
+    private String registryKeyword = "";
+    private String registryCollege = "";
+    private String registryPeriod = "";
+    private int registeredResearch;
+
+    private void showRegisteredResearch() {
+        LinearLayout panel = card("Registered research");
+        action(panel, "Add research entry", () -> openRegistrySubPage("registered_live_create"));
+        action(panel, "Back to Registry", () -> openRegistrySubPage("list"));
+        EditText search = searchField("Research ID, title, researcher or adviser");
+        search.setText(registryKeyword);
+        panel.addView(search);
+        EditText college = searchField("College or institute");
+        college.setText(registryCollege);
+        panel.addView(college);
+        EditText period = searchField("Academic period (AY 2026-2027)");
+        period.setText(registryPeriod);
+        panel.addView(period);
+        action(panel, "Apply filters", () -> {
+            registryKeyword = search.getText().toString().trim();
+            registryCollege = college.getText().toString().trim();
+            registryPeriod = period.getText().toString().trim();
+            showRegistry();
+        });
+        action(panel, "Clear filters", () -> {
+            registryKeyword = registryCollege = registryPeriod = "";
+            showRegistry();
+        });
+        var status = new ph.edu.umak.crm.app.common.components.PendingStatus(activity);
+        panel.addView(status);
+        status.working("Loading registered research…");
+        String query = new android.net.Uri.Builder().appendQueryParameter("keyword", registryKeyword)
+                .appendQueryParameter("college", registryCollege)
+                .appendQueryParameter("academic_period", registryPeriod).build().toString();
+        activity.staffRequest(this, REGISTRY_API + query, null, (data, error) -> {
+            if (!panel.isAttachedToWindow()) return;
+            if (error != null) {
+                status.result(error, true);
+                return;
+            }
+            try {
+                JSONArray rows = new JSONArray(data);
+                status.clear();
+                if (rows.length() == 0) panel.addView(text("No matching research records", 14, MUTED, bodyFont));
+                for (int i = 0; i < rows.length(); i++) {
+                    JSONObject row = rows.getJSONObject(i);
+                    int id = row.getInt("id");
+                    action(panel, row.getString("research_id") + " · " + row.getString("title"), () -> {
+                        registeredResearch = id;
+                        openRegistrySubPage("registered_live_detail");
+                    });
+                }
+            } catch (org.json.JSONException invalid) {
+                status.result("CRM returned invalid registration data. Try again.", true);
+            }
+        });
+    }
+
+    private void showRegisteredResearchDetail() {
+        liveRegistryRecord().load(registeredResearch);
+    }
+
+    private ph.edu.umak.crm.app.staff.registry.LiveRegistryRecordView liveRegistryRecord() {
+        var view = new ph.edu.umak.crm.app.staff.registry.LiveRegistryRecordView(activity,
+                new ph.edu.umak.crm.app.staff.registry.LiveRegistryRecordView.Actions() {
+            public void request(String path, JSONObject body, java.util.function.BiConsumer<String, String> result) {
+                activity.staffRequest(StaffScreen.this, "/api/v1/staff/registry" + path, body, result);
+            }
+            public void choose(Runnable checking, java.util.function.BiConsumer<MainActivity.SelectedAttachment, String> result) {
+                activity.chooseRequestAttachment(checking, result);
+            }
+            public void upload(MainActivity.SelectedAttachment file, int study, String previous, String token,
+                    java.util.function.BiConsumer<String, String> result) {
+                activity.uploadRegistryAttachment(StaffScreen.this, file, study, previous, token, result);
+            }
+            public void download(String path, String name, String mime, Runnable failure) {
+                activity.downloadRequestAttachment("/api/v1/staff/registry" + path, name, mime, () -> isAttachedToWindow(), failure);
+            }
+            public void back() { openRegistrySubPage("registered_live"); }
+        });
+        content.addView(view);
+        return view;
+    }
+
     void openRegistrySubPage(String subPage) {
+        snackbar.clear();
         this.registrySubPage = subPage;
         if (!"Registry".equals(tab)) {
             tab = "Registry";
             navigation.removeAllViews();
             for (int index = 0; index < TABS.length; index++) {
                 String name = TABS[index];
+            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
+            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
                 boolean selected = name.equals(tab);
                 Button item = button(name, () -> navigate(name));
                 ScreenTypography.apply(item, 11);
@@ -571,10 +802,7 @@ final class StaffScreen extends LinearLayout {
                     openRegistrySubPage("add_entry");
                 }
 
-                @Override
-                public void onExportDirectory() {
-                    // Exported directory toast shown in view
-                }
+
             });
         }
     }
@@ -644,18 +872,23 @@ final class StaffScreen extends LinearLayout {
                     openRegistrySubPage("edit_entry".equals(registrySubPage) ? "detail" : "list");
                 }
 
-                @Override
-                public void onReloadRecord(StaffRegistryData.RegistryRecordItem record) {
-                    selectedRegistryRecord = record;
-                    openRegistrySubPage("detail");
-                }
             });
         }
     }
 
     private void ensureRegistryDocumentsView() {
         if (registryDocumentsView == null) {
-            registryDocumentsView = new RegistryDocumentsView(activity, () -> openRegistrySubPage("detail"));
+            registryDocumentsView = new RegistryDocumentsView(activity, new RegistryDocumentsView.Callbacks() {
+                @Override
+                public void onBackToRecord() {
+                    openRegistrySubPage("detail");
+                }
+
+                @Override
+                public void onChooseAttachment(Runnable onChecking, java.util.function.BiConsumer<MainActivity.SelectedAttachment, String> result) {
+                    activity.chooseRequestAttachment(onChecking, result);
+                }
+            });
         }
     }
 
@@ -676,6 +909,17 @@ final class StaffScreen extends LinearLayout {
                 @Override
                 public void onClose() {
                     openRegistrySubPage("detail");
+                }
+
+                @Override
+                public void onCorrectCompletion(String recordId, String title, String date,
+                                                CompletionCorrectionView.Callbacks onSaved) {
+                    openCompletionCorrection(recordId, title, date, onSaved);
+                }
+
+                @Override
+                public void onStageSaved() {
+                    snackbar.show("Stage updated.");
                 }
 
                 @Override
@@ -810,6 +1054,15 @@ final class StaffScreen extends LinearLayout {
     void showManage() {
         content.removeAllViews();
         switch (manageSubPage) {
+            case "live_reports":
+                showLiveReports();
+                break;
+            case "live_accounts":
+                showLiveAccounts();
+                break;
+            case "live_catalog":
+                showLiveCatalog();
+                break;
             case "catalog":
                 ensureServiceCatalogView();
                 content.addView(serviceCatalogView.getContentLayout());
@@ -858,29 +1111,36 @@ final class StaffScreen extends LinearLayout {
                 break;
             case "service_utilization":
                 ensureServiceUtilizationView();
-                serviceUtilizationView.setModel(StaffReportingData.getServiceUtilizationResult());
+                serviceUtilizationView.setModel(StaffReportingData.getServiceUtilizationResult(UTILIZATION_STATUSES[utilizationStatusFilter]));
                 content.addView(serviceUtilizationView.getContentLayout());
                 break;
             case "access_denied":
                 ensureAccessDeniedReportingView();
-                content.addView(accessDeniedReportingView.getContentLayout());
+                content.addView(accessDeniedReportingView.getContentLayout(),
+                        new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                 break;
             case "hub":
             default:
-                ensureManageHubView();
-                content.addView(manageHubView.getContentLayout());
+                if (liveWorkspace) showLiveManage();
+                else {
+                    ensureManageHubView();
+                    content.addView(manageHubView.getContentLayout());
+                }
                 break;
         }
         scroll.scrollTo(0, 0);
     }
 
     void openManageSubPage(String subPage) {
+        snackbar.clear();
         this.manageSubPage = subPage;
         if (!"Manage".equals(tab)) {
             tab = "Manage";
             navigation.removeAllViews();
             for (int index = 0; index < TABS.length; index++) {
                 String name = TABS[index];
+            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
+            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
                 boolean selected = name.equals(tab);
                 Button item = button(name, () -> navigate(name));
                 ScreenTypography.apply(item, 11);
@@ -900,17 +1160,82 @@ final class StaffScreen extends LinearLayout {
         showManage();
     }
 
+    private void showLiveManage() {
+        LinearLayout panel = card("Staff actions");
+        if (hasPermission("content_management")) {
+            action(panel, "Service Catalog", () -> openManageSubPage("live_catalog"));
+            action(panel, "Approved Forms & Resources", () -> openManageSubPage("live_catalog"));
+        }
+        if (hasPermission("account_administration"))
+            action(panel, "User Accounts", () -> openManageSubPage("live_accounts"));
+        if (hasPermission("reporting"))
+            action(panel, "Analytics & Reporting", () -> openManageSubPage("live_reports"));
+        if (permissions.isEmpty()) panel.addView(text("No staff management permissions assigned.", 14, MUTED, bodyFont));
+    }
+
+    private void showLiveReports() {
+        var view = new ph.edu.umak.crm.app.staff.reporting.LiveReportsView(activity,
+                new ph.edu.umak.crm.app.staff.reporting.LiveReportsView.Actions() {
+                    @Override public void request(JSONObject filters, java.util.function.BiConsumer<String, String> result) {
+                        activity.staffRequest(StaffScreen.this, "/api/v1/staff/reports", filters, result);
+                    }
+                    @Override public void back() { openManageSubPage("hub"); }
+                });
+        content.addView(view); view.load();
+    }
+
+    private void showLiveAccounts() {
+        var view = new ph.edu.umak.crm.app.staff.accounts.LiveAccountsView(activity,
+                new ph.edu.umak.crm.app.staff.accounts.LiveAccountsView.Actions() {
+                    @Override
+                    public void request(String path, JSONObject body, java.util.function.BiConsumer<String, String> result) {
+                        activity.staffRequest(StaffScreen.this, "/api/v1/staff/accounts" + path, body, result);
+                    }
+                    @Override public void back() { openManageSubPage("hub"); }
+                });
+        content.addView(view);
+        view.load();
+    }
+
+    private void showLiveCatalog() {
+        var view = new ph.edu.umak.crm.app.staff.content.LiveServiceCatalogView(activity,
+                new ph.edu.umak.crm.app.staff.content.LiveServiceCatalogView.Actions() {
+                    @Override
+                    public void request(String path, org.json.JSONObject body,
+                            java.util.function.BiConsumer<String, String> complete) {
+                        activity.staffRequest(StaffScreen.this, "/api/v1/staff/services" + path, body, complete);
+                    }
+
+                    @Override
+                    public void replaceForm(int id, Runnable complete, java.util.function.Consumer<String> failure) {
+                        activity.chooseCatalogForm(StaffScreen.this, id, complete, failure);
+                    }
+
+                    @Override
+                    public void downloadForm(int id, String name, String mime, Runnable failure) {
+                        activity.downloadCatalogForm(id, name, mime,
+                                () -> StaffScreen.this.isAttachedToWindow() && "Manage".equals(tab)
+                                        && "live_catalog".equals(manageSubPage), failure);
+                    }
+
+                    @Override
+                    public void back() { openManageSubPage("hub"); }
+                });
+        content.addView(view.view());
+        view.load();
+    }
+
     private void ensureManageHubView() {
         if (manageHubView == null) {
             manageHubView = new ManageHubView(activity, new ManageHubView.Listener() {
                 @Override
                 public void onOpenServiceCatalog() {
-                    openManageSubPage("catalog");
+                    openManageSubPage(liveWorkspace ? "live_catalog" : "catalog");
                 }
 
                 @Override
                 public void onOpenApprovedForms() {
-                    openManageSubPage("forms");
+                    openManageSubPage(liveWorkspace ? "live_catalog" : "forms");
                 }
 
                 @Override
@@ -920,7 +1245,7 @@ final class StaffScreen extends LinearLayout {
 
                 @Override
                 public void onOpenAuditHistory() {
-                    openManageSubPage("history");
+                    openManageSubPage(liveWorkspace ? "live_catalog" : "history");
                 }
 
                 @Override
@@ -974,7 +1299,7 @@ final class StaffScreen extends LinearLayout {
 
                 @Override
                 public void onSaveDraft() {
-                    openManageSubPage("catalog");
+                    showCatalogSaveUnavailable();
                 }
             });
         }
@@ -990,12 +1315,12 @@ final class StaffScreen extends LinearLayout {
 
                 @Override
                 public void onPublish() {
-                    openManageSubPage("catalog");
+                    showCatalogSaveUnavailable();
                 }
 
                 @Override
                 public void onSaveDraft() {
-                    openManageSubPage("catalog");
+                    showCatalogSaveUnavailable();
                 }
 
                 @Override
@@ -1004,6 +1329,11 @@ final class StaffScreen extends LinearLayout {
                 }
             });
         }
+    }
+
+    private void showCatalogSaveUnavailable() {
+        ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(activity, "Catalog changes can’t be saved",
+                "This app can’t save or publish service catalog changes to CRM yet. Your entries remain on this screen.");
     }
 
     private void ensureApprovedFormsView() {
@@ -1311,6 +1641,7 @@ final class StaffScreen extends LinearLayout {
         ensureRequestWorkspaceView();
         requestWorkspaceView.setPreviewState("6.6_review_saved");
         openRequestsSubPage("workspace");
+        snackbar.show("Review saved.");
     }
 
     // --- Part 7 Wireframe Previews (C-03) ---
@@ -1372,9 +1703,10 @@ final class StaffScreen extends LinearLayout {
 
     void showPreview7_5_StaleDataConflict() {
         selectedRegistryRecord = StaffRegistryData.getMockRecords().get(0);
-        ensureAddResearchEntryView();
-        addResearchEntryView.showPreview7_5_StaleDataConflict(selectedRegistryRecord);
         openRegistrySubPage("edit_entry");
+        CenteredActionDialog.show(activity, "This research record was updated. Reload before saving.",
+                "Your changes have not been saved. Reload the latest version, then review it before making changes.",
+                "Reload", null, () -> openRegistrySubPage("detail"), null);
     }
 
     void showPreview7_6_DocumentsVersionList() {
@@ -1442,8 +1774,7 @@ final class StaffScreen extends LinearLayout {
     }
 
     void showPreview8_2_MilestoneEditor() {
-        ensureMilestonesAndOutcomesView();
-        openRegistrySubPage("lifecycle");
+        showPreview8_1_Default();
         StaffLifecycleData.MilestoneItem item = new StaffLifecycleData.MilestoneItem(
                 "Data Collection & Analysis",
                 "In progress",
@@ -1451,7 +1782,7 @@ final class StaffScreen extends LinearLayout {
                 "2026-11-15",
                 "Field logbook, survey batches 1 – 3"
         );
-        MilestoneEditorDialog.show(activity, "REG-2026-089", "Impact of AI on Student Engagement", item, updated -> {
+        MilestoneEditorDialog.show(activity, item, updated -> {
             milestonesAndOutcomesView.showPreview8_1_Default();
         });
     }
@@ -1464,22 +1795,45 @@ final class StaffScreen extends LinearLayout {
     void showPreview8_4_CompletionCorrection() {
         ensureMilestonesAndOutcomesView();
         milestonesAndOutcomesView.showPreview8_5b_OutcomeRecorded();
+        milestonesAndOutcomesView.requestCompletionCorrection();
+    }
+
+    private void openCompletionCorrection(String recordId, String title, String date,
+                                          CompletionCorrectionView.Callbacks onSaved) {
+        completionCorrectionView = CompletionCorrectionView.create(activity, recordId, title, date,
+                (correctedDate, reason) -> {
+                    onSaved.onCompletionCorrectionSaved(correctedDate, reason);
+                    ensureStageHistoryView();
+                    stageHistoryView.setState(lifecycleState);
+                    openRegistrySubPage("stage_history");
+                    completionCorrectionView = null;
+                }, this::closeCompletionCorrection);
+        openRegistrySubPage("completion_correction");
+    }
+
+    private void closeCompletionCorrection() {
         openRegistrySubPage("lifecycle");
-        CompletionCorrectionDialog.show(activity, "REG-2026-089", "Impact of AI on Student Engagement", "2027-03-15", (correctedDate, reason) -> {
-            milestonesAndOutcomesView.showPreview8_5b_OutcomeRecorded();
-        });
+        completionCorrectionView = null;
+    }
+
+    boolean handleBack() {
+        if (!"Registry".equals(tab) || !"completion_correction".equals(registrySubPage)) return false;
+        closeCompletionCorrection();
+        return true;
     }
 
     void showPreview8_5a_StageUpdated() {
         ensureMilestonesAndOutcomesView();
         milestonesAndOutcomesView.showPreview8_5a_StageUpdated();
         openRegistrySubPage("lifecycle");
+        snackbar.show("Stage updated.");
     }
 
     void showPreview8_5b_OutcomeRecorded() {
         ensureMilestonesAndOutcomesView();
         milestonesAndOutcomesView.showPreview8_5b_OutcomeRecorded();
         openRegistrySubPage("lifecycle");
+        snackbar.show("Outcome recorded.");
     }
 
     // --- Part 9 Views & Previews (C-05) ---
@@ -1489,45 +1843,20 @@ final class StaffScreen extends LinearLayout {
             researchReportView = new ResearchReportView(activity, new ResearchReportView.Callbacks() {
                 @Override
                 public void onBackToFilters() {
-                    String[] options = {
-                            "Research Report (Result)",
-                            "Research Report (Empty)",
-                            "Service Utilization",
-                            "Back to Manage Hub"
-                    };
-                    new android.app.AlertDialog.Builder(activity)
-                            .setTitle("Reporting Navigation")
-                            .setItems(options, (d, which) -> {
-                                switch (which) {
-                                    case 0:
-                                        showPreview9_1_ResearchReportResult();
-                                        break;
-                                    case 1:
-                                        showPreview9_3_ResearchReportEmpty();
-                                        break;
-                                    case 2:
-                                        showPreview9_2_ServiceUtilizationResult();
-                                        break;
-                                    case 3:
-                                        openManageSubPage("hub");
-                                        break;
-                                }
-                            })
-                            .setNegativeButton("Cancel", null)
-                            .show();
-                }
-
-                @Override
-                public void onExport() {
-                    new ExportReportDialog(activity).show();
+                    showResearchFilters();
                 }
 
                 @Override
                 public void onOpenRecord(String recordId) {
-                    selectedRegistryRecord = StaffRegistryData.getMockRecords().get(0);
-                    ensureResearchRecordDetailView();
-                    researchRecordDetailView.setRecord(selectedRegistryRecord);
-                    openRegistrySubPage("detail");
+                    for (StaffRegistryData.RegistryRecordItem record : StaffRegistryData.getMockRecords()) {
+                        if (record.id.equals(recordId)) {
+                            selectedRegistryRecord = record;
+                            openRegistrySubPage("detail");
+                            return;
+                        }
+                    }
+                    ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(activity, "Record unavailable",
+                            "The registry has no details for " + recordId + ".");
                 }
             });
         }
@@ -1538,45 +1867,56 @@ final class StaffScreen extends LinearLayout {
             serviceUtilizationView = new ServiceUtilizationView(activity, new ServiceUtilizationView.Callbacks() {
                 @Override
                 public void onBackToFilters() {
-                    String[] options = {
-                            "Research Report (Result)",
-                            "Research Report (Empty)",
-                            "Service Utilization",
-                            "Back to Manage Hub"
-                    };
-                    new android.app.AlertDialog.Builder(activity)
-                            .setTitle("Reporting Navigation")
-                            .setItems(options, (d, which) -> {
-                                switch (which) {
-                                    case 0:
-                                        showPreview9_1_ResearchReportResult();
-                                        break;
-                                    case 1:
-                                        showPreview9_3_ResearchReportEmpty();
-                                        break;
-                                    case 2:
-                                        showPreview9_2_ServiceUtilizationResult();
-                                        break;
-                                    case 3:
-                                        openManageSubPage("hub");
-                                        break;
-                                }
-                            })
-                            .setNegativeButton("Cancel", null)
-                            .show();
+                    showUtilizationFilters();
                 }
 
                 @Override
-                public void onExport() {
-                    new ExportReportDialog(activity).show();
-                }
-
-                @Override
-                public void onOpenRequest(String requestId) {
-                    navigate("Requests");
+                public void onOpenRequest(StaffReportingData.RequestSummary summary) {
+                    for (StaffQueueData.QueueRequestItem request : StaffQueueData.getInitialQueue()) {
+                        if (request.id.equals(summary.id)) {
+                            ensureRequestWorkspaceView();
+                            requestWorkspaceView.setRequest(request);
+                            openRequestsSubPage("workspace");
+                            return;
+                        }
+                    }
+                    ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(activity, summary.id,
+                            summary.serviceName + " · " + summary.status + "\n\nFull request details are unavailable for this report row.");
                 }
             });
         }
+    }
+
+    private void showResearchFilters() {
+        boolean empty = "research_report_empty".equals(manageSubPage);
+        String[] filters = {
+                "College: CCIS · Students · All stages",
+                "College of Health Sciences · AY 2023–2024 · Published"
+        };
+        int[] selected = {empty ? 1 : 0};
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("Research Report filters")
+                .setSingleChoiceItems(filters, selected[0], (dialog, which) -> selected[0] = which)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Apply Filters", (dialog, which) ->
+                        openManageSubPage(selected[0] == 0 ? "research_report" : "research_report_empty"))
+                .show();
+    }
+
+    private static final String[] UTILIZATION_STATUSES = {"All statuses", "Completed", "In review"};
+    private int utilizationStatusFilter;
+
+    private void showUtilizationFilters() {
+        int[] selected = {utilizationStatusFilter};
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("Service Utilization · Request status")
+                .setSingleChoiceItems(UTILIZATION_STATUSES, selected[0], (dialog, which) -> selected[0] = which)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Apply Filters", (dialog, which) -> {
+                    utilizationStatusFilter = selected[0];
+                    openManageSubPage("service_utilization");
+                })
+                .show();
     }
 
     private void ensureAccessDeniedReportingView() {
@@ -1595,7 +1935,7 @@ final class StaffScreen extends LinearLayout {
 
     void showPreview9_2_ServiceUtilizationResult() {
         ensureServiceUtilizationView();
-        serviceUtilizationView.setModel(StaffReportingData.getServiceUtilizationResult());
+        utilizationStatusFilter = 0;
         openManageSubPage("service_utilization");
     }
 
@@ -1609,28 +1949,28 @@ final class StaffScreen extends LinearLayout {
         ensureResearchReportView();
         researchReportView.setModel(StaffReportingData.getResearchReportResult());
         openManageSubPage("research_report");
-        new ExportReportDialog(activity).show(ExportReportDialog.ExportState.FORMAT_PICKER);
+        researchReportView.showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
     }
 
     void showPreview9_4b_ExportPending() {
         ensureResearchReportView();
         researchReportView.setModel(StaffReportingData.getResearchReportResult());
         openManageSubPage("research_report");
-        new ExportReportDialog(activity).show(ExportReportDialog.ExportState.PENDING);
+        researchReportView.showExport(ExportReportDialog.ExportState.PENDING);
     }
 
     void showPreview9_4c_ExportSuccess() {
         ensureResearchReportView();
         researchReportView.setModel(StaffReportingData.getResearchReportResult());
         openManageSubPage("research_report");
-        new ExportReportDialog(activity).show(ExportReportDialog.ExportState.SUCCESS);
+        researchReportView.showExport(ExportReportDialog.ExportState.SUCCESS);
     }
 
     void showPreview9_4d_ExportFailure() {
         ensureResearchReportView();
         researchReportView.setModel(StaffReportingData.getResearchReportResult());
         openManageSubPage("research_report");
-        new ExportReportDialog(activity).show(ExportReportDialog.ExportState.FAILURE);
+        researchReportView.showExport(ExportReportDialog.ExportState.FAILURE);
     }
 
     void showPreview9_5_AccessDenied() {

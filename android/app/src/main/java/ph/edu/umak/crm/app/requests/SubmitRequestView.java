@@ -1,5 +1,6 @@
 package ph.edu.umak.crm.app.requests;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
@@ -19,6 +20,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
+import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiBanner;
@@ -63,7 +66,6 @@ public final class SubmitRequestView {
         this.context = context;
         this.listener = listener;
 
-        Typeface heading = UiTheme.headingFont(context);
         Typeface body = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
 
@@ -71,30 +73,6 @@ public final class SubmitRequestView {
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = UiTheme.dp(context, 24);
         layout.setPadding(pad, pad, pad, UiTheme.dp(context, 32));
-
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(bold);
-        ScreenTypography.apply(institution, 12);
-        institution.setPadding(0, 0, 0, UiTheme.dp(context, 4));
-        layout.addView(institution);
-
-        TextView title = new TextView(context);
-        title.setText("Submit Service Request");
-        title.setTextColor(UiTheme.INK);
-        title.setTypeface(heading);
-        ScreenTypography.apply(title, 26);
-        ScreenTypography.heading(title);
-        layout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Start a new request with the Center for Research Management.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(body);
-        ScreenTypography.apply(subtitle, 14);
-        subtitle.setPadding(0, UiTheme.dp(context, 6), 0, UiTheme.dp(context, 16));
-        layout.addView(subtitle);
 
         // Banner container for top errors (e.g. 3.2a, 3.2b, 3.4b)
         bannerContainer = new LinearLayout(context);
@@ -375,7 +353,9 @@ public final class SubmitRequestView {
             return;
         }
         if (listener != null) {
-            listener.onSubmitSuccess(RequestData.createReq089("Submitted"));
+            listener.onSubmitSuccess(RequestData.previewSubmission(
+                    String.valueOf(serviceTypeSpinner.getSelectedItem()), titleInput.getText().toString().trim(),
+                    detailsInput.getText().toString().trim(), currentFiles));
         }
     }
 
@@ -464,7 +444,7 @@ public final class SubmitRequestView {
         } else if ("3.4b".equals(state)) {
             // Unable to connect sheet
             configurePreviewState("3.1");
-            showTopBannerWithRetry("Unable to connect. Try again.", "Check your connection and retry. Your entered information is still here.");
+            showConnectionFailure("Unable to connect. Try again.", "Check your connection and retry. Your entered information is still here.");
         }
     }
 
@@ -474,37 +454,34 @@ public final class SubmitRequestView {
         bannerContainer.setVisibility(View.VISIBLE);
     }
 
-    private void showTopBannerWithRetry(String title, String desc) {
-        bannerContainer.removeAllViews();
-        LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(UiTheme.shape(context, UiTheme.AMBER_BG, 8, UiTheme.AMBER_BORDER));
-        int pad = UiTheme.dp(context, 14);
-        card.setPadding(pad, pad, pad, pad);
+    private void showConnectionFailure(String title, String description) {
+        Dialog dialog = new Dialog(context);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int padding = UiTheme.dp(context, 16);
+        content.setPadding(padding, padding, padding, padding);
 
-        TextView t = new TextView(context);
-        t.setText(title);
-        t.setTextColor(UiTheme.AMBER_TEXT);
-        t.setTypeface(UiTheme.boldFont(context));
-        ScreenTypography.apply(t, 14);
-        card.addView(t);
+        TextView heading = new TextView(context);
+        heading.setText(title);
+        heading.setTextColor(UiTheme.NAVY);
+        heading.setTypeface(UiTheme.headingFont(context));
+        ScreenTypography.apply(heading, 20);
+        ScreenTypography.heading(heading);
+        content.addView(heading);
 
-        TextView d = new TextView(context);
-        d.setText(desc);
-        d.setTextColor(UiTheme.INK);
-        d.setTypeface(UiTheme.bodyFont(context));
-        ScreenTypography.apply(d, 13);
-        d.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 10));
-        card.addView(d);
+        TextView copy = new TextView(context);
+        copy.setText(description);
+        copy.setTextColor(UiTheme.MUTED);
+        copy.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(copy, 13);
+        copy.setPadding(0, 0, 0, padding);
+        content.addView(copy);
 
-        Button retry = UiButton.primary(context, "Retry", () -> {
-            bannerContainer.setVisibility(View.GONE);
+        content.addView(UiButton.primary(context, "Retry", () -> {
+            dialog.dismiss();
             handleSubmit();
-        });
-        card.addView(retry, new LinearLayout.LayoutParams(-1, -2));
-
-        bannerContainer.addView(card);
-        bannerContainer.setVisibility(View.VISIBLE);
+        }));
+        BottomSheet.show(dialog, content);
     }
 
     private void clearErrors() {
@@ -591,6 +568,6 @@ public final class SubmitRequestView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Submit Service Request", "Start a new request with the Center for Research Management.", true);
     }
 }

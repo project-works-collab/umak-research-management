@@ -12,9 +12,14 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -25,6 +30,11 @@ public final class MyRequestsView {
         void onRequestSelected(RequestData.RequestItem item);
         void onSubmitNewRequest();
     }
+
+    public record Filters(String query, String status, String fromDate, String toDate) {}
+
+    private static final DateTimeFormatter SUBMITTED_DATE =
+            DateTimeFormatter.ofPattern("MMM d, uuuu", Locale.ENGLISH);
 
     private final Context context;
     private final LinearLayout layout;
@@ -42,12 +52,13 @@ public final class MyRequestsView {
     private String currentToDate = "";
     private String currentSearchQuery = "";
     private boolean isAccountEmptyPreview = false;
+    private String loadMessage;
 
-    public MyRequestsView(Context context, Listener listener) {
+    public MyRequestsView(Context context, Listener listener, boolean preview) {
         this.context = context;
         this.listener = listener;
 
-        allRequests.addAll(RequestData.getInitialRequests());
+        if (preview) allRequests.addAll(RequestData.getInitialRequests());
 
         Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
@@ -57,31 +68,6 @@ public final class MyRequestsView {
         layout.setBackgroundColor(UiTheme.PAPER);
         int pad = UiTheme.dp(context, 16);
         layout.setPadding(pad, pad, pad, pad);
-
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
-        // Screen Title
-        TextView title = new TextView(context);
-        title.setText("My Requests");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
-        layout.addView(title);
-
-        // Subtitle
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Track your requests with CRM.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 14);
-        layout.addView(subtitle);
 
         addSpacing(context, layout, 16);
 
@@ -100,6 +86,7 @@ public final class MyRequestsView {
         int sPad = UiTheme.dp(context, 10);
         searchInput.setPadding(sPad, sPad, sPad, sPad);
         searchInput.setSingleLine(true);
+        searchInput.setMinHeight(UiTheme.dp(context, 48));
         LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         searchLp.rightMargin = UiTheme.dp(context, 8);
         searchRow.addView(searchInput, searchLp);
@@ -114,8 +101,8 @@ public final class MyRequestsView {
 
         // Active filters bar (for 3.6b)
         activeFiltersContainer = new LinearLayout(context);
-        activeFiltersContainer.setOrientation(LinearLayout.HORIZONTAL);
-        activeFiltersContainer.setGravity(Gravity.CENTER_VERTICAL);
+        activeFiltersContainer.setOrientation(LinearLayout.VERTICAL);
+        activeFiltersContainer.setGravity(Gravity.START);
         activeFiltersContainer.setVisibility(View.GONE);
         layout.addView(activeFiltersContainer);
 
@@ -160,6 +147,35 @@ public final class MyRequestsView {
         renderList();
     }
 
+    public Filters filters() {
+        return new Filters(searchInput.getText().toString(), currentStatusFilter,
+                currentFromDate, currentToDate);
+    }
+
+    public void restoreFilters(Filters filters) {
+        currentStatusFilter = filters.status();
+        currentFromDate = filters.fromDate();
+        currentToDate = filters.toDate();
+        searchInput.setText(filters.query());
+    }
+
+    public void showRequests(List<RequestData.RequestItem> requests) {
+        loadMessage = null;
+        allRequests.clear();
+        allRequests.addAll(requests);
+        applyFilters();
+    }
+
+    public void addPreviewRequests(List<RequestData.RequestItem> requests) {
+        allRequests.addAll(0, requests);
+        applyFilters();
+    }
+
+    public void showLoadMessage(String message) {
+        loadMessage = message;
+        renderList();
+    }
+
     private void openFilterDialog() {
         RequestFilterDialog dialog = new RequestFilterDialog(context, new RequestFilterDialog.FilterListener() {
             @Override
@@ -190,7 +206,7 @@ public final class MyRequestsView {
 
     private void applyFilters() {
         activeFiltersContainer.removeAllViews();
-        boolean hasFilter = false;
+        boolean hasFilter = !currentSearchQuery.isEmpty();
 
         if (!"All".equalsIgnoreCase(currentStatusFilter)) {
             hasFilter = true;
@@ -226,6 +242,11 @@ public final class MyRequestsView {
     private TextView createFilterChip(String label, Runnable onRemove) {
         TextView chip = new TextView(context);
         chip.setText(label + " [x]");
+        chip.setContentDescription("Remove filter: " + label);
+        chip.setGravity(Gravity.CENTER_VERTICAL);
+        chip.setMinHeight(UiTheme.dp(context, 48));
+        chip.setMinWidth(UiTheme.dp(context, 48));
+        chip.setFocusable(true);
         chip.setTextColor(UiTheme.NAVY);
         chip.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(chip, 12);
@@ -244,7 +265,14 @@ public final class MyRequestsView {
         listContainer.removeAllViews();
         emptyContainer.removeAllViews();
 
-        if (isAccountEmptyPreview) {
+        if (loadMessage != null) {
+            counterText.setText(loadMessage);
+            listContainer.setVisibility(View.GONE);
+            emptyContainer.setVisibility(View.GONE);
+            return;
+        }
+
+        if (isAccountEmptyPreview || allRequests.isEmpty()) {
             counterText.setText("0 requests");
             renderEmptyAccount();
             listContainer.setVisibility(View.GONE);
@@ -253,12 +281,13 @@ public final class MyRequestsView {
         }
 
         List<RequestData.RequestItem> filtered = new ArrayList<>();
+        String query = currentSearchQuery.toLowerCase(Locale.ROOT);
         for (RequestData.RequestItem item : allRequests) {
             boolean matchesStatus = "All".equalsIgnoreCase(currentStatusFilter) || item.status.equalsIgnoreCase(currentStatusFilter);
-            boolean matchesSearch = currentSearchQuery.isEmpty()
-                    || item.id.toLowerCase().contains(currentSearchQuery.toLowerCase())
-                    || item.service.toLowerCase().contains(currentSearchQuery.toLowerCase());
-            if (matchesStatus && matchesSearch) {
+            boolean matchesSearch = query.isEmpty()
+                    || item.id.toLowerCase(Locale.ROOT).contains(query)
+                    || item.service.toLowerCase(Locale.ROOT).contains(query);
+            if (matchesStatus && matchesSearch && matchesDate(item.submittedDate)) {
                 filtered.add(item);
             }
         }
@@ -277,6 +306,20 @@ public final class MyRequestsView {
                 listContainer.addView(card);
                 addSpacing(context, listContainer, 12);
             }
+        }
+    }
+
+    private boolean matchesDate(String submitted) {
+        if (currentFromDate.isEmpty() && currentToDate.isEmpty()) return true;
+        try {
+            int firstComma = submitted.indexOf(',');
+            int timeSeparator = firstComma < 0 ? -1 : submitted.indexOf(',', firstComma + 1);
+            String date = timeSeparator < 0 ? submitted : submitted.substring(0, timeSeparator);
+            String day = LocalDate.parse(date, SUBMITTED_DATE).toString();
+            return (currentFromDate.isEmpty() || day.compareTo(currentFromDate) >= 0)
+                    && (currentToDate.isEmpty() || day.compareTo(currentToDate) <= 0);
+        } catch (DateTimeParseException invalid) {
+            return false;
         }
     }
 
@@ -324,6 +367,7 @@ public final class MyRequestsView {
         ScreenTypography.apply(dateText, 13);
         card.addView(dateText);
 
+        card.setFocusable(true);
         card.setOnClickListener(v -> {
             if (listener != null) listener.onRequestSelected(item);
         });
@@ -457,6 +501,6 @@ public final class MyRequestsView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "My Requests", "Track your requests with CRM.", false);
     }
 }

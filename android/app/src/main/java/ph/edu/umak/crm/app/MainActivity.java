@@ -40,10 +40,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONException;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.common.dialogs.EmailVerificationDialog;
 import ph.edu.umak.crm.app.common.dialogs.SignInGateDialog;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -73,12 +76,16 @@ public class MainActivity extends Activity {
     private TextView publicTitle;
     private Button publicAccess;
     private boolean authenticating;
-    private LiveData<List<WorkInfo>> refreshData;
-    private Observer<List<WorkInfo>> refreshObserver;
+    private Button refreshButton;
+    private PendingStatus publicRefreshStatus;
+    private PendingStatus publicCacheStatus;
+    private UUID refreshId;
+    private LiveData<WorkInfo> refreshData;
+    private Observer<WorkInfo> refreshObserver;
     private SessionVault vault;
     private SharedPreferences preferences;
 
-    private void message(String text) {
+    void message(String text) {
         runOnUiThread(() -> {
             if (!isDestroyed()) {
                 status.setText(text);
@@ -99,8 +106,15 @@ public class MainActivity extends Activity {
         }
         access = new SharedAccess(this);
         buildPublicScreen();
-        loadCache();
+        loadCache(null);
         if (state != null) {
+            String pendingFormName = state.getString("pending_service_form", "");
+            if (pendingFormName.matches("service-form-[0-9]+\\.download")) {
+                java.io.File pending = new java.io.File(getCacheDir(), pendingFormName);
+                if (pending.isFile()) pendingServiceForm = pending;
+            }
+            String savedRefresh = state.getString("public_refresh_id");
+            if (savedRefresh != null) observeRefresh(UUID.fromString(savedRefresh));
             researcherTab = state.getString("researcher_tab", "Dashboard");
             staffTab = state.getString("staff_tab", "Dashboard");
             emailAddress = state.getString("email_address", "");
@@ -112,12 +126,12 @@ public class MainActivity extends Activity {
             case "support": displayAccess("support", ResearcherScreen.support(this)); break;
             case "activation": showActivation(); break;
             case "updated": showPasswordUpdated(); break;
-            case "public": showGuest(); break;
+            case "public": showPublicScreen(); break;
+            case "guest": showGuest(); break;
             case "account": startAccess(); break;
             default: showWelcome();
         }
-        String origin = preferences.getString("server", "");
-        if (!origin.isEmpty()) PublicSync.schedule(this, origin);
+        updatePublicRefreshSchedule();
     }
 
     private void buildPublicScreen() {
@@ -143,7 +157,12 @@ public class MainActivity extends Activity {
         staffShortcut = button("Staff workspace", this::showStaff);
         staffShortcut.setVisibility(View.GONE);
         publicAccess = button("Sign In", this::showSignIn);
-        button("Refresh public resources", this::refresh);
+        refreshButton = button("Refresh public resources", this::refresh);
+        publicRefreshStatus = new PendingStatus(this);
+        publicCacheStatus = new PendingStatus(this);
+        button("Data & Sync", this::showDataSync);
+        layout.addView(publicRefreshStatus);
+        layout.addView(publicCacheStatus);
         resources = new LinearLayout(this);
         resources.setOrientation(LinearLayout.VERTICAL);
         layout.addView(resources);
@@ -172,7 +191,10 @@ public class MainActivity extends Activity {
         });
     }
 
+    private String passwordChallenge;
+
     void showSignIn() {
+        passwordChallenge = null;
         displayAccess("sign-in", access.signIn(emailAddress));
     }
 
@@ -180,9 +202,38 @@ public class MainActivity extends Activity {
         displayAccess("create-account", access.createAccount());
     }
 
-    void onAccountCreated(String email, String fullName, String college, String category) {
-        this.emailAddress = email;
-        showEmailVerification(email);
+    void onAccountCreated(String email, String fullName, String college, String category,
+            String password, String confirmation) {
+        var view = access.getCurrentCreateAccount();
+        if (view == null || !"create-account".equals(page)) return;
+        if (preferences.getString("server", "").isEmpty()) {
+            configureServer(() -> onAccountCreated(email, fullName, college, category, password, confirmation));
+            return;
+        }
+        view.setSubmitting(true);
+        JSONObject body = accountRequestBody(email);
+        try {
+            body.put("display_name", fullName).put("college", college).put("role", category)
+                    .put("password", password).put("confirm_password", confirmation);
+        } catch (JSONException invalid) {
+            view.setSubmitting(false);
+            view.showBanner("Unable to prepare registration. Try again.");
+            return;
+        }
+        publicAuthRequest("/api/v1/auth/researchers/register", body, (result, status) -> {
+            view.setSubmitting(false);
+            if (result != null) {
+                view.clearPasswords();
+                showEmailVerification(email);
+                access.getCurrentEmailVerify().startCountdown(result.optInt("resend_after_seconds", 45));
+            } else if (status == 409) {
+                view.showEmailError("This institutional email is already registered.");
+            } else if (status == 422) {
+                view.showEmailError("Enter an accepted institutional email.");
+            } else {
+                view.showBanner(verificationRequestError(status));
+            }
+        });
     }
 
     void showEmailVerification(String email) {
@@ -191,17 +242,72 @@ public class MainActivity extends Activity {
     }
 
     void verifyEmail(String email, String code) {
-        if (access.getCurrentEmailVerify() != null) {
-            if ("482917".equals(code) || "000000".equals(code)) {
-                access.getCurrentEmailVerify().showError("This verification link or code is invalid, expired or already used.");
-            } else {
-                access.getCurrentEmailVerify().showSuccess();
-            }
+        var view = access.getCurrentEmailVerify();
+        if (view == null || !"email-verify".equals(page) || email == null || email.isBlank()) return;
+        view.setSubmitting(true, "Verifying email…");
+        JSONObject body = accountRequestBody(email);
+        try {
+            body.put("code", code);
+        } catch (JSONException invalid) {
+            view.setSubmitting(false, "");
+            view.showError("Enter the complete 6-digit verification code.");
+            return;
         }
+        publicAuthRequest("/api/v1/auth/researchers/verify", body, (result, status) -> {
+            view.setSubmitting(false, "");
+            if (result != null) view.showSuccess();
+            else if (status == 400) view.showError("This verification link or code is invalid, expired or already used.");
+            else view.showError(verificationRequestError(status));
+        });
     }
 
     void resendVerificationCode(String email) {
-        Toast.makeText(this, "Verification code resent to " + email, Toast.LENGTH_SHORT).show();
+        var view = access.getCurrentEmailVerify();
+        if (view == null || !"email-verify".equals(page) || email == null || email.isBlank()) return;
+        view.setSubmitting(true, "Sending verification email…");
+        publicAuthRequest("/api/v1/auth/researchers/resend", accountRequestBody(email), (result, status) -> {
+            view.setSubmitting(false, "");
+            if (result != null) view.showResent(result.optInt("resend_after_seconds", 45));
+            else if (status == 400) view.showError("Verification is unavailable for this account.");
+            else view.showError(verificationRequestError(status));
+        });
+    }
+
+    private JSONObject accountRequestBody(String email) {
+        JSONObject body = new JSONObject();
+        try {
+            return body.put("email", email);
+        } catch (JSONException invalid) {
+            throw new IllegalArgumentException("Unable to encode email address", invalid);
+        }
+    }
+
+    private String verificationRequestError(int status) {
+        if (status == 429) return "Too many attempts. Wait before trying again.";
+        if (status == 400) return "Review the account details and try again.";
+        return "Unable to connect or send verification email. Try again.";
+    }
+
+    private void publicAuthRequest(String path, JSONObject body,
+            java.util.function.BiConsumer<JSONObject, Integer> callback) {
+        int generation = accountGeneration;
+        String base = preferences.getString("server", "");
+        executor.execute(() -> {
+            JSONObject result = null;
+            int status = 0;
+            try {
+                result = CrmApi.post(base, path, body, null);
+            } catch (CrmApi.HttpError error) {
+                status = error.status;
+            } catch (Exception unavailable) {
+                // The current form remains available for retry.
+            }
+            JSONObject response = result;
+            int httpStatus = status;
+            runOnUiThread(() -> {
+                if (!isDestroyed() && generation == accountGeneration) callback.accept(response, httpStatus);
+            });
+        });
     }
 
     void onEmailVerified(String email) {
@@ -932,7 +1038,7 @@ public class MainActivity extends Activity {
                 "8.1g Error: publication date and citation missing",
                 "8.2 Milestone editor sheet (Data Collection & Analysis)",
                 "8.3 Stage History timeline",
-                "8.4 Completion correction dialog",
+                "8.4 Completion correction page",
                 "8.5a Stage updated confirmation",
                 "8.5b Outcome recorded confirmation (Completion only)"
         };
@@ -1015,6 +1121,7 @@ public class MainActivity extends Activity {
                             return;
                         }
                         preferences.edit().putString("server", base).apply();
+                        updatePublicRefreshSchedule();
                         dialog.dismiss();
                         if (onSaved != null) onSaved.run();
                     } catch (Exception error) {
@@ -1070,6 +1177,50 @@ public class MainActivity extends Activity {
         return url.toExternalForm().replaceAll("/+$", "");
     }
 
+    private long lastUserActivity;
+    private long lastSessionRenewal;
+    private boolean renewingSession;
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        if (!"account".equals(page) && !"researcher".equals(page)) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (lastUserActivity == 0 || now - lastUserActivity >= 30 * 60_000L) {
+            if (lastUserActivity != 0) showSessionExpired();
+            return;
+        }
+        lastUserActivity = now;
+        handler.removeCallbacks(expire);
+        handler.postDelayed(expire, 30 * 60_000L);
+        if (renewingSession || now - lastSessionRenewal < 30_000L) return;
+        renewingSession = true;
+        lastSessionRenewal = now;
+        int generation = accountGeneration;
+        executor.execute(() -> {
+            try {
+                JSONObject saved = session();
+                if (saved == null) {
+                    runOnUiThread(() -> expireAccount(generation));
+                    return;
+                }
+                JSONObject response = CrmApi.post(saved.getString("server"), "/api/v1/auth/activity",
+                        new JSONObject(), saved.getString("token"));
+                if (generation == accountGeneration) {
+                    saved.put("token", response.getString("access_token"))
+                            .put("expires_at", System.currentTimeMillis() + response.getLong("expires_in") * 1000);
+                    vault.save(saved.toString());
+                }
+            } catch (CrmApi.HttpError error) {
+                if (error.status == 401) runOnUiThread(() -> expireAccount(generation));
+            } catch (Exception unavailable) {
+                // A later interaction retries renewal. Protected calls still enforce server expiry.
+            } finally {
+                runOnUiThread(() -> renewingSession = false);
+            }
+        });
+    }
+
     private JSONObject session() throws Exception {
         try {
             String secret = vault.read();
@@ -1100,35 +1251,52 @@ public class MainActivity extends Activity {
         hideKeyboard(password.getWindowToken());
         int generation = ++accountGeneration;
         authenticating = true;
-        access.feedback("Signing in…");
+        var signInView = access.getCurrentSignIn();
+        if (signInView != null) signInView.setLoading(true);
         String secret = password.getText().toString();
         executor.execute(() -> {
             try {
                 JSONObject credentials = new JSONObject().put("email", email).put("password", secret);
                 JSONObject response = CrmApi.post(base, "/api/v1/auth/login", credentials, null);
+                if (response.optBoolean("requires_password_change")) {
+                    String challenge = response.getString("challenge");
+                    runAccessCallback(generation, () -> {
+                        passwordChallenge = challenge;
+                        showActivation();
+                        access.getCurrentActivation().setTemporaryPassword(secret);
+                        password.getText().clear();
+                    });
+                    return;
+                }
                 long lifetime = response.getLong("expires_in");
-                if (lifetime < 1 || lifetime > 900) throw new IllegalArgumentException("Invalid session lifetime");
+                if (lifetime < 1 || lifetime > 1800) throw new IllegalArgumentException("Invalid session lifetime");
                 if (generation != accountGeneration) return;
                 JSONObject saved = new JSONObject().put("token", response.getString("access_token"))
                         .put("server", base).put("expires_at", System.currentTimeMillis() + lifetime * 1000);
                 vault.save(saved.toString());
-                PublicSync.schedule(this, base);
                 openAccount(saved, generation);
                 runOnUiThread(() -> password.getText().clear());
             } catch (CrmApi.HttpError error) {
-                showAuthHttpError(generation, error, "Sign-in failed. Check your institutional email and password.");
+                showAuthHttpError(generation, error, "Incorrect username or password.");
             } catch (IOException error) {
                 showNoInternet(generation, () -> signIn(email, password));
             } catch (Exception error) {
                 runAccessCallback(generation, () -> access.feedback("Unable to sign in. Try again."));
             } finally {
-                runOnUiThread(() -> authenticating = false);
+                runOnUiThread(() -> {
+                    authenticating = false;
+                    if (signInView != null) signInView.setLoading(false);
+                });
             }
         });
     }
 
     void activate(EditText code, EditText password, EditText confirm) {
         if (authenticating) return;
+        if (passwordChallenge != null) {
+            replaceTemporaryPassword(password, confirm);
+            return;
+        }
         String token = code.getText().toString().trim();
         String replacement = password.getText().toString();
         int length = replacement.codePointCount(0, replacement.length());
@@ -1145,7 +1313,8 @@ public class MainActivity extends Activity {
         hideKeyboard(confirm.getWindowToken());
         int generation = ++accountGeneration;
         authenticating = true;
-        access.feedback("Updating password…");
+        var activation = access.getCurrentActivation();
+        if (activation != null) activation.setUpdating(true);
         executor.execute(() -> {
             try {
                 JSONObject request = new JSONObject().put("token", token).put("password", replacement);
@@ -1163,8 +1332,37 @@ public class MainActivity extends Activity {
             } catch (Exception error) {
                 runAccessCallback(generation, () -> access.feedback("Unable to update your password. Try again."));
             } finally {
-                runOnUiThread(() -> authenticating = false);
+                runOnUiThread(() -> {
+                    authenticating = false;
+                    if (activation != null) activation.setUpdating(false);
+                });
             }
+        });
+    }
+
+    private void replaceTemporaryPassword(EditText password, EditText confirm) {
+        var view = access.getCurrentActivation();
+        if (view == null) return;
+        String secret = password.getText().toString();
+        JSONObject body = new JSONObject();
+        try { body.put("challenge", passwordChallenge).put("password", secret).put("confirmation", confirm.getText().toString()); }
+        catch (JSONException invalid) { view.setFeedback("Check the replacement password."); return; }
+        authenticating = true;
+        view.setUpdating(true);
+        publicAuthRequest("/api/v1/auth/replace-temporary-password", body, (response, status) -> {
+            authenticating = false;
+            view.setUpdating(false);
+            if (response == null) {
+                view.setFeedback(status == 429 ? "Too many attempts. Wait before trying again."
+                        : "Unable to replace the password. Check the details or sign in again.");
+                return;
+            }
+            password.getText().clear();
+            confirm.getText().clear();
+            showSignIn();
+            var signIn = access.getCurrentSignIn();
+            signIn.getPasswordInput().setText(secret);
+            signIn(emailAddress, signIn.getPasswordInput());
         });
     }
 
@@ -1182,7 +1380,11 @@ public class MainActivity extends Activity {
 
     private void showAuthHttpError(int generation, CrmApi.HttpError error, String fallback) {
         runAccessCallback(generation, () -> {
-            if (error.status == 403) {
+            if ("email_unverified".equals(error.code)) {
+                showEmailVerification(emailAddress);
+            } else if ("account_unavailable".equals(error.code)) {
+                access.feedback("Account unavailable. Contact CRM");
+            } else if (error.status == 403) {
                 access.feedback("");
                 showAccessDenied();
             } else if (error.status == 429) {
@@ -1241,10 +1443,12 @@ public class MainActivity extends Activity {
     }
 
     boolean displayAccount(JSONObject account) {
+        lastUserActivity = android.os.SystemClock.elapsedRealtime();
+        lastSessionRenewal = lastUserActivity;
         String role = account.optString("role");
         if ("staff".equals(role)) {
             page = "account";
-            staffScreen = new StaffScreen(this, account.optString("email"), staffTab);
+            staffScreen = new StaffScreen(this, account.optString("email"), staffTab, true, account.optJSONArray("permissions"));
             applySystemInsets(staffScreen);
             staffScreen.loadInitialData();
             setContentView(wrapWithFloatingPreview(staffScreen));
@@ -1260,6 +1464,7 @@ public class MainActivity extends Activity {
     }
 
     void loadConsultations(StaffScreen screen) {
+        if (!screen.beginConsultationsRefresh()) return;
         int generation = accountGeneration;
         executor.execute(() -> {
             try {
@@ -1354,9 +1559,301 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static final int REQUEST_SAVE_SERVICE_FORM = 26;
+    private java.io.File pendingServiceForm;
+    private boolean downloadingServiceForm;
+
+    void downloadServiceForm(ph.edu.umak.crm.app.services.ServiceData.ServiceItem item,
+            java.util.function.BooleanSupplier visible, Runnable started, Runnable ready, Runnable failure) {
+        downloadCatalogDocument("/api/v1/public/services/" + item.revisionId + "/form",
+                item.formTitle, item.formMime, false, visible, started, ready, failure);
+    }
+
+    void downloadCatalogForm(int id, String name, String mime,
+            java.util.function.BooleanSupplier visible, Runnable failure) {
+        downloadCatalogDocument("/api/v1/staff/services/" + id + "/form", name, mime, true,
+                visible, () -> {}, () -> {}, failure);
+    }
+
+    void downloadRequestAttachment(String path, String filename, String mime,
+            java.util.function.BooleanSupplier visible, Runnable failure) {
+        downloadCatalogDocument(path, filename, mime, true, visible, () -> {}, () -> {}, failure);
+    }
+
+    private void downloadCatalogDocument(String path, String name, String mime, boolean authenticated,
+            java.util.function.BooleanSupplier visible, Runnable started, Runnable ready, Runnable failure) {
+        if (downloadingServiceForm || pendingServiceForm != null) return;
+        String origin = preferences.getString("server", "");
+        int generation = accountGeneration;
+        downloadingServiceForm = true;
+        started.run();
+        executor.execute(() -> {
+            java.io.File downloaded = null;
+            try {
+                downloaded = java.io.File.createTempFile("service-form-", ".download", getCacheDir());
+                JSONObject saved = authenticated ? session() : null;
+                if (authenticated && saved == null) throw new IOException("Sign in again");
+                CrmApi.downloadForm(origin, path, saved == null ? null : saved.getString("token"), mime, downloaded);
+            } catch (Exception unavailable) {
+                if (downloaded != null) downloaded.delete();
+                downloaded = null;
+            }
+            java.io.File file = downloaded;
+            runOnUiThread(() -> {
+                downloadingServiceForm = false;
+                if (isDestroyed() || generation != accountGeneration || !visible.getAsBoolean()) {
+                    if (file != null) file.delete();
+                    return;
+                }
+                if (file == null) {
+                    failure.run();
+                    return;
+                }
+                pendingServiceForm = file;
+                ready.run();
+                Intent picker = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType(mime)
+                        .putExtra(Intent.EXTRA_TITLE, name);
+                try {
+                    startActivityForResult(picker, REQUEST_SAVE_SERVICE_FORM);
+                } catch (android.content.ActivityNotFoundException unavailable) {
+                    pendingServiceForm = null;
+                    file.delete();
+                    failure.run();
+                }
+            });
+        });
+    }
+
+    private void saveServiceForm(int result, Intent intent) {
+        java.io.File file = pendingServiceForm;
+        pendingServiceForm = null;
+        if (file == null) return;
+        if (result != RESULT_OK || intent == null || intent.getData() == null) {
+            file.delete();
+            return;
+        }
+        android.net.Uri destination = intent.getData();
+        executor.execute(() -> {
+            try (var input = new java.io.FileInputStream(file);
+                    var output = getContentResolver().openOutputStream(destination)) {
+                if (output == null) throw new IOException("Unable to open save location");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                output.flush();
+                serviceFormNotice("Form saved.");
+            } catch (IOException | SecurityException unavailable) {
+                serviceFormNotice("Unable to save the form. Try again.");
+            } finally {
+                file.delete();
+            }
+        });
+    }
+
+    private void serviceFormNotice(String notice) {
+        runOnUiThread(() -> {
+            if (!isDestroyed()) Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private record CatalogUpload(StaffScreen screen, int revision, int generation, Runnable complete,
+            java.util.function.Consumer<String> failure) {}
+    private static final int REQUEST_CATALOG_FORM = 27;
+    private CatalogUpload catalogUpload;
+
+    void staffRequest(StaffScreen screen, String path, JSONObject body,
+            java.util.function.BiConsumer<String, String> callback) {
+        int generation = accountGeneration;
+        executor.execute(() -> {
+            String data = null;
+            String error = null;
+            JSONArray refreshedPermissions = null;
+            try {
+                JSONObject saved = session();
+                if (saved == null) {
+                    runOnUiThread(() -> expireAccount(generation));
+                    return;
+                }
+                String origin = saved.getString("server");
+                String token = saved.getString("token");
+                data = body == null ? CrmApi.get(origin, path, token) : CrmApi.send(origin, path, body, token);
+                if (body != null && path.startsWith("/api/v1/staff/accounts/")) {
+                    refreshedPermissions = new JSONObject(CrmApi.get(origin, "/api/v1/users/me", token)).getJSONArray("permissions");
+                }
+            } catch (CrmApi.HttpError rejected) {
+                if (rejected.status == 401) {
+                    runOnUiThread(() -> expireAccount(generation));
+                    return;
+                }
+                error = switch (rejected.status) {
+                    case 400, 409 -> rejected.detail.isEmpty() ? "Check the information and try again." : rejected.detail;
+                    case 403 -> "Access denied.";
+                    default -> "CRM could not save or load this information. Try again.";
+                };
+            } catch (Exception unavailable) {
+                error = "Unable to connect. Try again.";
+            }
+            JSONArray currentPermissions = refreshedPermissions;
+            String response = data;
+            String message = error;
+            runOnUiThread(() -> {
+                if (!isDestroyed() && staffScreen == screen && generation == accountGeneration) {
+                    callback.accept(response, message);
+                    if (currentPermissions != null) screen.updatePermissions(currentPermissions);
+                }
+            });
+        });
+    }
+
+    void chooseCatalogForm(StaffScreen screen, int revision, Runnable complete,
+            java.util.function.Consumer<String> failure) {
+        if (catalogUpload != null) return;
+        catalogUpload = new CatalogUpload(screen, revision, accountGeneration, complete, failure);
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/pdf",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+        try {
+            startActivityForResult(picker, REQUEST_CATALOG_FORM);
+        } catch (android.content.ActivityNotFoundException unavailable) {
+            catalogUpload = null;
+            failure.accept("No file picker is available.");
+        }
+    }
+
+    private void uploadSelectedCatalogForm(int result, Intent intent) {
+        CatalogUpload upload = catalogUpload;
+        catalogUpload = null;
+        if (upload == null || result != RESULT_OK || intent == null || intent.getData() == null) return;
+        android.net.Uri uri = intent.getData();
+        executor.execute(() -> {
+            String error = null;
+            try {
+                JSONObject saved = session();
+                if (saved == null) {
+                    runOnUiThread(() -> expireAccount(upload.generation()));
+                    return;
+                }
+                String extension = switch (String.valueOf(getContentResolver().getType(uri))) {
+                    case "application/pdf" -> ".pdf";
+                    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx";
+                    default -> "";
+                };
+                if (extension.isEmpty()) throw new IOException("Invalid file type");
+                try (var input = getContentResolver().openInputStream(uri);
+                        var output = new java.io.ByteArrayOutputStream()) {
+                    if (input == null) throw new IOException("File unavailable");
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        if (output.size() + count > 10_000_000) throw new IOException("File too large");
+                        output.write(buffer, 0, count);
+                    }
+                    CrmApi.uploadForm(saved.getString("server"), upload.revision(), saved.getString("token"),
+                            "approved-form" + extension, output.toByteArray());
+                }
+            } catch (CrmApi.HttpError rejected) {
+                error = rejected.status == 403 ? "Access denied." : "CRM could not upload this form. Try again.";
+            } catch (Exception unavailable) {
+                error = "Unable to upload the form. Select a PDF or DOCX up to 10 MB and try again.";
+            }
+            String message = error;
+            runOnUiThread(() -> {
+                if (!isDestroyed() && upload.generation() == accountGeneration && staffScreen == upload.screen()) {
+                    if (message == null) upload.complete().run();
+                    else upload.failure().accept(message);
+                }
+            });
+        });
+    }
+
+    private static final int REQUEST_ATTACHMENT = 25;
+    private static final long ATTACHMENT_LIMIT_BYTES = 10_000_000;
+    private java.util.function.BiConsumer<SelectedAttachment, String> attachmentResult;
+    private int attachmentGeneration;
+    private Runnable attachmentChecking;
+
+    public record SelectedAttachment(android.net.Uri uri, String name, long size) {}
+
+    public void chooseRequestAttachment(Runnable onChecking, java.util.function.BiConsumer<SelectedAttachment, String> result) {
+        if (attachmentResult != null) return;
+        attachmentResult = result;
+        attachmentChecking = onChecking;
+        attachmentGeneration = accountGeneration;
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        });
+        try {
+            startActivityForResult(intent, REQUEST_ATTACHMENT);
+        } catch (android.content.ActivityNotFoundException unavailable) {
+            attachmentResult = null;
+            attachmentChecking = null;
+            result.accept(null, "No document picker is available.");
+        }
+    }
+
+    private void readRequestAttachment(Intent intent,
+                                       java.util.function.BiConsumer<SelectedAttachment, String> callback,
+                                       int generation) {
+        android.net.Uri uri = intent.getData();
+        executor.execute(() -> {
+            SelectedAttachment selected = null;
+            String error;
+            try (android.database.Cursor row = getContentResolver().query(uri,
+                    new String[]{android.provider.OpenableColumns.DISPLAY_NAME, android.provider.OpenableColumns.SIZE},
+                    null, null, null)) {
+                if (row == null || !row.moveToFirst() || row.isNull(0) || row.isNull(1)) {
+                    error = "Could not read the document name or size. Choose another file.";
+                } else {
+                    String name = row.getString(0);
+                    String extension = name.toLowerCase(java.util.Locale.ROOT);
+                    long size = row.getLong(1);
+                    if (!extension.endsWith(".pdf") && !extension.endsWith(".docx")) {
+                        error = "Upload a PDF or DOCX file.";
+                    } else if (size <= 0 || size > ATTACHMENT_LIMIT_BYTES) {
+                        error = size > ATTACHMENT_LIMIT_BYTES ? "Each file must be 10 MB or smaller." : "Choose a non-empty file.";
+                    } else {
+                        selected = new SelectedAttachment(uri, name, size);
+                        error = null;
+                    }
+                }
+            } catch (RuntimeException unavailable) {
+                error = "Could not read the selected file.";
+            }
+            SelectedAttachment attachment = selected;
+            String message = error;
+            runOnUiThread(() -> {
+                if (!isDestroyed() && accountGeneration == generation) callback.accept(attachment, message);
+            });
+        });
+    }
+
     @Override
     protected void onActivityResult(int request, int result, Intent intent) {
         super.onActivityResult(request, result, intent);
+        if (request == REQUEST_CATALOG_FORM) {
+            uploadSelectedCatalogForm(result, intent);
+            return;
+        }
+        if (request == REQUEST_SAVE_SERVICE_FORM) {
+            saveServiceForm(result, intent);
+            return;
+        }
+        if (request == REQUEST_ATTACHMENT) {
+            var callback = attachmentResult;
+            Runnable onChecking = attachmentChecking;
+            attachmentResult = null;
+            attachmentChecking = null;
+            if (callback != null && result == RESULT_OK && intent != null && intent.getData() != null
+                    && attachmentGeneration == accountGeneration) {
+                onChecking.run();
+                readRequestAttachment(intent, callback, attachmentGeneration);
+            }
+            return;
+        }
         if (request != RESEARCHER_DOCUMENT) return;
         ResearcherScreen screen = pickingScreen;
         String field = pickingField;
@@ -1372,6 +1869,65 @@ public class MainActivity extends Activity {
             name = "Document could not be read";
         }
         screen.showDocumentName(field, name);
+    }
+
+    void uploadServiceRequestAttachment(ResearcherScreen screen, SelectedAttachment attachment,
+            int requirement, String attempt, java.util.function.BiConsumer<String, String> callback) {
+        String query = new android.net.Uri.Builder().appendQueryParameter("filename", attachment.name())
+                .appendQueryParameter("requirement", String.valueOf(requirement)).appendQueryParameter("attempt_token", attempt)
+                .build().toString();
+        uploadPrivateAttachment(attachment, "/api/v1/service-requests/files" + query,
+                () -> researcherScreen == screen, callback);
+    }
+
+    void uploadRegistryAttachment(StaffScreen screen, SelectedAttachment attachment, int study, String previous,
+            String attempt, java.util.function.BiConsumer<String, String> callback) {
+        android.net.Uri.Builder query = new android.net.Uri.Builder().appendQueryParameter("filename", attachment.name())
+                .appendQueryParameter("upload_token", attempt);
+        if (previous != null) query.appendQueryParameter("previous_id", previous);
+        uploadPrivateAttachment(attachment, "/api/v1/staff/registry/" + study + "/documents" + query.build(),
+                () -> staffScreen == screen, callback);
+    }
+
+    private void uploadPrivateAttachment(SelectedAttachment attachment, String path,
+            java.util.function.BooleanSupplier current, java.util.function.BiConsumer<String, String> callback) {
+        int generation = accountGeneration;
+        executor.execute(() -> {
+            String result = null;
+            String error = null;
+            try {
+                JSONObject saved = session();
+                if (saved == null) {
+                    runOnUiThread(() -> expireAccount(generation));
+                    return;
+                }
+                try (var input = getContentResolver().openInputStream(attachment.uri());
+                        var output = new java.io.ByteArrayOutputStream()) {
+                    if (input == null) throw new IOException("File unavailable");
+                    byte[] buffer = new byte[8192];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        if (output.size() + count > ATTACHMENT_LIMIT_BYTES) throw new IOException("File too large");
+                        output.write(buffer, 0, count);
+                    }
+                    result = CrmApi.uploadBinary(saved.getString("server"), path, saved.getString("token"), output.toByteArray());
+                }
+            } catch (CrmApi.HttpError rejected) {
+                if (rejected.status == 401) {
+                    runOnUiThread(() -> expireAccount(generation));
+                    return;
+                }
+                error = rejected.status == 415 ? "Upload a PDF or DOCX file."
+                        : rejected.status == 413 ? "Each file must be 10 MB or smaller." : "Upload failed. Try again.";
+            } catch (Exception unavailable) {
+                error = "Upload failed. Try again.";
+            }
+            String response = result;
+            String message = error;
+            runOnUiThread(() -> {
+                if (!isDestroyed() && generation == accountGeneration && current.getAsBoolean()) callback.accept(response, message);
+            });
+        });
     }
 
     void researcherRequest(ResearcherScreen screen, String path, JSONObject body, boolean authenticated,
@@ -1401,8 +1957,12 @@ public class MainActivity extends Activity {
                     }
                     runOnUiThread(() -> expireAccount(generation));
                 } else {
-                    deliverResearcher(screen, generation, result, null, error.status == 403
-                            ? "Access denied." : "CRM returned an error (" + error.status + ").");
+                    String detail = (path.startsWith("/api/v1/service-requests")
+                            || path.startsWith("/api/v1/researcher/registrations"))
+                            && (error.status == 400 || error.status == 404 || error.status == 409) && !error.detail.isEmpty()
+                            ? error.detail : error.status == 403 ? "Access denied."
+                            : "CRM returned an error (" + error.status + ").";
+                    deliverResearcher(screen, generation, result, null, detail);
                 }
             } catch (Exception error) {
                 deliverResearcher(screen, generation, result, null, "Unable to reach CRM. Check your connection.");
@@ -1506,6 +2066,9 @@ public class MainActivity extends Activity {
                 }
                 break;
             case "sign-in": backFromSignIn(); break;
+            case "account":
+                if (staffScreen == null || !staffScreen.handleBack()) super.onBackPressed();
+                break;
             default: super.onBackPressed();
         }
     }
@@ -1526,7 +2089,7 @@ public class MainActivity extends Activity {
                     CrmApi.post(saved.getString("server"), "/api/v1/auth/logout", new JSONObject(), saved.getString("token"));
                     message("Signed out.");
                 } catch (Exception error) {
-                    message("Signed out on this device. Server revocation unavailable; session expires within 15 minutes.");
+                    message("Signed out on this device. Server revocation unavailable; session expires within 30 minutes.");
                 }
             } catch (Exception error) {
                 message("Unable to clear the saved session. Try signing out again.");
@@ -1534,47 +2097,145 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void updatePublicRefreshSchedule() {
+        String base = preferences.getString("server", "");
+        if (!base.isEmpty() && preferences.getBoolean("public_auto_refresh", false)) {
+            PublicSync.schedule(this, base);
+        } else {
+            PublicSync.cancelSchedule(this);
+        }
+    }
+
+    private void showDataSync() {
+        boolean automatic = preferences.getBoolean("public_auto_refresh", false);
+        new AlertDialog.Builder(this)
+                .setTitle("Data & Sync")
+                .setSingleChoiceItems(new String[]{"Refresh public resources on demand",
+                        "Auto-refresh on unmetered networks"}, automatic ? 1 : 0, (dialog, choice) -> {
+                    preferences.edit().putBoolean("public_auto_refresh", choice == 1).apply();
+                    updatePublicRefreshSchedule();
+                    dialog.dismiss();
+                    if (choice == 1 && preferences.getString("server", "").isEmpty()) configureServer(null);
+                })
+                .setNeutralButton("Clear saved resources", (dialog, which) -> confirmClearPublicResources())
+                .setNegativeButton("Close", null).show();
+    }
+
+    private boolean clearingPublicResources;
+
+    private void confirmClearPublicResources() {
+        if (refreshId != null || clearingPublicResources) {
+            message("Wait for the current resource operation to finish.");
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Clear saved public resources?")
+                .setMessage("Downloaded forms and instructions will be removed from this device.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Clear", (dialog, which) -> {
+                    clearingPublicResources = true;
+                    refreshButton.setEnabled(false);
+                    publicCacheStatus.working("Clearing saved public resources…");
+                    executor.execute(() -> {
+                        boolean cleared = PublicSync.clearCache(this);
+                        runOnUiThread(() -> {
+                            if (isDestroyed()) return;
+                            clearingPublicResources = false;
+                            refreshButton.setEnabled(true);
+                            if (cleared) {
+                                publicRefreshStatus.clear();
+                                loadCache(null);
+                            } else {
+                                publicCacheStatus.result("Saved resources could not be cleared. Try again.", true);
+                            }
+                        });
+                    });
+                }).show();
+    }
+
     private void refresh() {
         String base = preferences.getString("server", "");
+        if (refreshId != null || clearingPublicResources) return;
         if (base.isEmpty()) {
             configureServer(this::refresh);
             return;
         }
-        PublicSync.schedule(this, base);
         OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(PublicSync.class)
                 .setInputData(new Data.Builder().putString("base_url", base).build())
                 .setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build();
         WorkManager manager = WorkManager.getInstance(this);
-        manager.enqueueUniqueWork("crm-public-refresh", ExistingWorkPolicy.REPLACE, work);
-        message("Refresh queued. Saved resources remain available offline.");
-        if (refreshObserver != null && refreshData != null) refreshData.removeObserver(refreshObserver);
-        LiveData<List<WorkInfo>> data = manager.getWorkInfosForUniqueWorkLiveData("crm-public-refresh");
-        Observer<List<WorkInfo>> observer = new Observer<List<WorkInfo>>() {
-            @Override
-            public void onChanged(List<WorkInfo> value) {
-                if (value == null) return;
-                for (WorkInfo info : value) {
-                    if (info.getId().equals(work.getId()) && info.getState().isFinished()) {
-                        data.removeObserver(this);
-                        if (!isDestroyed()) loadCache();
-                        break;
-                    }
-                }
+        var enqueue = manager.enqueueUniqueWork("crm-public-refresh", ExistingWorkPolicy.REPLACE, work).getResult();
+        observeRefresh(work.getId());
+        enqueue.addListener(() -> {
+            try {
+                enqueue.get();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                if (!isDestroyed() && work.getId().equals(refreshId)) finishRefresh("Refresh was interrupted. Try again.", true);
+            } catch (java.util.concurrent.ExecutionException | java.util.concurrent.CancellationException failure) {
+                if (!isDestroyed() && work.getId().equals(refreshId)) finishRefresh("Refresh could not start. Try again.", true);
             }
-        };
-        refreshData = data;
-        refreshObserver = observer;
-        data.observeForever(observer);
+        }, this::runOnUiThread);
     }
 
-    private void loadCache() {
+    private void observeRefresh(UUID id) {
+        stopObservingRefresh();
+        refreshId = id;
+        refreshButton.setEnabled(false);
+        refreshButton.setText("Refresh pending…");
+        publicRefreshStatus.working("Waiting to refresh. Saved resources remain available.");
+        refreshData = WorkManager.getInstance(this).getWorkInfoByIdLiveData(id);
+        refreshObserver = info -> {
+            if (info == null || !id.equals(refreshId)) return;
+            switch (info.getState()) {
+                case RUNNING:
+                    refreshButton.setText("Refreshing…");
+                    publicRefreshStatus.working("Refreshing public resources…");
+                    break;
+                case SUCCEEDED:
+                    stopObservingRefresh();
+                    publicRefreshStatus.working("Opening refreshed resources…");
+                    loadCache(loaded -> finishRefresh(loaded ? "Public resources are up to date."
+                            : "Refresh finished, but the saved resources could not be opened.", !loaded));
+                    break;
+                case FAILED:
+                case CANCELLED:
+                    finishRefresh("Refresh did not finish. Saved resources remain available. Try again.", true);
+                    break;
+                default:
+                    refreshButton.setText("Refresh pending…");
+                    publicRefreshStatus.working(info.getRunAttemptCount() > 0
+                            ? "Waiting to retry the refresh. Saved resources remain available."
+                            : "Waiting for a connection or for refresh to start. Saved resources remain available.");
+                    break;
+            }
+        };
+        refreshData.observeForever(refreshObserver);
+    }
+
+    private void stopObservingRefresh() {
+        if (refreshObserver != null && refreshData != null) refreshData.removeObserver(refreshObserver);
+        refreshObserver = null;
+        refreshData = null;
+    }
+
+    private void finishRefresh(String message, boolean failed) {
+        stopObservingRefresh();
+        refreshId = null;
+        refreshButton.setEnabled(true);
+        refreshButton.setText("Refresh public resources");
+        publicRefreshStatus.result(message, failed);
+    }
+
+    private void loadCache(java.util.function.Consumer<Boolean> onLoaded) {
+        if (onLoaded == null) publicCacheStatus.working("Loading saved resources…");
         executor.execute(() -> {
-            PublicDatabase database = Room.databaseBuilder(
-                    getApplicationContext(), PublicDatabase.class, "crm-public.db").build();
+            PublicDatabase database = null;
             try {
+                database = Room.databaseBuilder(getApplicationContext(), PublicDatabase.class, "crm-public.db").build();
                 List<PublicItem> rows = database.content().list();
                 runOnUiThread(() -> {
                     if (isDestroyed()) return;
+                    publicCacheStatus.clear();
                     resources.removeAllViews();
                     TextView state = new TextView(this);
                     if (rows.isEmpty()) {
@@ -1593,31 +2254,54 @@ public class MainActivity extends Activity {
                         if (row.templatePath != null) {
                             Button open = new Button(this);
                             open.setText("Open saved blank form");
-                            open.setOnClickListener(view -> openTemplate(row));
                             resources.addView(open);
+                            PendingStatus opening = new PendingStatus(this);
+                            resources.addView(opening);
+                            open.setOnClickListener(view -> openTemplate(row, open, opening));
                         }
                     }
+                    if (onLoaded != null) onLoaded.accept(true);
+                });
+            } catch (RuntimeException failure) {
+                runOnUiThread(() -> {
+                    if (isDestroyed()) return;
+                    if (onLoaded == null) publicCacheStatus.result("Could not open saved public resources.", true);
+                    else onLoaded.accept(false);
                 });
             } finally {
-                database.close();
+                if (database != null) database.close();
             }
         });
     }
 
-    private void openTemplate(PublicItem row) {
+    private void openTemplate(PublicItem row, Button button, PendingStatus opening) {
+        button.setEnabled(false);
+        button.setText("Opening form…");
+        opening.working("Opening the saved form…");
         executor.execute(() -> {
+            String text = null;
             try {
                 File file = new File(row.templatePath);
                 if (file.length() > 25_000_000) throw new IllegalArgumentException("Saved form too large");
-                // Current server publishes a plain-text blank template.
-                String text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-                runOnUiThread(() -> {
-                    if (!isDestroyed()) new AlertDialog.Builder(this).setTitle(row.title)
-                            .setMessage(text).setPositiveButton("Close", null).show();
-                });
-            } catch (Exception error) {
-                message("Saved form unavailable. Refresh public resources.");
+                text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+            } catch (IOException | RuntimeException unavailable) {
+                // Keep the resource list available so the user can refresh or try another form.
             }
+            String template = text;
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                button.setEnabled(true);
+                button.setText("Open saved blank form");
+                if (template == null) {
+                    opening.result("Saved form unavailable. Refresh public resources and try again.", true);
+                } else {
+                    opening.clear();
+                    if ("public".equals(page) && opening.isAttachedToWindow()) {
+                        new AlertDialog.Builder(this).setTitle(row.title)
+                                .setMessage(template).setPositiveButton("Close", null).show();
+                    }
+                }
+            });
         });
     }
 
@@ -1627,13 +2311,15 @@ public class MainActivity extends Activity {
         state.putString("staff_tab", staffScreen == null ? staffTab : staffScreen.selectedTab());
         state.putString("researcher_tab", researcherScreen == null ? researcherTab : researcherScreen.selectedTab());
         boolean signedInResearcher = researcherScreen != null && researcherScreen.isSignedIn();
-        state.putString("access_page", signedInResearcher ? "account" : "guest".equals(page) ? "public" : page);
+        state.putString("access_page", signedInResearcher ? "account" : page);
         state.putString("email_address", emailAddress);
+        if (pendingServiceForm != null) state.putString("pending_service_form", pendingServiceForm.getName());
+        if (refreshId != null) state.putString("public_refresh_id", refreshId.toString());
     }
 
     @Override
     public void onDestroy() {
-        if (refreshObserver != null && refreshData != null) refreshData.removeObserver(refreshObserver);
+        stopObservingRefresh();
         handler.removeCallbacks(expire);
         executor.shutdown();
         super.onDestroy();

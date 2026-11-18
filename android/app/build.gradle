@@ -14,6 +14,17 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://umak-crm-api.onrender.com\""
     }
+    buildTypes {
+        demo {
+            initWith debug
+            matchingFallbacks = ['debug']
+            applicationIdSuffix '.demo'
+            def demoOrigin = project.findProperty('demoOrigin') ?: 'https://127.0.0.1:3000'
+            if (!(demoOrigin ==~ /https:\/\/127\.0\.0\.1:[0-9]+/)) throw new GradleException('Demo origin must be a local HTTPS server')
+            buildConfigField "String", "DEFAULT_SERVER_URL", '"' + demoOrigin + '"'
+        }
+    }
+    sourceSets { demo.res.srcDir "$buildDir/generated/demoResources" }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

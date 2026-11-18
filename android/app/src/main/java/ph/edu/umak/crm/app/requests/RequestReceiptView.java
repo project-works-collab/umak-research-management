@@ -35,32 +35,17 @@ public final class RequestReceiptView {
         int pad = UiTheme.dp(context, 16);
         layout.setPadding(pad, pad, pad, pad);
 
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
         // Screen Title
         TextView title = new TextView(context);
-        title.setText(isCorrection ? "Correction submitted" : "Request submitted");
+        if (item != null && item.isPreviewSubmission()) title.setText("Preview request created");
+        else title.setText(isCorrection ? "Correction submitted" : "Request submitted");
         title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
+        title.setTypeface(UiTheme.headingFont(context));
+        title.setGravity(Gravity.CENTER);
+        ScreenTypography.heading(title);
         ScreenTypography.apply(title, 22);
         title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
         layout.addView(title);
-
-        // Subtitle
-        TextView subtitle = new TextView(context);
-        subtitle.setText(isCorrection
-                ? "Your updated documents have been submitted to CRM."
-                : "Your request has been submitted to CRM. We will review your request and post updates here.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 14);
-        layout.addView(subtitle);
 
         addSpacing(context, layout, 16);
 
@@ -72,7 +57,8 @@ public final class RequestReceiptView {
 
         String reqId = item != null ? item.id : "REQ-2026-089";
         String service = item != null ? item.service : "Ethics Clearance";
-        String timeStr = isCorrection ? "Nov 3, 2026, 2:15 PM" : (item != null ? item.submittedDate : "Oct 29, 2026, 10:42 AM");
+        String timeStr = isCorrection && (item == null || item.serviceRequestId == 0)
+                ? "Nov 3, 2026, 2:15 PM" : (item != null ? item.submittedDate : "Oct 29, 2026, 10:42 AM");
         String status = "Submitted";
 
         addReceiptRow(card, "Request ID", reqId, bold);
@@ -97,23 +83,18 @@ public final class RequestReceiptView {
         statusRow.addView(badge);
         card.addView(statusRow);
 
-        addSpacing(context, card, 12);
-
-        // Explanatory note
-        TextView note = new TextView(context);
-        note.setText(isCorrection
-                ? "Earlier reviews stay in your request history. CRM will notify you when review continues."
-                : "Save your request ID for reference. You can view progress and upload more documents at any time from My Requests.");
-        note.setTextColor(UiTheme.MUTED);
-        note.setTypeface(regular);
-        ScreenTypography.apply(note, 13);
-        note.setPadding(UiTheme.dp(context, 10), UiTheme.dp(context, 10), UiTheme.dp(context, 10), UiTheme.dp(context, 10));
-        note.setBackground(UiTheme.shape(context, 0xFFF1F5F9, 6, 0));
-        card.addView(note);
-
         layout.addView(card);
 
-        addSpacing(context, layout, 24);
+        if (isCorrection) {
+            addSpacing(context, layout, 12);
+            TextView note = new TextView(context);
+            note.setText("Earlier reviews stay in your request history.");
+            note.setTextColor(UiTheme.MUTED);
+            note.setTypeface(regular);
+            ScreenTypography.apply(note, 13);
+            layout.addView(note);
+        }
+        addSpacing(context, layout, 16);
 
         // Action Buttons
         Button viewRequestBtn = UiButton.primary(context, "View Request", () -> {

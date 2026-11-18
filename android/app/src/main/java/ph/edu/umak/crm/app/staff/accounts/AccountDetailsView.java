@@ -18,6 +18,7 @@ import android.widget.TextView;
 
 import java.util.Map;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -67,7 +68,7 @@ public class AccountDetailsView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return contentLayout;
+        return PageTitle.wrap(contentLayout, "Account Details", null, false);
     }
 
     public void setAccount(StaffData.StaffAccountItem account) {
@@ -133,22 +134,6 @@ public class AccountDetailsView {
             backBtn.setOnClickListener(v -> callbacks.onBack());
             contentLayout.addView(backBtn);
         }
-
-        // Header Title
-        TextView deptText = new TextView(context);
-        deptText.setText("Center for Research Management");
-        deptText.setTextColor(UiTheme.MUTED);
-        deptText.setTypeface(regular);
-        ScreenTypography.apply(deptText, 12);
-        contentLayout.addView(deptText);
-
-        TextView title = new TextView(context);
-        title.setText("Account Details");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 16));
-        contentLayout.addView(title);
 
         // Account Profile Card
         contentLayout.addView(createProfileSummaryCard());

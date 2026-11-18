@@ -1,6 +1,6 @@
 package ph.edu.umak.crm.app.staff.queue;
 
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -20,6 +20,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -208,9 +209,7 @@ public final class QueueFilterDialog {
 
         addSpacing(context, layout, 24);
 
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setView(scrollView)
-                .create();
+        Dialog dialog = new Dialog(context);
 
         // Action Buttons
         Button applyBtn = UiButton.primary(context, "Apply Filters", () -> {
@@ -232,7 +231,7 @@ public final class QueueFilterDialog {
         });
         layout.addView(clearBtn);
 
-        dialog.show();
+        BottomSheet.show(dialog, scrollView);
     }
 
     private static void updateChipAppearance(Context context, TextView chip, boolean selected) {

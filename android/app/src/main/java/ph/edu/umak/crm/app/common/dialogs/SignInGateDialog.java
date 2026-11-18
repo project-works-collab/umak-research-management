@@ -64,7 +64,7 @@ public final class SignInGateDialog {
         title.setTextColor(UiTheme.INK);
         title.setTypeface(UiTheme.headingFont(context));
         ScreenTypography.apply(title, 22);
-        title.setGravity(Gravity.CENTER);
+        title.setGravity(Gravity.START);
         title.setPadding(0, 0, 0, UiTheme.dp(context, 8));
         card.addView(title);
 
@@ -73,7 +73,7 @@ public final class SignInGateDialog {
         body.setTextColor(UiTheme.MUTED);
         body.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(body, 14);
-        body.setGravity(Gravity.CENTER);
+        body.setGravity(Gravity.START);
         body.setPadding(0, 0, 0, UiTheme.dp(context, 24));
         card.addView(body);
 

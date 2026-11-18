@@ -1,7 +1,7 @@
 package ph.edu.umak.crm.app.staff.lifecycle;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -12,12 +12,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -41,44 +41,15 @@ public final class MilestoneEditorDialog {
         );
     }
 
-    public static void show(Activity activity, String recordId, String studyTitle,
+    public static void show(Activity activity,
                             StaffLifecycleData.MilestoneItem item, Callbacks callbacks) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        Dialog dialog = new Dialog(activity);
 
         ScrollView scroll = new ScrollView(activity);
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(activity, 20), dp(activity, 20), dp(activity, 20), dp(activity, 24));
-        root.setBackgroundColor(UiTheme.WHITE);
         scroll.addView(root);
-
-        // Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(topHeader);
-
-        TextView title = new TextView(activity);
-        title.setText("Milestone and Outcomes");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(activity, 4);
-        titleParams.bottomMargin = dp(activity, 2);
-        root.addView(title, titleParams);
-
-        TextView subContext = new TextView(activity);
-        subContext.setText(studyTitle + "\n" + recordId);
-        subContext.setTextColor(UiTheme.MUTED);
-        subContext.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        subParams.bottomMargin = dp(activity, 16);
-        root.addView(subContext, subParams);
 
         // Edit milestone card
         LinearLayout card = new LinearLayout(activity);
@@ -132,22 +103,28 @@ public final class MilestoneEditorDialog {
         final String[] statusOptions = {"Pending", "In progress", "Completed", "Not applicable"};
         final String[] selectedStatus = {item.status};
 
-        HorizontalScrollView statusScroll = new HorizontalScrollView(activity);
-        statusScroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout statusRow = new LinearLayout(activity);
-        statusRow.setOrientation(LinearLayout.HORIZONTAL);
-        statusScroll.addView(statusRow);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+        LinearLayout statusGrid = new LinearLayout(activity);
+        statusGrid.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams gridParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        scrollParams.topMargin = dp(activity, 6);
-        scrollParams.bottomMargin = dp(activity, 12);
-        card.addView(statusScroll, scrollParams);
+        gridParams.topMargin = dp(activity, 6);
+        gridParams.bottomMargin = dp(activity, 12);
+        card.addView(statusGrid, gridParams);
 
+        LinearLayout statusRow = null;
         final Button[] statusBtns = new Button[statusOptions.length];
         for (int i = 0; i < statusOptions.length; i++) {
+            if (i % 2 == 0) {
+                statusRow = new LinearLayout(activity);
+                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                if (i > 0) rowParams.topMargin = dp(activity, 8);
+                statusGrid.addView(statusRow, rowParams);
+            }
             final String st = statusOptions[i];
-            Button btn = new Button(activity);
+            Button btn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
             btn.setText(st);
+            btn.setMinHeight(dp(activity, 48));
             btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
             btn.setTypeface(Typeface.DEFAULT_BOLD);
             btn.setAllCaps(false);
@@ -155,8 +132,8 @@ public final class MilestoneEditorDialog {
 
             statusBtns[i] = btn;
             LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 36));
-            if (i > 0) btnParams.leftMargin = dp(activity, 8);
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            if (i % 2 != 0) btnParams.setMarginStart(dp(activity, 8));
             statusRow.addView(btn, btnParams);
 
             final int idx = i;
@@ -257,9 +234,6 @@ public final class MilestoneEditorDialog {
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 48));
         root.addView(cancelBtn, cancelParams);
 
-        builder.setView(scroll);
-        AlertDialog dialog = builder.create();
-
         saveBtn.setOnClickListener(v -> {
             item.status = selectedStatus[0];
             item.date = dateInput.getText().toString().trim();
@@ -273,7 +247,7 @@ public final class MilestoneEditorDialog {
         });
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
+        BottomSheet.show(dialog, scroll);
     }
 
     private static void updateStatusBtnStyle(Activity activity, Button btn, boolean selected) {

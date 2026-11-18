@@ -28,14 +28,14 @@ public final class StaffScreenTest {
                 screen.showConsultations(tickets, null);
 
                 assertNotNull(find(screen, "Review Queue"));
-                assertNotNull(find(screen, "Ethics Review"));
-                assertNull(find(screen, "Manuscript Review"));
-
-                find(screen, "Under Review").performClick();
                 assertNotNull(find(screen, "Manuscript Review"));
                 assertNull(find(screen, "Ethics Review"));
 
-                find(screen, "Completed").performClick();
+                find(screen, "Submitted (1)").performClick();
+                assertNotNull(find(screen, "Ethics Review"));
+                assertNull(find(screen, "Manuscript Review"));
+
+                find(screen, "Completed (1)").performClick();
                 assertNotNull(find(screen, "Research Registration"));
                 assertNull(find(screen, "Manuscript Review"));
 

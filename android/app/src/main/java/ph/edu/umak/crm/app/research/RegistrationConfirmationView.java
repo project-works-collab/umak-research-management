@@ -23,7 +23,7 @@ public final class RegistrationConfirmationView {
     private final Context context;
     private final LinearLayout layout;
 
-    public RegistrationConfirmationView(Context context, String researchId, String title, Listener listener) {
+    public RegistrationConfirmationView(Context context, String researchId, String title, String registeredDate, Listener listener) {
         this.context = context;
 
         Typeface regular = UiTheme.bodyFont(context);
@@ -73,7 +73,7 @@ public final class RegistrationConfirmationView {
 
         addReceiptRow(card, "Research ID", regId, bold);
         addReceiptRow(card, "Title", regTitle, bold);
-        addReceiptRow(card, "Registered on", "Oct 29, 2026", regular);
+        addReceiptRow(card, "Registered on", registeredDate, regular);
 
         // Stage Row with badge
         LinearLayout stageRow = new LinearLayout(context);

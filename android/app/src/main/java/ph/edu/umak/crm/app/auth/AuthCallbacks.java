@@ -14,7 +14,7 @@ public interface AuthCallbacks {
 
     void onShowCreateAccount();
     void onBackFromCreateAccount();
-    void onAccountCreated(String email, String fullName, String college, String category);
+    void onAccountCreated(String email, String fullName, String college, String category, String password, String confirmation);
     void onShowEmailVerification(String email);
     void onBackFromVerification();
     void onVerifyEmail(String email, String code);

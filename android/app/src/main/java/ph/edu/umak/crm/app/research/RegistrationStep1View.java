@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -23,13 +25,19 @@ import ph.edu.umak.crm.app.common.util.UiTheme;
 public final class RegistrationStep1View {
 
     public interface Listener {
+        default void onChanged(Map<String, String> data) {}
+        default boolean pickLiveCoAuthor(java.util.function.Consumer<ResearchData.CoAuthorItem> selected) {
+            return false;
+        }
         void onContinue(Map<String, String> data);
-        void onSaveDraft(Map<String, String> data);
+        void onSaveDraft(Map<String, String> data, Button button, PendingStatus feedback);
     }
 
     private final Context context;
     private final LinearLayout layout;
     private final Listener listener;
+    private final Button draftBtn;
+    private final PendingStatus draftStatus;
     private final ResearchData.UserProfile userProfile;
 
     private final EditText titleInput;
@@ -60,7 +68,13 @@ public final class RegistrationStep1View {
             "College of Science",
             "College of Business and Financial Science",
             "College of Education",
-            "College of Technology"
+            "College of Technology",
+            "College of Tourism and Hospitality Management",
+            "Center for Governance and Public Policy",
+            "Institute of Imaging Health Sciences",
+            "Institute of Nursing",
+            "Institute of Pharmacy",
+            "School of Law"
     };
 
     public RegistrationStep1View(Context context, ResearchData.UserProfile profile,
@@ -81,31 +95,6 @@ public final class RegistrationStep1View {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
-
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
-
-        // Screen Title
-        TextView title = new TextView(context);
-        title.setText("Research Registration");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 22);
-        title.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
-        layout.addView(title);
-
-        // Subtitle
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Register your ongoing or proposed research project.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 14);
-        layout.addView(subtitle);
 
         addSpacing(context, layout, 8);
 
@@ -300,7 +289,11 @@ public final class RegistrationStep1View {
         addSpacing(context, teamCard, 6);
 
         collegeSpinner = new Spinner(context);
-        ArrayAdapter<String> collegeAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, COLLEGES);
+        List<String> colleges = new ArrayList<>(java.util.Arrays.asList(COLLEGES));
+        String savedCollege = initialData == null ? userProfile.college
+                : initialData.getOrDefault("Department / College", userProfile.college);
+        if (savedCollege != null && !savedCollege.isEmpty() && !colleges.contains(savedCollege)) colleges.add(savedCollege);
+        ArrayAdapter<String> collegeAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, colleges);
         collegeSpinner.setAdapter(collegeAdapter);
         collegeSpinner.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
         collegeSpinner.setSelection(1);
@@ -391,25 +384,107 @@ public final class RegistrationStep1View {
 
         addSpacing(context, layout, 12);
 
-        Button draftBtn = UiButton.outline(context, "Save as Draft", UiTheme.BORDER, UiTheme.NAVY, this::handleSaveDraft);
+        draftBtn = UiButton.outline(context, "Save to CRM", UiTheme.BORDER, UiTheme.NAVY, this::handleSaveDraft);
         layout.addView(draftBtn);
+        draftStatus = new PendingStatus(context);
+        layout.addView(draftStatus);
 
+        if (initialData != null && initialData.containsKey("Co-authors")) {
+            teamMembers.clear();
+            try {
+                org.json.JSONArray saved = new org.json.JSONArray(initialData.get("Co-authors"));
+                for (int i = 0; i < saved.length(); i++) {
+                    org.json.JSONArray member = saved.getJSONArray(i);
+                    teamMembers.add(new ResearchData.CoAuthorItem(member.getString(0), member.getString(1),
+                            member.getString(2), member.getString(3)));
+                }
+            } catch (org.json.JSONException invalid) {
+                teamMembers.clear();
+            }
+        }
         renderTeamList();
+        if (initialData != null) {
+            dateInput.setText(initialData.getOrDefault("Target Completion Date", "2027-03-15"));
+            adviserInput.setText(initialData.getOrDefault("Faculty adviser", "Dr. Maria A. Santos"));
+            restoreSelection(typeSpinner, TYPES, initialData.get("Research Type"));
+            restoreSelection(periodSpinner, PERIODS, initialData.get("Academic period"));
+            restoreSelection(collegeSpinner, colleges.toArray(new String[0]), savedCollege);
+        }
     }
 
-    private void openAddCoAuthorDialog() {
+    private static void restoreSelection(Spinner spinner, String[] options, String value) {
+        int index = java.util.Arrays.asList(options).indexOf(value);
+        if (index >= 0) spinner.setSelection(index);
+    }
+
+    private Map<String, String> lastSnapshot;
+
+    private void notifyChanged() {
+        Map<String, String> snapshot = collectFormData();
+        if (!snapshot.equals(lastSnapshot)) {
+            lastSnapshot = snapshot;
+            listener.onChanged(snapshot);
+        }
+    }
+
+    public void watchChanges() {
+        lastSnapshot = collectFormData();
+        for (EditText field : new EditText[]{titleInput, dateInput, adviserInput}) {
+            field.addTextChangedListener(new DraftTextWatcher(this::notifyChanged));
+        }
+        for (Spinner spinner : new Spinner[]{typeSpinner, periodSpinner, collegeSpinner}) {
+            spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    notifyChanged();
+                }
+
+                @Override
+                public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            });
+        }
+    }
+
+    public Button getDraftButton() {
+        return draftBtn;
+    }
+
+    public PendingStatus getDraftStatus() {
+        return draftStatus;
+    }
+
+    public void openAddCoAuthorDialog() {
+        if (listener != null && listener.pickLiveCoAuthor(this::addLiveCoAuthor)) return;
+        openPreviewCoAuthorDialog();
+    }
+
+    public void openPreviewCoAuthorDialog() {
         AddCoAuthorDialog dialog = new AddCoAuthorDialog(context, teamMembers, new AddCoAuthorDialog.Listener() {
             @Override
             public void onTeamUpdated(List<ResearchData.CoAuthorItem> currentTeam) {
                 teamMembers.clear();
                 teamMembers.addAll(currentTeam);
                 renderTeamList();
+                if (lastSnapshot != null) notifyChanged();
             }
 
             @Override
             public void onDismiss() {}
         });
         dialog.show();
+    }
+
+    private void addLiveCoAuthor(ResearchData.CoAuthorItem candidate) {
+        for (ResearchData.CoAuthorItem teammate : teamMembers) {
+            if (teammate.id.equals(candidate.id)) {
+                ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(context,
+                        "This researcher is already a team member.", "");
+                return;
+            }
+        }
+        teamMembers.add(candidate);
+        renderTeamList();
+        if (lastSnapshot != null) notifyChanged();
     }
 
     private void renderTeamList() {
@@ -436,6 +511,7 @@ public final class RegistrationStep1View {
             Button removeBtn = UiButton.text(context, "Remove", UiTheme.ERROR_RED, () -> {
                 teamMembers.remove(index);
                 renderTeamList();
+                if (lastSnapshot != null) notifyChanged();
             });
             row.addView(removeBtn);
 
@@ -453,7 +529,7 @@ public final class RegistrationStep1View {
 
     private void handleSaveDraft() {
         if (listener != null) {
-            listener.onSaveDraft(collectFormData());
+            listener.onSaveDraft(collectFormData(), draftBtn, draftStatus);
         }
     }
 
@@ -509,6 +585,12 @@ public final class RegistrationStep1View {
         map.put("Faculty adviser", adviserInput.getText().toString().trim());
         map.put("Department / College", (String) collegeSpinner.getSelectedItem());
         map.put("Lead Researcher / Author", leadAuthorText.getText().toString());
+        org.json.JSONArray members = new org.json.JSONArray();
+        for (ResearchData.CoAuthorItem member : teamMembers) {
+            members.put(new org.json.JSONArray().put(member.id).put(member.name)
+                    .put(member.roleAndCollege).put(member.email));
+        }
+        map.put("Co-authors", members.toString());
         return map;
     }
 
@@ -581,10 +663,10 @@ public final class RegistrationStep1View {
         parent.addView(space);
     }
 
-    public View getContentLayout() {
+    public LinearLayout getContentLayout() {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Research Registration", "Register your ongoing or proposed research project.", false);
     }
 }

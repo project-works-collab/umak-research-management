@@ -181,6 +181,26 @@ public final class StaffReportingData {
         );
     }
 
+    public static ServiceUtilizationModel getServiceUtilizationResult(String status) {
+        ServiceUtilizationModel base = getServiceUtilizationResult();
+        if (base.statusFilter.equals(status)) return base;
+
+        List<RequestSummary> rows = new ArrayList<>();
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        int completed = 0;
+        for (RequestSummary row : base.underlyingRequests) {
+            if (!row.status.equals(status)) continue;
+            rows.add(row);
+            counts.merge(row.serviceName, 1, Integer::sum);
+            if ("Completed".equals(row.status)) completed++;
+        }
+        List<ServiceCountItem> services = new ArrayList<>();
+        counts.forEach((name, count) -> services.add(new ServiceCountItem(name, count)));
+        return new ServiceUtilizationModel(base.requesterCollegeFilter, base.submittedPeriodFilter,
+                base.serviceFilter, "Status: " + status, base.requesterCategoryFilter, base.generatedTimestamp,
+                rows.size(), base.pendingValue, base.pendingNote, completed, services, rows);
+    }
+
     /**
      * 9.2 Service Utilization Result
      */

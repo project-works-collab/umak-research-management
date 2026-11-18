@@ -12,6 +12,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -48,7 +49,7 @@ public class RegistryCorrectionHistoryView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, "Correction History", record.title, false);
     }
 
     private int dp(int value) {
@@ -66,33 +67,7 @@ public class RegistryCorrectionHistoryView {
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
         // 1. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
 
-        TextView title = new TextView(activity);
-        title.setText("Correction History");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(4);
-        rootLayout.addView(title, titleParams);
-
-        TextView subtitle = new TextView(activity);
-        subtitle.setText(record.title);
-        subtitle.setTextColor(UiTheme.NAVY);
-        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        subtitle.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        subParams.bottomMargin = dp(14);
-        rootLayout.addView(subtitle, subParams);
 
         // 2. ID Card
         LinearLayout idCard = createBaseCard();

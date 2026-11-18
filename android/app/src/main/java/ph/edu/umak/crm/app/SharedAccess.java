@@ -131,8 +131,8 @@ final class SharedAccess implements AuthCallbacks {
     }
 
     @Override
-    public void onAccountCreated(String email, String fullName, String college, String category) {
-        activity.onAccountCreated(email, fullName, college, category);
+    public void onAccountCreated(String email, String fullName, String college, String category, String password, String confirmation) {
+        activity.onAccountCreated(email, fullName, college, category, password, confirmation);
     }
 
     @Override

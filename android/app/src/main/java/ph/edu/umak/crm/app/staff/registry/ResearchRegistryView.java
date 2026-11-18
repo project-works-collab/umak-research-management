@@ -22,12 +22,13 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
+import ph.edu.umak.crm.app.staff.reporting.ExportReportDialog;
 
 /**
  * Staff Research Registry View (Wireframes 7.1a, 7.1b, 7.1c).
@@ -38,7 +39,6 @@ public class ResearchRegistryView {
     public interface Callbacks {
         void onOpenRecord(StaffRegistryData.RegistryRecordItem record);
         void onAddResearchEntry();
-        void onExportDirectory();
     }
 
     private final Activity activity;
@@ -54,6 +54,7 @@ public class ResearchRegistryView {
     private LinearLayout emptyStateContainer;
 
     private final List<StaffRegistryData.RegistryRecordItem> allRecords = new ArrayList<>();
+    private List<StaffRegistryData.RegistryRecordItem> displayedRecords = List.of();
     private String selectedCollege = "All colleges";
     private String selectedPeriod = "All academic periods";
     private String searchQuery = "";
@@ -84,7 +85,7 @@ public class ResearchRegistryView {
         if (rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, "Research Registry", null, false);
     }
 
     private int dp(int value) {
@@ -102,23 +103,7 @@ public class ResearchRegistryView {
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
         // 1. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
 
-        TextView title = new TextView(activity);
-        title.setText("Research Registry");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(16);
-        rootLayout.addView(title, titleParams);
 
         // 2. Search Field
         searchInput = new EditText(activity);
@@ -312,12 +297,8 @@ public class ResearchRegistryView {
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
         rootLayout.addView(exportBtn, exportParams);
 
-        exportBtn.setOnClickListener(v -> {
-            Toast.makeText(activity, "Research directory exported successfully.", Toast.LENGTH_SHORT).show();
-            if (callbacks != null) {
-                callbacks.onExportDirectory();
-            }
-        });
+        exportBtn.setOnClickListener(v -> ExportReportDialog.showDirectory(activity, displayedRecords,
+                selectedCollege, selectedPeriod));
 
         applyFilterAndRender();
     }
@@ -366,6 +347,7 @@ public class ResearchRegistryView {
             filtered.add(record);
         }
 
+        displayedRecords = filtered;
         renderActiveFilterPills(hasActiveFilter);
 
         recordCountText.setText(filtered.size() + " research records");

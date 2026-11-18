@@ -6,14 +6,17 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class ExternalSubmissionView {
     private final LinearLayout layout;
+    private final String serviceLabel;
 
-    public ExternalSubmissionView(Context context, Runnable onBack) {
+    public ExternalSubmissionView(Context context, ServiceData.ServiceItem service, Runnable onBack) {
+        serviceLabel = service.name + " · " + service.code;
         Typeface heading = UiTheme.headingFont(context);
         Typeface body = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
@@ -22,30 +25,6 @@ public final class ExternalSubmissionView {
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = UiTheme.dp(context, 24);
         layout.setPadding(pad, pad, pad, UiTheme.dp(context, 32));
-
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(bold);
-        ScreenTypography.apply(institution, 12);
-        institution.setPadding(0, 0, 0, UiTheme.dp(context, 4));
-        layout.addView(institution);
-
-        TextView title = new TextView(context);
-        title.setText("Submission Instructions");
-        title.setTextColor(UiTheme.INK);
-        title.setTypeface(heading);
-        ScreenTypography.apply(title, 26);
-        ScreenTypography.heading(title);
-        layout.addView(title);
-
-        TextView subtitle = new TextView(context);
-        subtitle.setText("UNIVERSITY Journal Endorsement · SVC-04");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(body);
-        ScreenTypography.apply(subtitle, 14);
-        subtitle.setPadding(0, UiTheme.dp(context, 6), 0, UiTheme.dp(context, 20));
-        layout.addView(subtitle);
 
         // Section: Submission channel
         addSectionHeader(context, layout, "SUBMISSION CHANNEL", bold);
@@ -56,14 +35,14 @@ public final class ExternalSubmissionView {
         channelBox.setPadding(pad, pad, pad, pad);
 
         TextView channelName = new TextView(context);
-        channelName.setText("UNIVERSITY Editorial Office – email submission");
+        channelName.setText(service.responsibleContact);
         channelName.setTextColor(UiTheme.INK);
         channelName.setTypeface(bold);
         ScreenTypography.apply(channelName, 15);
         channelBox.addView(channelName);
 
         TextView channelEmail = new TextView(context);
-        channelEmail.setText("research@umak.edu.ph");
+        channelEmail.setText(service.contactEmail);
         channelEmail.setTextColor(UiTheme.ACCENT);
         channelEmail.setTypeface(body);
         ScreenTypography.apply(channelEmail, 14);
@@ -83,13 +62,7 @@ public final class ExternalSubmissionView {
         // Section: Steps
         addSectionHeader(context, layout, "STEPS", bold);
 
-        String[] steps = {
-                "Complete CRM Form 011 – Journal Endorsement Request.",
-                "Combine your manuscript and required documents into one email.",
-                "Use the subject \"UNIVERSITY Endorsement – <Study title>\".",
-                "Send the email to the UNIVERSITY Editorial Office.",
-                "Keep the editorial office's reply as your proof of submission."
-        };
+        String[] steps = service.instructions;
 
         LinearLayout stepsContainer = new LinearLayout(context);
         stepsContainer.setOrientation(LinearLayout.VERTICAL);
@@ -124,34 +97,6 @@ public final class ExternalSubmissionView {
         }
         layout.addView(stepsContainer);
 
-        // Section: Contact
-        TextView contactSpace = new TextView(context);
-        contactSpace.setHeight(UiTheme.dp(context, 20));
-        layout.addView(contactSpace);
-        addSectionHeader(context, layout, "CONTACT", bold);
-
-        LinearLayout contactCard = new LinearLayout(context);
-        contactCard.setOrientation(LinearLayout.VERTICAL);
-        contactCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
-        contactCard.setPadding(pad, pad, pad, pad);
-
-        TextView contactTitle = new TextView(context);
-        contactTitle.setText("UNIVERSITY Editorial Office · Center for Research Management");
-        contactTitle.setTextColor(UiTheme.INK);
-        contactTitle.setTypeface(bold);
-        ScreenTypography.apply(contactTitle, 14);
-        contactCard.addView(contactTitle);
-
-        TextView contactAddress = new TextView(context);
-        contactAddress.setText("8th Floor, Health and Physical Science Building, University of Makati, JP Rizal Extn., West Rembo, Makati City");
-        contactAddress.setTextColor(UiTheme.MUTED);
-        contactAddress.setTypeface(body);
-        ScreenTypography.apply(contactAddress, 13);
-        contactAddress.setPadding(0, UiTheme.dp(context, 4), 0, 0);
-        contactCard.addView(contactAddress);
-
-        layout.addView(contactCard);
-
         Button backBtn = UiButton.primary(context, "Back to Service", onBack);
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(-1, -2);
         btnParams.topMargin = UiTheme.dp(context, 24);
@@ -176,6 +121,6 @@ public final class ExternalSubmissionView {
         if (layout.getParent() instanceof android.view.ViewGroup) {
             ((android.view.ViewGroup) layout.getParent()).removeView(layout);
         }
-        return layout;
+        return PageTitle.wrap(layout, "Submission Instructions", serviceLabel, false);
     }
 }

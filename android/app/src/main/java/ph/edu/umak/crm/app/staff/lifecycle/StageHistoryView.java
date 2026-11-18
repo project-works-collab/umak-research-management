@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -51,7 +52,7 @@ public class StageHistoryView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, "Stage History", state.title, false);
     }
 
     private int dp(int value) {
@@ -69,30 +70,7 @@ public class StageHistoryView {
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
         // 1. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
 
-        TextView title = new TextView(activity);
-        title.setText("Stage History");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(4);
-        rootLayout.addView(title, titleParams);
-
-        TextView subtitle = new TextView(activity);
-        subtitle.setText(state.title);
-        subtitle.setTextColor(UiTheme.NAVY);
-        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        subtitle.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(subtitle);
 
         TextView metaText = new TextView(activity);
         metaText.setText(state.recordId + " · Current overall stage " + state.currentStage);

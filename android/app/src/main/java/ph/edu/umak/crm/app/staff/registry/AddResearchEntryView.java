@@ -24,6 +24,7 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -36,14 +37,12 @@ public class AddResearchEntryView {
     public interface Callbacks {
         void onSaveEntry(StaffRegistryData.RegistryRecordItem record);
         void onCancel();
-        void onReloadRecord(StaffRegistryData.RegistryRecordItem record);
     }
 
     private final Activity activity;
     private final Callbacks callbacks;
 
     private boolean isEditMode = false;
-    private boolean showStaleConflict = false;
     private boolean showDuplicateWarning = false;
     private boolean duplicateReasonError = false;
     private String teamErrorType = "none"; // "none", "already_member", "no_such_account"
@@ -93,10 +92,9 @@ public class AddResearchEntryView {
         buildUi();
     }
 
-    public void setEditRecord(StaffRegistryData.RegistryRecordItem record, boolean staleConflict) {
+    public void setEditRecord(StaffRegistryData.RegistryRecordItem record) {
         this.isEditMode = true;
         this.editingRecord = record;
-        this.showStaleConflict = staleConflict;
         this.showDuplicateWarning = false;
         this.duplicateReasonError = false;
         this.teamErrorType = "none";
@@ -111,7 +109,6 @@ public class AddResearchEntryView {
     public void resetToDefaultAdd() {
         this.isEditMode = false;
         this.editingRecord = null;
-        this.showStaleConflict = false;
         this.showDuplicateWarning = false;
         this.duplicateReasonError = false;
         this.teamErrorType = "none";
@@ -125,7 +122,7 @@ public class AddResearchEntryView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return rootLayout;
+        return PageTitle.wrap(rootLayout, isEditMode ? "Record Editor" : "Add Research Entry", null, false);
     }
 
     private int dp(int value) {
@@ -143,23 +140,7 @@ public class AddResearchEntryView {
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
         // 1. Header
-        TextView topHeader = new TextView(activity);
-        topHeader.setText("Center for Research Management");
-        topHeader.setTextColor(UiTheme.NAVY);
-        topHeader.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        topHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(topHeader);
 
-        TextView title = new TextView(activity);
-        title.setText(isEditMode ? "Record Editor" : "Add Research Entry");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = isEditMode ? dp(4) : dp(16);
-        rootLayout.addView(title, titleParams);
 
         if (isEditMode && editingRecord != null) {
             TextView subTitle = new TextView(activity);
@@ -177,11 +158,6 @@ public class AddResearchEntryView {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             metaParams.bottomMargin = dp(16);
             rootLayout.addView(meta, metaParams);
-        }
-
-        // 2. Wireframe 7.5: Stale Data Conflict Banner
-        if (showStaleConflict) {
-            rootLayout.addView(createStaleConflictBanner());
         }
 
         // 3. Wireframe 7.4: Possible Duplicate Warning Card
@@ -237,62 +213,6 @@ public class AddResearchEntryView {
                 callbacks.onCancel();
             }
         });
-    }
-
-    private View createStaleConflictBanner() {
-        LinearLayout banner = new LinearLayout(activity);
-        banner.setOrientation(LinearLayout.VERTICAL);
-        banner.setPadding(dp(16), dp(16), dp(16), dp(16));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.PEACH_BG);
-        bg.setCornerRadius(dp(10));
-        bg.setStroke(dp(1), UiTheme.PEACH_BORDER);
-        banner.setBackground(bg);
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.bottomMargin = dp(16);
-        banner.setLayoutParams(params);
-
-        TextView title = new TextView(activity);
-        title.setText("This research record was updated. Reload before saving.");
-        title.setTextColor(UiTheme.PEACH_TEXT);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        banner.addView(title);
-
-        TextView body = new TextView(activity);
-        body.setText("Your changes have not been saved. Reload the latest version, then review it before making changes.");
-        body.setTextColor(UiTheme.INK);
-        body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        bodyParams.topMargin = dp(6);
-        bodyParams.bottomMargin = dp(12);
-        banner.addView(body, bodyParams);
-
-        Button reloadBtn = new Button(activity);
-        reloadBtn.setText("Reload");
-        reloadBtn.setTextColor(UiTheme.WHITE);
-        reloadBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        reloadBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        reloadBtn.setAllCaps(false);
-        GradientDrawable btnBg = new GradientDrawable();
-        btnBg.setColor(UiTheme.PEACH_TEXT);
-        btnBg.setCornerRadius(dp(6));
-        reloadBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), btnBg, null));
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(38));
-        banner.addView(reloadBtn, btnParams);
-
-        reloadBtn.setOnClickListener(v -> {
-            if (callbacks != null) {
-                callbacks.onReloadRecord(editingRecord);
-            }
-        });
-
-        return banner;
     }
 
     private View createDuplicateWarningCard() {
@@ -870,10 +790,6 @@ public class AddResearchEntryView {
         this.showDuplicateWarning = true;
         this.duplicateReasonError = true;
         buildUi();
-    }
-
-    public void showPreview7_5_StaleDataConflict(StaffRegistryData.RegistryRecordItem record) {
-        setEditRecord(record != null ? record : StaffRegistryData.getMockRecords().get(0), true);
     }
 
     public void setTeamErrorState(String type) {
