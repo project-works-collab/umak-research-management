@@ -45,8 +45,8 @@ final class CrmApi {
         if (!"https".equals(url.getProtocol())) throw new IOException("HTTPS required");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setInstanceFollowRedirects(false);
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(15000);
+        connection.setConnectTimeout(60000);
+        connection.setReadTimeout(60000);
         if (token != null) connection.setRequestProperty("Authorization", "Bearer " + token);
         try {
             if (body != null) {

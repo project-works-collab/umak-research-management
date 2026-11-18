@@ -92,6 +92,11 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         vault = new SessionVault(this);
         preferences = getSharedPreferences("crm-settings", MODE_PRIVATE);
+        if (preferences.getString("server", "").isEmpty()
+                && BuildConfig.DEFAULT_SERVER_URL != null
+                && !BuildConfig.DEFAULT_SERVER_URL.isEmpty()) {
+            preferences.edit().putString("server", BuildConfig.DEFAULT_SERVER_URL).apply();
+        }
         access = new SharedAccess(this);
         buildPublicScreen();
         loadCache();
