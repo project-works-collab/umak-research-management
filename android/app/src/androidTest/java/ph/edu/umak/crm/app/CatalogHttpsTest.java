@@ -440,6 +440,29 @@ public final class CatalogHttpsTest {
         }
     }
 
+    @Test
+    public void hostedSeededStudentCanSignIn() throws Exception {
+        String origin = InstrumentationRegistry.getArguments().getString("hostedOrigin");
+        assumeTrue("Requires the hosted Render demo build", origin != null && BuildConfig.HOSTED_DEMO);
+        var context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        File credentials = new File(context.getFilesDir(), "hosted-test-password");
+        assumeTrue("Requires the private hosted demo credential", credentials.isFile());
+        String password = new String(Files.readAllBytes(credentials.toPath()), java.nio.charset.StandardCharsets.UTF_8).trim();
+        SharedPreferences settings = context.getSharedPreferences("crm-settings", 0);
+        settings.edit().putString("server", "https://127.0.0.1:1").commit();
+        new SessionVault(context).clear();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            org.junit.Assert.assertEquals(origin, settings.getString("server", ""));
+            scenario.onActivity(activity -> signIn(activity, "demo.student@umak.edu.ph", password));
+            waitFor(scenario, "Services");
+            scenario.onActivity(activity -> {
+                assertNull(find(activity.getWindow().getDecorView(), "P"));
+                click(activity, "Services");
+            });
+            waitFor(scenario, "Demo Service A");
+        } finally { new SessionVault(context).clear(); }
+    }
+
     private interface Journey {
         void run(ActivityScenario<MainActivity> scenario) throws Exception;
     }

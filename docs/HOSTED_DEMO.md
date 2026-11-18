@@ -14,3 +14,9 @@ The hosted demo uses the existing Render service and Supabase database. It does 
 `npm run test:demo:hosted` exercises an isolated database, repeatable seeding, D1 reporting, reserved UMak signup, protected inbox authentication, verification and sign-in. `node scripts/synthetic-acceptance.js --full-tests` runs the full backend test suite on a separate disposable cluster.
 
 Generated environment exports, SQL containing password hashes, recovery snapshots and presenter credentials belong under `.private/` or the ignored `outputs/manual-demo/`. Never commit those files.
+
+## Dedicated Android presenter build
+
+Build with `android/gradlew -p android :app:assembleRenderDemo :app:lintRenderDemo`. The installed label is **UMak CRM Render Demo**, with application ID `ph.edu.umak.crm.app.renderdemo`. It has separate storage, pins the hosted Render origin on launch, and excludes the preview-only FAB. This prevents confusion with the local `demo` variant and prevents inherited local-server settings. It uses normal server authentication, without embedded credentials or an authentication bypass.
+
+The live seeded-account regression runs with `-PtestBuildType=renderDemo :app:connectedRenderDemoAndroidTest` and the `CatalogHttpsTest#hostedSeededStudentCanSignIn` method, using a privately provisioned test password file. The test deliberately starts with a stale local URL, confirms the hosted origin, signs in as the seeded student, and loads the live catalog.
