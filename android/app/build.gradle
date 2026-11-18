@@ -12,7 +12,7 @@ android {
         versionCode 1
         versionName '1.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://your-crm-api.onrender.com\""
+        buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://umak-crm-api.onrender.com\""
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
