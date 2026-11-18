@@ -6,18 +6,24 @@ import android.content.SharedPreferences;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.os.IBinder;
+import android.view.Gravity;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import java.io.IOException;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.text.InputType;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.room.Room;
@@ -38,6 +44,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import ph.edu.umak.crm.app.common.dialogs.EmailVerificationDialog;
+import ph.edu.umak.crm.app.common.dialogs.SignInGateDialog;
+import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.cache.PublicDatabase;
 import ph.edu.umak.crm.cache.PublicItem;
 import ph.edu.umak.crm.cache.PublicSync;
@@ -93,6 +102,8 @@ public class MainActivity extends Activity {
         }
         switch (state == null ? "welcome" : state.getString("access_page", "welcome")) {
             case "sign-in": showSignIn(); break;
+            case "create-account": showCreateAccount(); break;
+            case "email-verify": showEmailVerification(emailAddress); break;
             case "support": displayAccess("support", ResearcherScreen.support(this)); break;
             case "activation": showActivation(); break;
             case "updated": showPasswordUpdated(); break;
@@ -160,6 +171,39 @@ public class MainActivity extends Activity {
         displayAccess("sign-in", access.signIn(emailAddress));
     }
 
+    void showCreateAccount() {
+        displayAccess("create-account", access.createAccount());
+    }
+
+    void onAccountCreated(String email, String fullName, String college, String category) {
+        this.emailAddress = email;
+        showEmailVerification(email);
+    }
+
+    void showEmailVerification(String email) {
+        this.emailAddress = email;
+        displayAccess("email-verify", access.emailVerify(email));
+    }
+
+    void verifyEmail(String email, String code) {
+        if (access.getCurrentEmailVerify() != null) {
+            if ("482917".equals(code) || "000000".equals(code)) {
+                access.getCurrentEmailVerify().showError("This verification link or code is invalid, expired or already used.");
+            } else {
+                access.getCurrentEmailVerify().showSuccess();
+            }
+        }
+    }
+
+    void resendVerificationCode(String email) {
+        Toast.makeText(this, "Verification code resent to " + email, Toast.LENGTH_SHORT).show();
+    }
+
+    void onEmailVerified(String email) {
+        this.emailAddress = email;
+        showSignIn();
+    }
+
     private void showActivation() {
         displayAccess("activation", access.activate());
     }
@@ -168,39 +212,783 @@ public class MainActivity extends Activity {
         displayAccess("updated", access.passwordUpdated());
     }
 
+    private float savedFabX = -1f;
+    private float savedFabY = -1f;
+
+    private View wrapWithFloatingPreview(View content) {
+        if (content.getParent() instanceof ViewGroup) {
+            ((ViewGroup) content.getParent()).removeView(content);
+        }
+        FrameLayout root = new FrameLayout(this);
+        root.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // Floating Circular Preview FAB Button
+        Button fab = new Button(this, null, android.R.attr.borderlessButtonStyle);
+        fab.setText("P");
+        fab.setTextColor(UiTheme.YELLOW);
+        fab.setTextSize(18);
+        fab.setTypeface(UiTheme.boldFont(this));
+        fab.setBackground(UiTheme.ripple(UiTheme.shape(this, UiTheme.NAVY, 28, 0), 0x30ffffff));
+        fab.setElevation(UiTheme.dp(this, 6));
+
+        int fabSize = UiTheme.dp(this, 56);
+        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize);
+        fabParams.gravity = Gravity.TOP | Gravity.START;
+        fab.setLayoutParams(fabParams);
+        root.addView(fab);
+
+        final int innerPadding = UiTheme.dp(this, 20);
+
+        // Position restoring and bounds clamping
+        root.post(() -> {
+            int rootW = root.getWidth();
+            int rootH = root.getHeight();
+            if (rootW <= 0 || rootH <= 0) return;
+
+            int minX = innerPadding;
+            int maxX = rootW - fab.getWidth() - innerPadding;
+            int minY = innerPadding;
+            int maxY = rootH - fab.getHeight() - innerPadding;
+
+            if (savedFabX < 0 || savedFabY < 0) {
+                savedFabX = maxX;
+                savedFabY = maxY;
+            } else {
+                if (maxX > minX) savedFabX = Math.max(minX, Math.min(savedFabX, maxX));
+                if (maxY > minY) savedFabY = Math.max(minY, Math.min(savedFabY, maxY));
+            }
+            fab.setX(savedFabX);
+            fab.setY(savedFabY);
+        });
+
+        fab.setOnClickListener(v -> showPreviewMenu());
+
+        final int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        fab.setOnTouchListener(new View.OnTouchListener() {
+            private float downRawX, downRawY;
+            private float dX, dY;
+            private boolean isDragging;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downRawX = event.getRawX();
+                        downRawY = event.getRawY();
+                        dX = v.getX() - downRawX;
+                        dY = v.getY() - downRawY;
+                        isDragging = false;
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float diffX = event.getRawX() - downRawX;
+                        float diffY = event.getRawY() - downRawY;
+                        if (!isDragging && Math.hypot(diffX, diffY) > touchSlop) {
+                            isDragging = true;
+                        }
+                        if (isDragging) {
+                            float newX = event.getRawX() + dX;
+                            float newY = event.getRawY() + dY;
+
+                            int minX = innerPadding;
+                            int maxX = root.getWidth() - v.getWidth() - innerPadding;
+                            int minY = innerPadding;
+                            int maxY = root.getHeight() - v.getHeight() - innerPadding;
+
+                            if (maxX > minX) newX = Math.max(minX, Math.min(newX, maxX));
+                            if (maxY > minY) newY = Math.max(minY, Math.min(newY, maxY));
+
+                            v.setX(newX);
+                            v.setY(newY);
+                            savedFabX = newX;
+                            savedFabY = newY;
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        if (!isDragging) {
+                            v.performClick();
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_CANCEL:
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        return root;
+    }
+
     private void displayAccess(String destination, View view) {
         accountGeneration++;
         page = destination;
         applySystemInsets(view);
-        setContentView(view);
+        View wrapped = wrapWithFloatingPreview(view);
+        setContentView(wrapped);
         setLightSystemBars(!"welcome".equals(destination));
         view.requestApplyInsets();
     }
 
-    void showAccessHelp() {
+    void showPreviewMenu() {
         java.util.List<String> options = new java.util.ArrayList<>();
-        options.add("Set up an invited account");
-        options.add("CRM server settings");
-        options.add("Contact CRM");
+        options.add("Part 1: Access & Account Previews");
+        options.add("Part 2: Service Directory Previews");
+        options.add("Part 3: Requests & Notifications Previews");
+        options.add("Part 4: Profile, Registration & Progress Previews");
+        options.add("Part 5: Staff & Administration Previews");
+        options.add("Part 6: Requests Review & Processing Previews");
+        options.add("Part 7: Research Registry & Corrections Previews");
+        options.add("Part 8: Stages, Milestones & Outcomes Previews");
+        options.add("Part 9: Staff Reporting & Analytics Previews");
+        options.add("Modal: 1.6 Verify Email First (Service Request)");
+        options.add("Modal: 1.7 Sign In to Submit (Visitor)");
+        options.add("Modal: 2.4 Form Retrieval Failure");
         if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
             options.add("Open staff design preview");
             options.add("Open researcher design preview");
         }
-        new AlertDialog.Builder(this).setTitle("Need Help?")
-                .setItems(options.toArray(new String[0]), (dialog, option) -> {
-                    switch (option) {
-                        case 0: showActivation(); break;
-                        case 1: configureServer(null); break;
-                        case 2:
-                            displayAccess("support", ResearcherScreen.support(this));
-                            break;
-                        case 3: startActivity(new Intent().setClassName(this,
-                                "ph.edu.umak.crm.app.PrototypeActivity")); break;
-                        case 4: startActivity(new Intent().setClassName(this,
-                                "ph.edu.umak.crm.app.ResearcherPreviewActivity")); break;
-                        default: throw new IllegalStateException("Unknown help action");
+        options.add("Set up an invited account");
+        options.add("CRM server settings");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Design & Wireframe Previews")
+                .setItems(options.toArray(new String[0]), (dialog, which) -> {
+                    String selected = options.get(which);
+                    if (selected.contains("Part 1")) {
+                        showPart1WireframeSelector();
+                    } else if (selected.contains("Part 2")) {
+                        showPart2WireframeSelector();
+                    } else if (selected.contains("Part 3")) {
+                        showPart3WireframeSelector();
+                    } else if (selected.contains("Part 4")) {
+                        showPart4WireframeSelector();
+                    } else if (selected.contains("Part 5")) {
+                        showPart5WireframeSelector();
+                    } else if (selected.contains("Part 6")) {
+                        showPart6WireframeSelector();
+                    } else if (selected.contains("Part 7")) {
+                        showPart7WireframeSelector();
+                    } else if (selected.contains("Part 8")) {
+                        showPart8WireframeSelector();
+                    } else if (selected.contains("Part 9")) {
+                        showPart9WireframeSelector();
+                    } else if (selected.contains("1.6")) {
+                        EmailVerificationDialog.show(this,
+                                () -> showEmailVerification(emailAddress),
+                                () -> resendVerificationCode(emailAddress));
+                    } else if (selected.contains("1.7")) {
+                        SignInGateDialog.show(this,
+                                this::showSignIn,
+                                this::showCreateAccount);
+                    } else if (selected.contains("2.4")) {
+                        ensureResearcherScreen();
+                        researcherScreen.previewFormFailureModal();
+                    } else if (selected.contains("staff design preview")) {
+                        startActivity(new Intent().setClassName(this, "ph.edu.umak.crm.app.PrototypeActivity"));
+                    } else if (selected.contains("researcher design preview")) {
+                        startActivity(new Intent().setClassName(this, "ph.edu.umak.crm.app.ResearcherPreviewActivity"));
+                    } else if (selected.contains("Set up an invited account")) {
+                        showActivation();
+                    } else if (selected.contains("CRM server settings")) {
+                        configureServer(null);
                     }
-                }).setNegativeButton("Close", null).show();
+                })
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    private void showPart1WireframeSelector() {
+        final String[] items = new String[]{
+                "1.1 Sign In (Default)",
+                "1.2a Sign In (Blank Username Error)",
+                "1.2b Sign In (Blank Password Error)",
+                "1.2c Sign In (Incorrect Credentials Error)",
+                "1.2d Sign In (Inactive Account Error)",
+                "1.3 Sign In (Pending / Checking Account)",
+                "1.4 Create Account (Default)",
+                "1.4 Create Account (Missing Required Error)",
+                "1.4 Create Account (Duplicate Email Error)",
+                "1.4 Create Account (Short Password Error)",
+                "1.4 Create Account (Password Mismatch Error)",
+                "1.5 Verify Email (Default with Countdown)",
+                "1.5 Verify Email (Invalid / Expired Code Error)",
+                "1.5 Verify Email (Success State)",
+                "1.6 Modal: Verify Email First (Service Request)",
+                "1.7 Modal: Sign In to Submit (Visitor)",
+                "1.8a Change Temp Password (Short Password Error)",
+                "1.8b Change Temp Password (Password Mismatch Error)",
+                "1.8c Change Temp Password (Same as Temp Password Error)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 1 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            showSignIn();
+                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.1");
+                            break;
+                        case 1:
+                            showSignIn();
+                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2a");
+                            break;
+                        case 2:
+                            showSignIn();
+                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2b");
+                            break;
+                        case 3:
+                            showSignIn();
+                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2c");
+                            break;
+                        case 4:
+                            showSignIn();
+                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2d");
+                            break;
+                        case 5:
+                            showSignIn();
+                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.3");
+                            break;
+                        case 6:
+                            showCreateAccount();
+                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4");
+                            break;
+                        case 7:
+                            showCreateAccount();
+                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-required");
+                            break;
+                        case 8:
+                            showCreateAccount();
+                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-duplicate");
+                            break;
+                        case 9:
+                            showCreateAccount();
+                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-short-pass");
+                            break;
+                        case 10:
+                            showCreateAccount();
+                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-mismatch");
+                            break;
+                        case 11:
+                            showEmailVerification(emailAddress);
+                            if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5");
+                            break;
+                        case 12:
+                            showEmailVerification(emailAddress);
+                            if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5-error");
+                            break;
+                        case 13:
+                            showEmailVerification(emailAddress);
+                            if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5-success");
+                            break;
+                        case 14:
+                            EmailVerificationDialog.show(this,
+                                    () -> showEmailVerification(emailAddress),
+                                    () -> resendVerificationCode(emailAddress));
+                            break;
+                        case 15:
+                            SignInGateDialog.show(this,
+                                    this::showSignIn,
+                                    this::showCreateAccount);
+                            break;
+                        case 16:
+                            showActivation();
+                            if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8a");
+                            break;
+                        case 17:
+                            showActivation();
+                            if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8b");
+                            break;
+                        case 18:
+                            showActivation();
+                            if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8c");
+                            break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void ensureResearcherScreen() {
+        if (researcherScreen == null) {
+            showGuest();
+        } else if (!"researcher".equals(page) && !"guest".equals(page)) {
+            displayResearcher();
+        }
+    }
+
+    private void showPart2WireframeSelector() {
+        final String[] items = new String[]{
+                "2.1 Services (Default - All 8 Services)",
+                "2.1 Services (Results - Search 'Ethics')",
+                "2.1 Services (Empty - Search 'ZZZ')",
+                "2.2a Service Details (In-app - SVC-02)",
+                "2.2b Service Details (External channel - SVC-04)",
+                "2.2c Service Details (Form unavailable - SVC-02)",
+                "2.3 External Submission Instructions (SVC-04)",
+                "2.4 Modal: Form Retrieval Failure",
+                "2.5 App Navigation Guidance"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 2 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureResearcherScreen();
+                    switch (which) {
+                        case 0:
+                            researcherScreen.previewServiceDirectory("2.1");
+                            break;
+                        case 1:
+                            researcherScreen.previewServiceDirectory("2.1-ethics");
+                            break;
+                        case 2:
+                            researcherScreen.previewServiceDirectory("2.1-empty");
+                            break;
+                        case 3:
+                            researcherScreen.previewServiceDetail("2.2a");
+                            break;
+                        case 4:
+                            researcherScreen.previewServiceDetail("2.2b");
+                            break;
+                        case 5:
+                            researcherScreen.previewServiceDetail("2.2c");
+                            break;
+                        case 6:
+                            researcherScreen.previewExternalSubmission();
+                            break;
+                        case 7:
+                            researcherScreen.previewFormFailureModal();
+                            break;
+                        case 8:
+                            researcherScreen.previewAppNavigation();
+                            break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showPart3WireframeSelector() {
+        final String[] items = new String[]{
+                "3.1 Submit Service Request (Default)",
+                "3.1 Submit Service Request (Linked Study Open)",
+                "3.2a Submit Error (Required Fields Missing)",
+                "3.2b Submit Error (Study Title Too Short)",
+                "3.2c Submit Error (Invalid Linked Study)",
+                "3.3a Attachments Error (Invalid File Type - PNG)",
+                "3.3b Attachments Error (File Exceeds 10MB)",
+                "3.3c Attachments Error (Max 5 Files Limit)",
+                "3.3d Attachments Error (Upload Failed / Retry)",
+                "3.4 Submitting… (In Flight State)",
+                "3.4b Unable to Connect (Retry State)",
+                "3.5 Request Receipt (Initial Submission Success)",
+                "3.6a My Requests (Default / 4 Populated Requests)",
+                "3.6 Filter Sheet (Filter by Status & Date)",
+                "3.6b My Requests (Filtered State - In Review)",
+                "3.6c My Requests (Empty Account)",
+                "3.6d My Requests (Empty Search - No Matching)",
+                "3.7a Request Details (Submitted Lifecycle)",
+                "3.7b Request Details (In Review Lifecycle)",
+                "3.7c Request Details (For Correction Lifecycle)",
+                "3.7d Request Details (Completed Lifecycle)",
+                "3.7e Correct Request (Feedback & Resubmit Form)",
+                "3.8 Correction Submitted Receipt (Resubmission Success)",
+                "3.9 Notifications (Default - 2 Unread)",
+                "3.9 Notifications (Empty - No Notifications)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 3 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureResearcherScreen();
+                    switch (which) {
+                        case 0:
+                            researcherScreen.previewSubmitRequest("3.1");
+                            break;
+                        case 1:
+                            researcherScreen.previewSubmitRequest("3.1-linked");
+                            break;
+                        case 2:
+                            researcherScreen.previewSubmitRequest("3.2a");
+                            break;
+                        case 3:
+                            researcherScreen.previewSubmitRequest("3.2b");
+                            break;
+                        case 4:
+                            researcherScreen.previewSubmitRequest("3.2c");
+                            break;
+                        case 5:
+                            researcherScreen.previewSubmitRequest("3.3a");
+                            break;
+                        case 6:
+                            researcherScreen.previewSubmitRequest("3.3b");
+                            break;
+                        case 7:
+                            researcherScreen.previewSubmitRequest("3.3c");
+                            break;
+                        case 8:
+                            researcherScreen.previewSubmitRequest("3.3d");
+                            break;
+                        case 9:
+                            researcherScreen.previewSubmitRequest("3.4");
+                            break;
+                        case 10:
+                            researcherScreen.previewSubmitRequest("3.4b");
+                            break;
+                        case 11:
+                            researcherScreen.previewRequestReceipt(false);
+                            break;
+                        case 12:
+                            researcherScreen.previewMyRequests("3.6a_default");
+                            break;
+                        case 13:
+                            researcherScreen.previewRequestFilterDialog();
+                            break;
+                        case 14:
+                            researcherScreen.previewMyRequests("3.6b_filtered");
+                            break;
+                        case 15:
+                            researcherScreen.previewMyRequests("3.6c_empty_account");
+                            break;
+                        case 16:
+                            researcherScreen.previewMyRequests("3.6d_empty_search");
+                            break;
+                        case 17:
+                            researcherScreen.previewRequestDetail("Submitted");
+                            break;
+                        case 18:
+                            researcherScreen.previewRequestDetail("In review");
+                            break;
+                        case 19:
+                            researcherScreen.previewRequestDetail("For correction");
+                            break;
+                        case 20:
+                            researcherScreen.previewRequestDetail("Completed");
+                            break;
+                        case 21:
+                            researcherScreen.previewCorrectRequest();
+                            break;
+                        case 22:
+                            researcherScreen.previewRequestReceipt(true);
+                            break;
+                        case 23:
+                            researcherScreen.previewNotifications("3.9_default");
+                            break;
+                        case 24:
+                            researcherScreen.previewNotifications("3.9_empty");
+                            break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showPart4WireframeSelector() {
+        final String[] items = new String[]{
+                "4.1 Edit Profile (Default)",
+                "4.1 Edit Profile (Error - Name Blank)",
+                "4.1 Edit Profile (Error - College Unselected)",
+                "4.1 Profile (Success Snackbar - Profile updated)",
+                "4.2a Registration Step 1 (Prefilled)",
+                "4.2b Registration Step 1 (Error - Blank Title)",
+                "4.2c Registration Step 1 (Error - Academic Period Unselected)",
+                "4.2d Registration Step 1 (Error - College Unselected)",
+                "4.2e Registration Step 1 (Error - Adviser Blank for Student)",
+                "4.2f Registration Step 1 (Faculty - Adviser Optional)",
+                "4.3 Add Co-Author / Collaborator Sheet",
+                "4.4 Registration Confirmation (Receipt Success)",
+                "4.5 Profile (Default Populated)",
+                "4.6a Research Progress (All Outcomes Recorded)",
+                "4.6b Research Progress (Completed with Deadline)",
+                "4.6c Research Progress (In Progress / No Next Action)",
+                "4.6d Research Progress (Empty State)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 4 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureResearcherScreen();
+                    switch (which) {
+                        case 0:
+                            researcherScreen.previewEditProfile("4.1_default");
+                            break;
+                        case 1:
+                            researcherScreen.previewEditProfile("4.1_error_name");
+                            break;
+                        case 2:
+                            researcherScreen.previewEditProfile("4.1_error_college");
+                            break;
+                        case 3:
+                            researcherScreen.previewProfile("4.1_success");
+                            break;
+                        case 4:
+                            researcherScreen.previewRegistrationStep1("4.2a_prefilled");
+                            break;
+                        case 5:
+                            researcherScreen.previewRegistrationStep1("4.2b_error_title");
+                            break;
+                        case 6:
+                            researcherScreen.previewRegistrationStep1("4.2c_error_academic_period");
+                            break;
+                        case 7:
+                            researcherScreen.previewRegistrationStep1("4.2d_error_college");
+                            break;
+                        case 8:
+                            researcherScreen.previewRegistrationStep1("4.2e_error_adviser");
+                            break;
+                        case 9:
+                            researcherScreen.previewRegistrationStep1("4.2f_faculty");
+                            break;
+                        case 10:
+                            researcherScreen.previewAddCoAuthorDialog();
+                            break;
+                        case 11:
+                            researcherScreen.previewRegistrationConfirmation();
+                            break;
+                        case 12:
+                            researcherScreen.previewProfile("4.5_default");
+                            break;
+                        case 13:
+                            researcherScreen.previewResearchProgress("4.6a");
+                            break;
+                        case 14:
+                            researcherScreen.previewResearchProgress("4.6b");
+                            break;
+                        case 15:
+                            researcherScreen.previewResearchProgress("4.6c");
+                            break;
+                        case 16:
+                            researcherScreen.previewResearchProgress("4.6d");
+                            break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void ensureStaffScreen() {
+        if (staffScreen == null) {
+            page = "account";
+            staffScreen = new StaffScreen(this, "areyes@umak.edu.ph", "Manage");
+            applySystemInsets(staffScreen);
+            setContentView(wrapWithFloatingPreview(staffScreen));
+            staffScreen.requestApplyInsets();
+        } else if (!"account".equals(page)) {
+            showStaff();
+        }
+    }
+
+    private void showPart5WireframeSelector() {
+        final String[] items = new String[]{
+                "5.1 Manage Hub (Default)",
+                "5.2 Service Catalog (Default)",
+                "5.3 Service Details Step 1 (In app)",
+                "5.3 Service Details Step 1 (External channel)",
+                "5.4 Approved Forms & Resources (SVC-02)",
+                "5.5 Step 3 Access & Publishing (Missing Info Error)",
+                "5.5 Step 3 Access & Publishing (Draft Launch Status)",
+                "5.6a Dialog: Withdraw Service?",
+                "5.6b Dialog: Replace Form Version?",
+                "5.7 Publication History (Default)",
+                "5.8 User Accounts (Default)",
+                "5.9 Create Staff Account (Default)",
+                "5.9 Create Staff Account (Error - Missing Details)",
+                "5.9 Create Staff Account (Error - Duplicate Email)",
+                "5.10a Account Details: Staff (Ana M. Reyes)",
+                "5.10b Account Details: Researcher (LeBron R. James)",
+                "5.11a Dialog: Deactivate Account Confirmation",
+                "5.11b Dialog: Activate Account Confirmation",
+                "5.11c Dialog: Can't Deactivate Own Account",
+                "5.11d Dialog: Can't Deactivate Last Administrator",
+                "5.12 Dialog: Temporary Credential Issued",
+                "5.13 Account Audit History (LeBron R. James)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 5 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureStaffScreen();
+                    switch (which) {
+                        case 0: staffScreen.showPreview5_1_ManageHub(); break;
+                        case 1: staffScreen.showPreview5_2_ServiceCatalog(); break;
+                        case 2: staffScreen.showPreview5_3_AuthoringStep1InApp(); break;
+                        case 3: staffScreen.showPreview5_3_AuthoringStep1External(); break;
+                        case 4: staffScreen.showPreview5_4_ApprovedForms(); break;
+                        case 5: staffScreen.showPreview5_5_AuthoringStep3Error(); break;
+                        case 6: staffScreen.showPreview5_5_AuthoringStep3Draft(); break;
+                        case 7: staffScreen.showPreview5_6a_WithdrawServiceDialog(); break;
+                        case 8: staffScreen.showPreview5_6b_ReplaceFormVersionDialog(); break;
+                        case 9: staffScreen.showPreview5_7_PublicationHistory(); break;
+                        case 10: staffScreen.showPreview5_8_UserAccounts(); break;
+                        case 11: staffScreen.showPreview5_9_CreateStaffDefault(); break;
+                        case 12: staffScreen.showPreview5_9_CreateStaffMissingError(); break;
+                        case 13: staffScreen.showPreview5_9_CreateStaffDuplicateError(); break;
+                        case 14: staffScreen.showPreview5_10a_AccountDetailsStaff(); break;
+                        case 15: staffScreen.showPreview5_10b_AccountDetailsResearcher(); break;
+                        case 16: staffScreen.showPreview5_11a_DeactivateDialog(); break;
+                        case 17: staffScreen.showPreview5_11b_ActivateDialog(); break;
+                        case 18: staffScreen.showPreview5_11c_OwnAccountErrorDialog(); break;
+                        case 19: staffScreen.showPreview5_11d_LastAdminErrorDialog(); break;
+                        case 20: staffScreen.showPreview5_12_TemporaryCredentialIssuedDialog(); break;
+                        case 21: staffScreen.showPreview5_13_AccountAuditHistory(); break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showPart6WireframeSelector() {
+        final String[] items = new String[]{
+                "6.1 Review Queue (In review tab)",
+                "6.1 Review Queue (Completed tab)",
+                "6.2 Filter Queue Sheet",
+                "6.2 Review Queue (No matching requests)",
+                "6.3a Request Workspace (Part 1 - Requester & Checklist)",
+                "6.3b Request Workspace (Part 2 - Decision)",
+                "6.4a Request Workspace (Error - Missing Items & Next Action)",
+                "6.4b Request Workspace (Error - Status Change Not Allowed)",
+                "6.4c Request Workspace (Stale Data Conflict)",
+                "6.5 Request Workspace (Completed - Authorized Correction)",
+                "6.6 Request Workspace (Review Saved Confirmation)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 6 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureStaffScreen();
+                    switch (which) {
+                        case 0: staffScreen.showPreview6_1_InReviewTab(); break;
+                        case 1: staffScreen.showPreview6_1_CompletedTab(); break;
+                        case 2: staffScreen.showPreview6_2_FilterSheet(); break;
+                        case 3: staffScreen.showPreview6_2_NoMatchingRequests(); break;
+                        case 4: staffScreen.showPreview6_3a_RequestWorkspaceRequesterAndChecklist(); break;
+                        case 5: staffScreen.showPreview6_3b_RequestWorkspaceDecision(); break;
+                        case 6: staffScreen.showPreview6_4a_ErrorMissingItemsAndNextAction(); break;
+                        case 7: staffScreen.showPreview6_4b_ErrorStatusChangeNotAllowed(); break;
+                        case 8: staffScreen.showPreview6_4c_StaleDataConflict(); break;
+                        case 9: staffScreen.showPreview6_5_CompletedRequestCorrection(); break;
+                        case 10: staffScreen.showPreview6_6_ReviewSaved(); break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showPart7WireframeSelector() {
+        final String[] items = new String[]{
+                "7.1a Research Registry (All records default)",
+                "7.1b Research Registry (Filters applied: CCIS, AY 2026-2027)",
+                "7.1c Research Registry (Empty State: Health Sciences, AY 2023-2024)",
+                "7.2 Research Record Detail (REG-2026-089, Team, Docs, Linked reqs)",
+                "7.3 Add Research Entry (Team picker, Peter Parker)",
+                "7.3 Add Research Entry (Error: Already a team member)",
+                "7.3 Add Research Entry (Error: No such account)",
+                "7.4 Add Research Entry (Possible duplicate REG-2024-012)",
+                "7.4 Add Research Entry (Error: Duplicate reason missing)",
+                "7.5 Record Editor (Stale data conflict warning & reload)",
+                "7.6 Documents (Version list, manuscript-v2, manuscript-v1)",
+                "7.7 Correction History (Title, Co-authors, Academic period audit)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 7 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureStaffScreen();
+                    switch (which) {
+                        case 0: staffScreen.showPreview7_1a_Results(); break;
+                        case 1: staffScreen.showPreview7_1b_FiltersApplied(); break;
+                        case 2: staffScreen.showPreview7_1c_EmptyState(); break;
+                        case 3: staffScreen.showPreview7_2_RecordDetail(); break;
+                        case 4: staffScreen.showPreview7_3_TeamPicker(); break;
+                        case 5: staffScreen.showPreview7_3_ErrorAlreadyMember(); break;
+                        case 6: staffScreen.showPreview7_3_ErrorNoSuchAccount(); break;
+                        case 7: staffScreen.showPreview7_4_PossibleDuplicate(); break;
+                        case 8: staffScreen.showPreview7_4_ErrorReasonMissing(); break;
+                        case 9: staffScreen.showPreview7_5_StaleDataConflict(); break;
+                        case 10: staffScreen.showPreview7_6_DocumentsVersionList(); break;
+                        case 11: staffScreen.showPreview7_7_CorrectionHistory(); break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showPart8WireframeSelector() {
+        final String[] items = new String[]{
+                "8.1 Milestone and Outcomes (Default with No next action checkbox)",
+                "8.1a Error: stage change not allowed",
+                "8.1b Error: effective date missing",
+                "8.1c Error: supporting details missing",
+                "8.1d Error: next action missing",
+                "8.1e Error: completion date missing",
+                "8.1f Error: presentation date and event missing",
+                "8.1g Error: publication date and citation missing",
+                "8.2 Milestone editor sheet (Data Collection & Analysis)",
+                "8.3 Stage History timeline",
+                "8.4 Completion correction dialog",
+                "8.5a Stage updated confirmation",
+                "8.5b Outcome recorded confirmation (Completion only)"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 8 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureStaffScreen();
+                    switch (which) {
+                        case 0: staffScreen.showPreview8_1_Default(); break;
+                        case 1: staffScreen.showPreview8_1a_ErrorStageNotAllowed(); break;
+                        case 2: staffScreen.showPreview8_1b_ErrorEffectiveDate(); break;
+                        case 3: staffScreen.showPreview8_1c_ErrorSupportingDetails(); break;
+                        case 4: staffScreen.showPreview8_1d_ErrorNextAction(); break;
+                        case 5: staffScreen.showPreview8_1e_ErrorCompletionDate(); break;
+                        case 6: staffScreen.showPreview8_1f_ErrorPresentation(); break;
+                        case 7: staffScreen.showPreview8_1g_ErrorPublication(); break;
+                        case 8: staffScreen.showPreview8_2_MilestoneEditor(); break;
+                        case 9: staffScreen.showPreview8_3_StageHistory(); break;
+                        case 10: staffScreen.showPreview8_4_CompletionCorrection(); break;
+                        case 11: staffScreen.showPreview8_5a_StageUpdated(); break;
+                        case 12: staffScreen.showPreview8_5b_OutcomeRecorded(); break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showPart9WireframeSelector() {
+        final String[] items = new String[]{
+                "9.1 Research Report · Result",
+                "9.2 Service Utilization · Result",
+                "9.3 Research Report · Empty",
+                "9.4a Export · Format picker dialog",
+                "9.4b Export · Pending progress dialog",
+                "9.4c Export · Success ready dialog",
+                "9.4d Export · Failure retry dialog",
+                "9.5 Access denied · No Reporting permission"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Select Part 9 State to Preview")
+                .setItems(items, (dialog, which) -> {
+                    ensureStaffScreen();
+                    switch (which) {
+                        case 0: staffScreen.showPreview9_1_ResearchReportResult(); break;
+                        case 1: staffScreen.showPreview9_2_ServiceUtilizationResult(); break;
+                        case 2: staffScreen.showPreview9_3_ResearchReportEmpty(); break;
+                        case 3: staffScreen.showPreview9_4a_ExportFormatPicker(); break;
+                        case 4: staffScreen.showPreview9_4b_ExportPending(); break;
+                        case 5: staffScreen.showPreview9_4c_ExportSuccess(); break;
+                        case 6: staffScreen.showPreview9_4d_ExportFailure(); break;
+                        case 7: staffScreen.showPreview9_5_AccessDenied(); break;
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    void showAccessHelp() {
+        displayAccess("support", ResearcherScreen.support(this));
     }
 
     private void configureServer(Runnable onSaved) {
@@ -454,7 +1242,7 @@ public class MainActivity extends Activity {
             staffScreen = new StaffScreen(this, account.optString("email"), staffTab);
             applySystemInsets(staffScreen);
             staffScreen.loadInitialData();
-            setContentView(staffScreen);
+            setContentView(wrapWithFloatingPreview(staffScreen));
             staffScreen.requestApplyInsets();
         } else if ("student".equals(role) || "faculty".equals(role)) {
             showResearcher(account);
@@ -535,7 +1323,7 @@ public class MainActivity extends Activity {
     private void displayResearcher() {
         page = researcherScreen.isSignedIn() ? "researcher" : "guest";
         setLightSystemBars(true);
-        if (researcherScreen.getParent() == null) setContentView(researcherScreen);
+        setContentView(wrapWithFloatingPreview(researcherScreen));
         researcherScreen.requestApplyInsets();
     }
 
@@ -643,14 +1431,20 @@ public class MainActivity extends Activity {
         status.setText("Public resources are available offline.");
         publicAccess.setVisibility(staffScreen == null ? View.VISIBLE : View.GONE);
         staffShortcut.setVisibility(staffScreen == null ? View.GONE : View.VISIBLE);
-        if (publicScreen.getParent() == null) setContentView(publicScreen);
+        if (publicScreen.getParent() instanceof ViewGroup) {
+            ((ViewGroup) publicScreen.getParent()).removeView(publicScreen);
+        }
+        setContentView(wrapWithFloatingPreview(publicScreen));
         publicScreen.requestApplyInsets();
     }
 
     void showStaff() {
-        if (staffScreen == null || staffScreen.getParent() != null) return;
+        if (staffScreen == null) return;
         page = "account";
-        setContentView(staffScreen);
+        if (staffScreen.getParent() instanceof ViewGroup) {
+            ((ViewGroup) staffScreen.getParent()).removeView(staffScreen);
+        }
+        setContentView(wrapWithFloatingPreview(staffScreen));
         staffScreen.requestApplyInsets();
     }
 
@@ -694,6 +1488,8 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         switch (page) {
             case "support": showSignIn(); break;
+            case "create-account":
+            case "email-verify":
             case "activation":
             case "updated": showSignIn(); break;
             case "public": returnFromPublic(); break;

@@ -4,10 +4,10 @@ import android.os.Build;
 import android.util.TypedValue;
 import android.widget.TextView;
 
-final class ScreenTypography {
+public final class ScreenTypography {
     private ScreenTypography() {}
 
-    static void apply(TextView view, int sizeSp) {
+    public static void apply(TextView view, int sizeSp) {
         view.setTextSize(sizeSp);
         int lineSp = sizeSp >= 24 ? sizeSp + 8 : sizeSp + 6;
         if (Build.VERSION.SDK_INT >= 34) {
@@ -19,7 +19,7 @@ final class ScreenTypography {
         }
     }
 
-    static void heading(TextView view) {
+    public static void heading(TextView view) {
         if (Build.VERSION.SDK_INT >= 28) view.setAccessibilityHeading(true);
     }
 }

@@ -13,3 +13,10 @@ description = "Public upstream WEB-PROTOCOL-AND-AUTH.md SHA-256, verified by ski
 condition = "AND"
 paths = ['^security/skills/registry\.json$']
 regexes = ['^4f3066dffa23c5635859187be9b96c32f2aff29a688186b91ff0c63e47d62b5c$']
+
+[[rules.allowlists]]
+description = "Mock UI temporary credential placeholder in Android prototype StaffDialogs"
+condition = "AND"
+paths = ['StaffDialogs\.java$']
+regexes = ['TMP-7Q4K-92LX']
+
