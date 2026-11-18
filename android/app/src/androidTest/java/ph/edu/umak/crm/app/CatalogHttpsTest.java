@@ -396,6 +396,50 @@ public final class CatalogHttpsTest {
         } finally { vault.clear(); if (previous != null) vault.save(previous); }
     }
 
+    @Test
+    public void hostedDemoSupportsSignupVerificationAndSignIn() throws Exception {
+        String origin = InstrumentationRegistry.getArguments().getString("hostedOrigin");
+        assumeTrue("Requires the deployed hosted demo", origin != null);
+        var context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        File credentials = new File(context.getFilesDir(), "hosted-test-password");
+        assumeTrue("Requires the private hosted demo credential", credentials.isFile());
+        String password = new String(Files.readAllBytes(credentials.toPath()), java.nio.charset.StandardCharsets.UTF_8).trim();
+        String email = "student.demo" + System.currentTimeMillis() + "@umak.edu.ph";
+        CrmApi.post(origin, "/api/v1/auth/researchers/register", new org.json.JSONObject()
+                .put("email", email).put("password", password).put("confirm_password", password)
+                .put("display_name", "Hosted Android Demo").put("college", "Demo College").put("role", "student"), null);
+        var login = (java.net.HttpURLConnection) new java.net.URL(origin + "/demo/inbox/login").openConnection();
+        login.setInstanceFollowRedirects(false); login.setRequestMethod("POST"); login.setDoOutput(true);
+        login.setConnectTimeout(60000); login.setReadTimeout(60000);
+        login.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+        try (var output = login.getOutputStream()) {
+            output.write(("password=" + java.net.URLEncoder.encode(password, java.nio.charset.StandardCharsets.UTF_8)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        org.junit.Assert.assertEquals(303, login.getResponseCode()); String cookie = login.getHeaderField("Set-Cookie").split(";", 2)[0]; login.disconnect();
+        var inbox = (java.net.HttpURLConnection) new java.net.URL(origin + "/demo/inbox").openConnection();
+        inbox.setConnectTimeout(60000); inbox.setReadTimeout(60000); inbox.setRequestProperty("Cookie", cookie);
+        String html;
+        try (var input = inbox.getInputStream()) { html = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8); }
+        finally { inbox.disconnect(); }
+        String ownMessage = html.split(java.util.regex.Pattern.quote("<h2>" + email + "</h2>"), 2)[1];
+        var match = java.util.regex.Pattern.compile("verification code is ([0-9]{6})").matcher(ownMessage);
+        assertTrue(match.find());
+        CrmApi.post(origin, "/api/v1/auth/researchers/verify", new org.json.JSONObject().put("email", email).put("code", match.group(1)), null);
+        SharedPreferences preferences = context.getSharedPreferences("crm-settings", 0);
+        String previousOrigin = preferences.getString("server", "");
+        SessionVault vault = new SessionVault(context); String previousSession = vault.read(); vault.clear();
+        preferences.edit().putString("server", origin).commit();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> signIn(activity, email, password));
+            waitFor(scenario, "Services");
+            scenario.onActivity(activity -> click(activity, "Services"));
+            waitFor(scenario, "Demo Service A");
+        } finally {
+            vault.clear(); if (previousSession != null) vault.save(previousSession);
+            preferences.edit().putString("server", previousOrigin).commit();
+        }
+    }
+
     private interface Journey {
         void run(ActivityScenario<MainActivity> scenario) throws Exception;
     }
