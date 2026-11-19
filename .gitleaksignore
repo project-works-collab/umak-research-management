@@ -13,3 +13,8 @@ d44e926c1405be27041bf4c93043f1956d06d6a6:evidence/ias-plan/source-manifest.json:
 # Verified sample placeholder for "Issue Temporary Credential" dialog, not an authentication credential.
 0cad28adceba8d9a8aa3b17ea9e45cef7ce924d3:android/app/src/main/java/ph/edu/umak/crm/app/staff/StaffDialogs.java:generic-api-key:89
 
+
+# Exact historical synthetic submission UUIDs used only for idempotency tests.
+# They never authenticate a user and are replaced with randomUUID() in current code.
+131ee5f1319e3718b6585aead68ac7c0d7daf28d:test/features.test.js:generic-api-key:42
+131ee5f1319e3718b6585aead68ac7c0d7daf28d:scripts/synthetic-acceptance.js:generic-api-key:540

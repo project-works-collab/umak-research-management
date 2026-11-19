@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
@@ -27,6 +28,30 @@ after(async()=>{
  await admin.query('DELETE FROM research_records WHERE id=ANY($1::int[])',[ids]);
  await admin.query('DELETE FROM users WHERE id=ANY($1::int[])',[users]);await db.end();await admin.end();
 });
+test('researcher profile persists permitted edits without changing account identity',async()=>{
+ const initial=await auth(request(app).get('/api/v1/users/me'),other).expect(200);
+ const edit=auth(request(app).post('/api/v1/users/me/profile'),other);
+ const saved=await edit.send({display_name:'Demo Researcher',college:'Demo College'}).expect(200);
+ assert.deepEqual(saved.body,{...initial.body,display_name:'Demo Researcher',college:'Demo College'});
+ const reloaded=await auth(request(app).get('/api/v1/users/me'),other).expect(200);
+ assert.deepEqual(reloaded.body,saved.body);
+ await auth(request(app).post('/api/v1/users/me/profile'),staff)
+  .send({display_name:'Staff',college:'Demo College'}).expect(403);
+});
+
+test('consultation retry returns one ticket after concurrent sends',async()=>{
+ const submission={service_type:'Retry proof',submission_token:randomUUID()};
+ const submit=body=>auth(request(app).post('/api/v1/consultations'),other).send(body);
+ const pair=await Promise.all([submit(submission),submit(submission)]);
+ assert.deepEqual(pair.map(response=>response.status).sort(),[200,201]);
+ assert.equal(pair[0].body.id,pair[1].body.id);
+ assert.equal(pair[0].body.submission_token,undefined);
+ await submit({...submission,service_type:'A different topic'}).expect(409);
+ const list=await auth(request(app).get('/api/v1/consultations'),other).expect(200);
+ assert.equal(list.body.filter(ticket=>ticket.service_type==='Retry proof').length,1);
+ await admin.query('DELETE FROM consultation_tickets WHERE id=$1',[pair[0].body.id]);
+});
+
 test('trigram typo retrieval, normalization, metadata filters and draft privacy',async()=>{
  for(const [title,status] of [['IoT-Based Waste Management for Campus','Approved'],['IoT-Based Waste Management Private Study','Draft']]){
   const r=await admin.query('INSERT INTO research_records(author_id,title,status,research_year,department) VALUES(1,$1,$2,2026,$3) RETURNING id',[title,status,'Computing']);ids.push(r.rows[0].id);
@@ -43,6 +68,21 @@ test('trigram typo retrieval, normalization, metadata filters and draft privacy'
   const args=[keyword,null,null,100,0];assert.deepEqual(await searchResearch(db,args),await searchResearch(db,args,{exhaustive:true}));
  }
  for(const body of [{keyword:'x',limit:101},{keyword:'x',year:'2026'},{keyword:[]},{keyword:'x',offset:-1}])await request(app).post('/api/v1/research/search').send(body).expect(400);
+});
+test('researcher workspace lists and updates only the owner’s drafts',async()=>{
+ const payload={title:'Researcher registration draft',abstract:'Synthetic abstract',department:'Computing',research_year:2026};
+ await request(app).get('/api/v1/researcher/studies').expect(401);
+ await auth(request(app).get('/api/v1/researcher/studies'),staff).expect(403);
+ const created=await auth(request(app).post('/api/v1/researcher/drafts'),student).send(payload).expect(201);
+ ids.push(created.body.id);
+ const draftPath='/api/v1/researcher/drafts/'+created.body.id;
+ await auth(request(app).post(draftPath),other).send(payload).expect(404);
+ const title='Reopened researcher draft';
+ await auth(request(app).post(draftPath),student).send({...payload,title}).expect(200);
+ const mine=await auth(request(app).get('/api/v1/researcher/studies'),student).expect(200);
+ assert.equal(mine.body.find(row=>row.id===created.body.id)?.title,title);
+ const theirs=await auth(request(app).get('/api/v1/researcher/studies'),other).expect(200);
+ assert.ok(!theirs.body.some(row=>row.id===created.body.id));
 });
 const create=async(deadline,token=student)=> (await auth(request(app).post('/api/v1/consultations'),token).send({service_type:'Research consultation',deadline_at:deadline}).expect(201)).body;
 test('EDF queue uses deadline, submission and ID ties; claim is durable and audited',async()=>{

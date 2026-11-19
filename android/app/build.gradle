@@ -5,16 +5,25 @@ plugins {
 android {
     namespace 'ph.edu.umak.crm.app'
     compileSdk 35
+    testBuildType project.findProperty('testBuildType') ?: 'debug'
     defaultConfig {
         applicationId 'ph.edu.umak.crm.app'
         minSdk 26
         targetSdk 35
         versionCode 1
         versionName '1.0'
+        buildConfigField 'boolean', 'HOSTED_DEMO', 'false'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://umak-crm-api.onrender.com\""
     }
     buildTypes {
+        renderDemo {
+            initWith debug
+            matchingFallbacks = ['debug']
+            applicationIdSuffix '.renderdemo'
+            versionNameSuffix '-render-demo'
+            buildConfigField 'boolean', 'HOSTED_DEMO', 'true'
+        }
         demo {
             initWith debug
             matchingFallbacks = ['debug']

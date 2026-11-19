@@ -26,13 +26,14 @@ before(async()=>{
     if(label==='faculty')faculty=r.rows[0].id;else unassigned=r.rows[0].id;
   }
   for(const [label,email] of [['owner','student1@example.test'],['reviewer','staff@example.test'],['faculty','ias-faculty@example.test'],['unassigned','ias-unassigned@example.test']]){
-    const r=await request(app).post('/api/v1/auth/login').send({email,password:process.env.DEMO_PASSWORD}).expect(200);tokens[label]=r.body.access_token;assert.equal(r.body.expires_in,900);
+    const r=await request(app).post('/api/v1/auth/login').send({email,password:process.env.DEMO_PASSWORD}).expect(200);tokens[label]=r.body.access_token;assert.equal(r.body.expires_in,1800);
   }
   const r=await auth(request(app).post('/api/v1/research')).send({title:'IAS private study'}).expect(201);ownerStudy=r.body.id;studies.push(ownerStudy);
   await admin.query('INSERT INTO review_assignments VALUES($1,3)',[ownerStudy]);
   const doc=await PDFDocument.create();doc.addPage();pdf=Buffer.from(await doc.save());
 });
 after(async()=>{
+  await admin.query("DELETE FROM crm_staff_permissions WHERE user_id=3 AND permission='account_administration'");
   await admin.query('DELETE FROM research_records WHERE id=ANY($1::int[])',[studies]);
   await admin.query('DELETE FROM users WHERE id=ANY($1::int[])',[users]);
   await admin.query('TRUNCATE rate_buckets,login_attempts');await pool.end();await admin.end();
@@ -91,6 +92,8 @@ test('Argon2id salts, malformed hashes, Unicode, legacy verification and upgrade
   assert.ok((await admin.query('SELECT password_hash FROM users WHERE id=$1',[faculty])).rows[0].password_hash.startsWith('$argon2id$'));
 });
 test('temporary activation is staff-provisioned, expiring, hashed and single-use',async()=>{
+  await auth(request(app).post('/api/v1/admin/invitations'),'reviewer').send({email:`denied-${randomUUID()}@example.test`,role:'faculty'}).expect(403);
+  await admin.query("INSERT INTO crm_staff_permissions VALUES(3,'account_administration') ON CONFLICT DO NOTHING");
   const email=`invite-${randomUUID()}@example.test`;
   await auth(request(app).post('/api/v1/admin/invitations')).send({email,role:'faculty'}).expect(403);
   const invitation=await auth(request(app).post('/api/v1/admin/invitations'),'reviewer').send({email,role:'faculty'}).expect(201);

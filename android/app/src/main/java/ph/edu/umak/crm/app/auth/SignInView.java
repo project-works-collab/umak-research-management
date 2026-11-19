@@ -55,7 +55,9 @@ public final class SignInView {
         form.addView(headline);
 
         TextView description = new TextView(context);
-        description.setText("Enter your given institutional email and password to access all CRM services.");
+        description.setText(ph.edu.umak.crm.app.BuildConfig.HOSTED_DEMO
+                ? "Render demo · umak-crm-api.onrender.com\nUse your demo account email and password."
+                : "Enter your given institutional email and password to access all CRM services.");
         description.setTextColor(UiTheme.MUTED);
         description.setTypeface(body);
         ScreenTypography.apply(description, 14);

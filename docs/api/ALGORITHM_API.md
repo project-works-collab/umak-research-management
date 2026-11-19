@@ -1,6 +1,6 @@
 # Algorithm service contract
 
-`POST /api/v1/algorithm/solve` requires a valid staff bearer session. It evaluates a supplied **synthetic planning scenario**; it does not persist a workflow, grant approval, or trust student-supplied verification records. A future database adapter must derive evidence from authorized receipt/verification records.
+`POST /api/v1/algorithm/solve` requires a valid staff bearer session. It evaluates a supplied synthetic planning scenario. Registered research also uses the saved workflow integration described below.
 
 Send `Content-Type: application/json`. The object must contain exactly these six fields:
 
@@ -26,3 +26,24 @@ Express spawns a fixed Python script without a shell, with no database credentia
 ## Machine-readable contracts
 
 JSON Schema Draft 2020-12 contracts: `algocom/schemas/request.schema.json` and `response.schema.json`. These are worker request/result contracts; transport errors retain their documented envelopes. Schema validation covers structure; Python checks aggregate membership counts, references, unique evidence IDs, cycles and completed-state consistency. Express validates complete result shapes, types, membership and completion invariants before returning success; malformed worker output becomes HTTP 502 WORKER_PROTOCOL.
+
+## Registered research workflow
+
+Android research progress uses the same Python runner through authorized CRM endpoints.
+
+| Endpoint | Behavior |
+|---|---|
+| GET /api/v1/researcher/registrations/:id/planning | Linked researchers read readiness, blocking reasons and the remaining critical path. |
+| GET /api/v1/staff/research-progress/:id/planning | Staff with progress-update permission read the calculation and saved definition. |
+| POST /api/v1/staff/research-progress/:id/workflow | Save expected_version and definition after validating the graph with Python. |
+| POST /api/v1/staff/research-progress/:id/events | Milestone events record evidence review state and enforce configured prerequisites. |
+
+Each definition contains tasks with code, integer duration_minutes, prerequisites (milestone codes), and requirements (objects with id and a received or verified gate). It covers the study's milestone set exactly once. Cycles, missing milestones, invalid references, duplicate edges and inconsistent completed prerequisites are rejected before saving. Staff configure the minutes. An unconfigured study returns configured=false and displays configuration guidance.
+
+The backend builds the algorithm payload from one authorized database snapshot. Completed and Not applicable milestones satisfy dependencies and contribute zero remaining duration. Pending and In progress milestones remain in the calculation. An explicit evidence_state is saved by authorized staff together with a nonempty evidence reference. Free text alone does not satisfy an evidence gate.
+
+Starting or completing a milestone checks configured prerequisites and evidence, including evidence recorded in that save. Reverting an upstream milestone is rejected when completed downstream prerequisites would become inconsistent. Workflow and progress saves share the research version, so a concurrent change requires reload. Completed task evidence gates are treated as historical when calculating pending work.
+
+Responses include the research version, saved definition, ready and blocked tasks with display names, remaining work minutes, earliest finish minutes and critical path. Staff saves reload the calculation. Researchers refresh saved progress to see the same result. Estimates describe dependency work with unlimited parallel capacity and exclude staffing, evidence waits and calendar dates.
+
+Run node --test test/workflow-planning.test.js for real Python-engine checks. Run npm run acceptance:synthetic -- --smoke for saved graph, evidence, access, conflict and milestone gating checks against isolated PostgreSQL. The optional CatalogHttpsTest Android journey configures a workflow, completes a prerequisite, verifies evidence and checks the linked researcher's updated estimate.
