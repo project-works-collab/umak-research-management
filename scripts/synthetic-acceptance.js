@@ -539,6 +539,13 @@ try{
     const submission={revision_id:services[0].id,study_id:mapping.studies['RES-DEMO-001'],subject:'Synthetic request',
       submission_token:randomUUID(),files:[file.id]};
     const first=await jsonCall(studentAccess.access_token,requestPath,submission);
+    for(const invalid of [{subject:'x'.repeat(161)},{description:'x'.repeat(4001)}]){
+      const bad=await jsonCall(studentAccess.access_token,requestPath,{...submission,...invalid});
+      assert.equal(bad.status,400);
+      const failure=await bad.json();
+      assert.equal(failure.error,'Invalid request');
+      assert.ok(failure.field_errors[Object.keys(invalid)[0]]);
+    }
     assert.equal(first.status,201);
     const submitted=await first.json();
     assert.equal(submitted.status,'Submitted');
@@ -609,7 +616,12 @@ try{
     const incomplete=await staffJson('/drafts',{code:'SVC-DEMO-INCOMPLETE',details:{name:'Unfinished draft'}});
     assert.equal(incomplete.status,201);
     const unfinished=await incomplete.json();
-    assert.equal((await staffJson('/'+unfinished.id+'/publish',{confirmed:true})).status,400);
+    const incompletePublish=await staffJson('/'+unfinished.id+'/publish',{confirmed:true});
+    assert.equal(incompletePublish.status,400);
+    const incompleteBody=await incompletePublish.json();
+    assert.equal(incompleteBody.error,'Complete the highlighted service information before publishing.');
+    assert.ok(Object.keys(incompleteBody.field_errors).length>0);
+    assert.equal((await fetch(apiUrl+catalog+'/'+unfinished.id+'/form')).status,404);
     assert.equal((await staffJson('/'+unfinished.id+'/edit',services[0].details)).status,200);
     assert.equal((await staffJson('/'+unfinished.id+'/publish',{confirmed:true})).status,200);
     assert.equal((await login('demo.inactive@example.test',403)).code,'account_unavailable');

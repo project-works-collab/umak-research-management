@@ -145,7 +145,7 @@ export function serviceRequestRoutes(app,db,auth,{scanner}={}){
         activeUploads--;
       }
     });
-  researcher.post('/',validate(create),async(req,res)=>{
+  researcher.post('/',validate(create,'body',true),async(req,res)=>{
     const input=req.validated.body;
     const user=req.user.id;
     const digest=fingerprint(JSON.stringify({...input,files:[...input.files].sort()}));

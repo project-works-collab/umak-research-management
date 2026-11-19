@@ -194,10 +194,18 @@ public final class LiveRequestForm {
 
     private void submit() {
         if (submitting || uploading) return;
+        subject.setError(null);
+        description.setError(null);
         String title = subject.getText().toString().trim();
         if (requestId == 0 && title.isEmpty()) {
             subject.setError("Required");
             status.result("Complete the highlighted required fields.", true);
+            return;
+        }
+        if (requestId == 0 && (title.length() > 160 || description.getText().toString().trim().length() > 4000)) {
+            if (title.length() > 160) subject.setError("Use 160 characters or fewer.");
+            if (description.getText().toString().trim().length() > 4000) description.setError("Use 4,000 characters or fewer.");
+            status.result("Correct the highlighted information.", true);
             return;
         }
         for (int i = 0; i < documents.length; i++) {
@@ -237,6 +245,14 @@ public final class LiveRequestForm {
                     } catch (JSONException invalid) {
                         error = "CRM could not confirm your request. Try again.";
                     }
+                }
+                if (data != null && error != null) {
+                    try {
+                        JSONObject fields = new JSONObject(data);
+                        if (fields.has("subject")) subject.setError("Check this field.");
+                        if (fields.has("description")) description.setError("Check this field.");
+                        if (fields.length() > 0) error = "Correct the highlighted information.";
+                    } catch (JSONException ignored) { /* Retain the ordinary error. */ }
                 }
                 status.result(error, true);
                 submit.setText("Retry submission");
