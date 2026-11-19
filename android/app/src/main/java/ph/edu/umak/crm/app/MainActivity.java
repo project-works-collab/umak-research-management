@@ -285,7 +285,7 @@ public class MainActivity extends Activity {
     private String verificationRequestError(int status) {
         if (status == 429) return "Too many attempts. Wait before trying again.";
         if (status == 400) return "Review the account details and try again.";
-        return "Unable to connect or send verification email. Try again.";
+        return "Unable to connect. Try again";
     }
 
     private void publicAuthRequest(String path, JSONObject body,
@@ -305,7 +305,11 @@ public class MainActivity extends Activity {
             JSONObject response = result;
             int httpStatus = status;
             runOnUiThread(() -> {
-                if (!isDestroyed() && generation == accountGeneration) callback.accept(response, httpStatus);
+                if (!isDestroyed() && generation == accountGeneration) {
+                    if (response == null && (httpStatus == 0 || httpStatus >= 500)) {
+                        connectionRetry(() -> publicAuthRequest(path, body, callback), () -> callback.accept(null, httpStatus));
+                    } else callback.accept(response, httpStatus);
+                }
             });
         });
     }
@@ -1278,7 +1282,8 @@ public class MainActivity extends Activity {
                 openAccount(saved, generation);
                 runOnUiThread(() -> password.getText().clear());
             } catch (CrmApi.HttpError error) {
-                showAuthHttpError(generation, error, "Incorrect username or password.");
+                if (error.status >= 500) showNoInternet(generation, () -> signIn(email, password));
+                else showAuthHttpError(generation, error, "Incorrect username or password.");
             } catch (IOException error) {
                 showNoInternet(generation, () -> signIn(email, password));
             } catch (Exception error) {
@@ -1327,7 +1332,8 @@ public class MainActivity extends Activity {
                     showPasswordUpdated();
                 });
             } catch (CrmApi.HttpError error) {
-                showAuthHttpError(generation, error, "The activation code is invalid or expired. Contact CRM for a new code.");
+                if (error.status >= 500) showNoInternet(generation, () -> activate(code, password, confirm));
+                else showAuthHttpError(generation, error, "The activation code is invalid or expired. Contact CRM for a new code.");
             } catch (IOException error) {
                 showNoInternet(generation, () -> activate(code, password, confirm));
             } catch (Exception error) {
@@ -1398,11 +1404,19 @@ public class MainActivity extends Activity {
         });
     }
 
+    private android.app.AlertDialog connectionRetry(Runnable retry, Runnable cancel) {
+        return new android.app.AlertDialog.Builder(this).setTitle("Connection problem")
+                .setMessage("Unable to connect. Try again")
+                .setPositiveButton("Retry", (dialog, which) -> retry.run())
+                .setNegativeButton("Cancel", (dialog, which) -> cancel.run())
+                .setOnCancelListener(dialog -> cancel.run()).show();
+    }
+
     private void showNoInternet(int generation, Runnable retry) {
         runAccessCallback(generation, () -> {
             authenticating = false;
             access.feedback("");
-            access.dialog("No Internet", "Failed to connect. Check your internet connection and try again.",
+            access.dialog("Connection problem", "Unable to connect. Try again",
                     "Retry", retry, "Cancel");
         });
     }
@@ -1688,19 +1702,24 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> expireAccount(generation));
                     return;
                 }
+                if (rejected.fieldErrors.length() > 0) data = rejected.fieldErrors.toString();
                 error = switch (rejected.status) {
                     case 400, 409 -> rejected.detail.isEmpty() ? "Check the information and try again." : rejected.detail;
                     case 403 -> "Access denied.";
-                    default -> "CRM could not save or load this information. Try again.";
+                    default -> rejected.status >= 500 ? "Unable to connect. Try again" : "CRM could not save or load this information. Try again.";
                 };
             } catch (Exception unavailable) {
-                error = "Unable to connect. Try again.";
+                error = "Unable to connect. Try again";
             }
             JSONArray currentPermissions = refreshedPermissions;
             String response = data;
             String message = error;
             runOnUiThread(() -> {
                 if (!isDestroyed() && staffScreen == screen && generation == accountGeneration) {
+                    if ("Unable to connect. Try again".equals(message)) {
+                        connectionRetry(() -> staffRequest(screen, path, body, callback), () -> callback.accept(null, message));
+                        return;
+                    }
                     callback.accept(response, message);
                     if (currentPermissions != null) screen.updatePermissions(currentPermissions);
                 }
@@ -1962,11 +1981,22 @@ public class MainActivity extends Activity {
                             || path.startsWith("/api/v1/researcher/registrations"))
                             && (error.status == 400 || error.status == 404 || error.status == 409) && !error.detail.isEmpty()
                             ? error.detail : error.status == 403 ? "Access denied."
-                            : "CRM returned an error (" + error.status + ").";
-                    deliverResearcher(screen, generation, result, null, detail);
+                            : error.status >= 500 ? "Unable to connect. Try again" : "CRM returned an error (" + error.status + ").";
+                    if (error.status >= 500) retryResearcher(screen, generation, path, body, authenticated, result);
+                    else deliverResearcher(screen, generation, result, error.fieldErrors.length() == 0 ? null : error.fieldErrors.toString(), detail);
                 }
             } catch (Exception error) {
-                deliverResearcher(screen, generation, result, null, "Unable to reach CRM. Check your connection.");
+                retryResearcher(screen, generation, path, body, authenticated, result);
+            }
+        });
+    }
+
+    private void retryResearcher(ResearcherScreen screen, int generation, String path, JSONObject body,
+            boolean authenticated, java.util.function.BiConsumer<String, String> result) {
+        runOnUiThread(() -> {
+            if (!isDestroyed() && researcherScreen == screen && generation == accountGeneration) {
+                connectionRetry(() -> researcherRequest(screen, path, body, authenticated, result),
+                        () -> deliverResearcher(screen, generation, result, null, "Unable to connect. Try again"));
             }
         });
     }

@@ -5,9 +5,11 @@ export const research=z.strictObject({title:text(200),abstract:z.string().max(40
 export const login=z.strictObject({email:z.email().max(254).transform(x=>x.toLowerCase()),password:z.string().min(1).max(128)});
 export const feedback=z.strictObject({researcher_visible_feedback:z.string().max(4000),internal_staff_notes:z.string().max(4000)});
 export const member=z.strictObject({user_id:id});
-export const validate=(schema,source='body')=>(req,res,next)=>{
+export const validationFields=issues=>Object.fromEntries(issues.map(issue=>[issue.path.join('.')||'_form','Check this field.']));
+export const validate=(schema,source='body',includeFields=false)=>(req,res,next)=>{
   const parsed=schema.safeParse(req[source]??{});
-  if(!parsed.success)return res.status(400).json({error:'Invalid request',request_id:req.requestId});
+  if(!parsed.success)return res.status(400).json({error:'Invalid request',request_id:req.requestId,
+    ...(includeFields?{field_errors:validationFields(parsed.error.issues)}:{})});
   req.validated??={};req.validated[source]=parsed.data;next();
 };
 export {z};

@@ -81,7 +81,7 @@ public final class LiveServiceCatalogView {
                     confirm("Upload form?", "This file will be saved on the draft revision.",
                             () -> actions.replaceForm(id, this::load, error -> status.result(error, true))));
             button("Publish", () -> confirm("Publish " + title + "?",
-                    "This revision and its blank form will become public.", () -> change(id, "publish")));
+                    "This revision and its blank form will become public.", () -> publish(revision)));
         } else if ("published".equals(state) || "withdrawn".equals(state)) {
             button("Create revision", () -> edit(revision));
             if ("published".equals(state)) button("Withdraw", () -> confirm("Withdraw " + title + "?",
@@ -121,7 +121,29 @@ public final class LiveServiceCatalogView {
         });
     }
 
-    private void edit(JSONObject source) {
+    private void publish(JSONObject revision) {
+        if (saving) return;
+        saving = true;
+        PendingStatus current = status;
+        current.working("Saving service changes to CRM…");
+        JSONObject body = new JSONObject();
+        try { body.put("confirmed", true); } catch (JSONException impossible) { throw new IllegalStateException(impossible); }
+        actions.request("/" + revision.optInt("id") + "/publish", body, (data, error) -> {
+            saving = false;
+            if (!layout.isAttachedToWindow() || current != status) return;
+            if (error == null) { load(); return; }
+            if (error.equals("Complete the highlighted service information before publishing.")) {
+                JSONObject fields = new JSONObject();
+                try { if (data != null) fields = new JSONObject(data); } catch (JSONException ignored) { }
+                edit(revision, fields);
+                status.result(error, true);
+            } else current.result(error, true);
+        });
+    }
+
+    private void edit(JSONObject source) { edit(source, null); }
+
+    private void edit(JSONObject source, JSONObject fieldErrors) {
         boolean existingDraft = source != null && "draft".equals(source.optString("state"));
         JSONObject fields = source == null ? new JSONObject() : source.optJSONObject("details");
         reset(existingDraft ? "Edit service draft" : "New service draft", "Back to catalog", this::load);
@@ -140,6 +162,19 @@ public final class LiveServiceCatalogView {
         CheckBox external = check("Submit through an external channel", "external".equals(fields.optString("channel")));
         EditText instructions = input("Instructions, one step per line", lines(fields.optJSONArray("instructions")), true);
         EditText requirements = input("Requirements, one per line. Prefix optional items with Optional:", requirementLines(fields.optJSONArray("requirements")), true);
+        if (fieldErrors != null) {
+            java.util.Map<String, EditText> controls = new java.util.LinkedHashMap<>();
+            controls.put("name", name); controls.put("description", description); controls.put("purpose", purpose);
+            controls.put("eligibility", eligibility); controls.put("contact_name", contact); controls.put("contact_email", email);
+            controls.put("turnaround", turnaround); controls.put("instructions", instructions); controls.put("requirements", requirements);
+            for (var keys = fieldErrors.keys(); keys.hasNext();) {
+                String key = keys.next().split("\\.")[0];
+                EditText field = controls.get(key);
+                if (field != null) field.setError("Complete or correct this field.");
+                else if ("applicants".equals(key)) { student.setError("Select an applicant category."); faculty.setError("Select an applicant category."); }
+                else if ("channel".equals(key)) external.setError("Select the submission channel.");
+            }
+        }
         Button save = button("Save draft", null);
         save.setOnClickListener(view -> {
             if (!value(code).toUpperCase(java.util.Locale.ROOT).matches("[A-Z0-9][A-Z0-9-]{1,31}")) {

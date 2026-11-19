@@ -1,5 +1,5 @@
 import express from 'express';
-import {id,validate,z} from '../security/validation.js';
+import {id,validate,validationFields,z} from '../security/validation.js';
 import {validateDocument} from '../storage/validate.js';
 
 const text=max=>z.string().trim().min(1).max(max);
@@ -13,8 +13,8 @@ const serviceFields=z.strictObject({
   requirements:z.array(z.strictObject({title:text(180),required:z.boolean()})).max(20)
 });
 const uniqueApplicants=value=>!value.applicants||new Set(value.applicants).size===value.applicants.length;
-const details=serviceFields.refine(uniqueApplicants)
-  .refine(value=>value.channel!=='in_app'||value.requirements.filter(item=>item.required).length<=5);
+const details=serviceFields.refine(uniqueApplicants,{path:['applicants']})
+  .refine(value=>value.channel!=='in_app'||value.requirements.filter(item=>item.required).length<=5,{path:['requirements']});
 const draftDetails=serviceFields.partial().refine(uniqueApplicants);
 const columns=`s.id AS service_id,s.code,r.id,r.version,r.state,r.details,
   r.form_name,r.form_mime,r.form_updated_at,r.published_at,r.updated_at`;
@@ -134,7 +134,10 @@ export function serviceCatalogRoutes(app,db,auth){
         const {rows:[row]}=await client.query('SELECT state,details FROM crm_service_revisions WHERE id=$1 FOR UPDATE',[target]);
         const publishing=action==='publish';
         if(row.state!==(publishing?'draft':'published'))return null;
-        if(publishing&&!details.safeParse(row.details).success)return {incomplete:true};
+        if(publishing){
+          const checked=details.safeParse(row.details);
+          if(!checked.success)return {incomplete:true,field_errors:validationFields(checked.error.issues)};
+        }
         if(publishing){
           const previous=await client.query(`UPDATE crm_service_revisions SET state='superseded',updated_at=clock_timestamp()
              WHERE service_id=$1 AND state='published' RETURNING id`,[entry.id]);
@@ -148,7 +151,7 @@ export function serviceCatalogRoutes(app,db,auth){
         return result.rows[0];
       });
       if(!revision)return res.status(409).json({error:'Revision is no longer available for this action'});
-      if(revision.incomplete)return res.status(400).json({error:'Complete the highlighted service information before publishing.'});
+      if(revision.incomplete)return res.status(400).json({error:'Complete the highlighted service information before publishing.',field_errors:revision.field_errors});
       res.json(revision);
     });
   staff.get('/:id/history',revisionId,async(req,res)=>{

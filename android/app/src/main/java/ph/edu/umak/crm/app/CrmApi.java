@@ -17,6 +17,7 @@ final class CrmApi {
         final int status;
         final String code;
         final String detail;
+        JSONObject fieldErrors = new JSONObject();
 
         HttpError(int status, String code) {
             this(status, code, "");
@@ -167,6 +168,7 @@ final class CrmApi {
             if (status < 200 || status >= 300) {
                 String code = "";
                 String detail = "";
+                JSONObject fields = new JSONObject();
                 try (InputStream error = connection.getErrorStream()) {
                     if (error != null) {
                         ByteArrayOutputStream message = new ByteArrayOutputStream();
@@ -178,11 +180,14 @@ final class CrmApi {
                         JSONObject failure = new JSONObject(message.toString(StandardCharsets.UTF_8.name()));
                         code = failure.optString("code");
                         detail = failure.optString("error");
+                        if (failure.optJSONObject("field_errors") != null) fields = failure.getJSONObject("field_errors");
                     }
                 } catch (IOException | org.json.JSONException ignored) {
                     // Keep the HTTP status even if the server does not return a structured error.
                 }
-                throw new HttpError(status, code, detail);
+                HttpError rejected = new HttpError(status, code, detail);
+                rejected.fieldErrors = fields;
+                throw rejected;
             }
             if (status == 204) return "{}";
             try (InputStream input = connection.getInputStream();
