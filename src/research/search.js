@@ -32,3 +32,20 @@ export async function searchResearch(db,args,options) {
   } catch(e){await client.query('ROLLBACK');throw e;}
   finally{client.release();}
 }
+export async function duplicateCandidates(db,{title,year=null,department=null,exclude_id=null}) {
+  const client=await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('pg_trgm.similarity_threshold','0.3',true)");
+    const result=await client.query(`SELECT id,title,abstract,status,research_year,department,
+      normalized_title=crm_normalize_title($1) AS exact_title,
+      similarity(normalized_title,crm_normalize_title($1)) AS trigram_score
+      FROM research_records WHERE normalized_title<>'' AND
+      (normalized_title % crm_normalize_title($1) OR normalized_title LIKE '%'||crm_normalize_title($1)||'%')
+      AND ($2::integer IS NULL OR research_year=$2)
+      AND ($3::text IS NULL OR department=$3)
+      AND ($4::integer IS NULL OR id<>$4)
+      ORDER BY exact_title DESC,trigram_score DESC,id ASC LIMIT 50`,[title,year,department,exclude_id]);
+    await client.query('COMMIT');return result.rows;
+  } catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+}
