@@ -28,6 +28,7 @@ public class ServiceUtilizationView {
     public interface Callbacks {
         void onBackToFilters();
         void onOpenRequest(StaffReportingData.RequestSummary request);
+        default boolean onExport() { return false; }
     }
 
     private final Activity activity;
@@ -50,23 +51,12 @@ public class ServiceUtilizationView {
     }
 
     public View getContentLayout() {
-        if (scrollView != null && scrollView.getParent() instanceof ViewGroup) {
-            ((ViewGroup) scrollView.getParent()).removeView(scrollView);
-        }
-
-        scrollView = new ScrollView(activity);
-        scrollView.setFillViewport(true);
-        scrollView.setBackgroundColor(UiTheme.PAPER);
-
         rootLayout = new LinearLayout(activity);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
-
-        scrollView.addView(PageTitle.wrap(rootLayout, "Service Utilization", null, false));
         buildLayout();
-
-        return scrollView;
+        return PageTitle.wrap(rootLayout, "Service Utilization", null, false);
     }
 
     private void buildLayout() {
@@ -262,26 +252,15 @@ public class ServiceUtilizationView {
         params.bottomMargin = dp(16);
         rootLayout.addView(defCard, params);
 
-        LinearLayout headerRow = new LinearLayout(activity);
-        headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
-        defCard.addView(headerRow);
-
         TextView title = new TextView(activity);
         title.setText("Metric definitions");
         title.setTextColor(UiTheme.NAVY);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         title.setTypeface(Typeface.DEFAULT_BOLD);
-        headerRow.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        TextView chevron = new TextView(activity);
-        chevron.setText("⌵");
-        chevron.setTextColor(0xff94a3b8);
-        chevron.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        headerRow.addView(chevron);
+        defCard.addView(title);
 
         TextView note = new TextView(activity);
-        note.setText("Pending shown as — until definition confirmed");
+        note.setText(model.definitions == null ? "Pending shown as — until definition confirmed" : String.join("\n\n", model.definitions));
         note.setTextColor(UiTheme.MUTED);
         note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams nParams = new LinearLayout.LayoutParams(
@@ -415,10 +394,11 @@ public class ServiceUtilizationView {
         // Export Button
         Button exportBtn = new Button(activity);
         exportBtn.setText("⇪ Export");
+        exportBtn.setAllCaps(false);
+        exportBtn.setMinHeight(dp(48));
         exportBtn.setTextColor(UiTheme.WHITE);
         exportBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         exportBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        exportBtn.setAllCaps(false);
 
         GradientDrawable expBg = new GradientDrawable();
         expBg.setColor(UiTheme.NAVY);
@@ -426,15 +406,16 @@ public class ServiceUtilizationView {
         exportBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), expBg, null));
 
         exportBtn.setOnClickListener(v -> {
-            showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
+            if (callbacks == null || !callbacks.onExport()) showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
         });
         LinearLayout.LayoutParams expParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnCol.addView(exportBtn, expParams);
 
         // Back to Filters Button
         Button backBtn = new Button(activity);
         backBtn.setText("Back to Filters");
+        backBtn.setMinHeight(dp(48));
         backBtn.setTextColor(UiTheme.NAVY);
         backBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         backBtn.setTypeface(Typeface.DEFAULT);
@@ -449,7 +430,7 @@ public class ServiceUtilizationView {
             if (callbacks != null) callbacks.onBackToFilters();
         });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         backParams.topMargin = dp(8);
         btnCol.addView(backBtn, backParams);
     }

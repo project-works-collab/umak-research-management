@@ -13,6 +13,8 @@ public final class StaffQueueData {
     public static class AttachmentItem {
         public final String fileName;
         public final String fileSize;
+        public String fileId = "";
+        public String mime = "";
 
         public AttachmentItem(String fileName, String fileSize) {
             this.fileName = fileName;
@@ -35,6 +37,7 @@ public final class StaffQueueData {
         public final String author;
         public final String timestamp;
         public final boolean isNew;
+        public String details = "";
 
         public ReviewLogItem(String status, String author, String timestamp, boolean isNew) {
             this.status = status;
@@ -46,6 +49,10 @@ public final class StaffQueueData {
 
     public static class QueueRequestItem {
         public final String id;
+        public int serverId;
+        public int version;
+        public String submittedDate = "";
+        public final List<Integer> missingRequirementIndices = new ArrayList<>();
         public String status; // "Submitted", "In review", "For correction", "Completed"
         public final String serviceType;
         public final String studyTitle;
@@ -84,6 +91,11 @@ public final class StaffQueueData {
             this.serviceType = serviceType;
             this.studyTitle = studyTitle;
             this.submittedAt = submittedAt;
+            try {
+                this.submittedDate = java.time.LocalDateTime.parse(submittedAt,
+                        java.time.format.DateTimeFormatter.ofPattern("MMM d, uuuu, h:mm a", java.util.Locale.US))
+                        .toLocalDate().toString();
+            } catch (java.time.DateTimeException ignored) { /* API adapters supply an ISO date separately. */ }
             this.requesterName = requesterName;
             this.requesterRole = requesterRole;
             this.requesterCollege = requesterCollege;

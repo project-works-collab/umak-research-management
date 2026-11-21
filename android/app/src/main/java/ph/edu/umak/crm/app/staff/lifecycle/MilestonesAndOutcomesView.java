@@ -101,6 +101,40 @@ public class MilestonesAndOutcomesView {
         }
     }
 
+    public interface LiveActions {
+        void stage(); void milestones(); void milestone(int index); void presentation(); void publication(); void completion(); void history(); void close();
+    }
+    public void bindLive(org.json.JSONObject record, LiveActions actions) throws org.json.JSONException {
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(activity,"Milestone and Outcomes",null,null);
+        rootLayout=page.content;
+        var identity=page.section(record.getString("title"));
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(identity,"REG-"+record.getInt("id"),false);
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(identity,"Current overall stage: "+ph.edu.umak.crm.app.research.RegisteredProgressView.stageLabel(record.getString("stage")),true);
+        identity.addView(ph.edu.umak.crm.app.common.components.UiButton.text(activity,"View stage history",UiTheme.ACCENT,actions::history));
+        var stage=page.section("Overall stage");
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(stage,record.optString("next_action","").isEmpty()?"No next action recorded":record.optString("next_action"),false);
+        if(!record.isNull("deadline"))ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(stage,"Deadline: "+record.optString("deadline"),false);
+        if(!"Completed".equals(record.getString("stage")))stage.addView(ph.edu.umak.crm.app.common.components.UiButton.primary(activity,"Update overall stage",actions::stage));
+        var milestones=page.section("Research milestones");
+        org.json.JSONArray rows=record.getJSONArray("milestones");
+        for(int i=0;i<rows.length();i++) {
+            final int index=i;org.json.JSONObject item=rows.getJSONObject(i);
+            milestones.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,item.getString("title")+" · "+item.getString("status"),UiTheme.BORDER,UiTheme.NAVY,()->actions.milestone(index)));
+            if(!item.isNull("effective_date"))ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(milestones,item.optString("effective_date"),false);
+        }
+        milestones.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Edit milestones",UiTheme.BORDER,UiTheme.NAVY,actions::milestones));
+        for(String kind:new String[]{"completion","presentation","publication"}) {
+            var section=page.section(kind.substring(0,1).toUpperCase(java.util.Locale.ROOT)+kind.substring(1));
+            org.json.JSONObject outcome=record.optJSONObject(kind);
+            boolean saved=outcome!=null&&!outcome.isNull("date");
+            ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(section,saved?outcome.optString("date"):"Not recorded",false);
+            if(saved)ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(section,outcome.optString(kind.equals("publication")?"citation":kind.equals("presentation")?"event":"details",""),false);
+            if(kind.equals("completion")){if(saved)section.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Correct completion",UiTheme.BORDER,UiTheme.NAVY,actions::completion));}
+            else section.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,kind.equals("presentation")?"Record presentation":"Record publication",UiTheme.BORDER,UiTheme.NAVY,kind.equals("presentation")?actions::presentation:actions::publication));
+        }
+        rootLayout.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Back to progress list",UiTheme.BORDER,UiTheme.NAVY,actions::close));
+    }
+
     public ViewGroup getContentLayout() {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);

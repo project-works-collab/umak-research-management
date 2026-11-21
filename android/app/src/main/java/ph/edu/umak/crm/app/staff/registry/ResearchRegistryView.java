@@ -41,6 +41,7 @@ public class ResearchRegistryView {
     public interface Callbacks {
         void onOpenRecord(StaffRegistryData.RegistryRecordItem record);
         void onAddResearchEntry();
+        default void onFiltersChanged(String keyword,String college,String period) {}
     }
 
     private final Activity activity;
@@ -76,11 +77,32 @@ public class ResearchRegistryView {
             "AY 2023-2024"
     };
 
+    private boolean live;
+    private boolean binding;
+    private String[] colleges = COLLEGES;
+    private String[] periods = PERIODS;
+
     public ResearchRegistryView(Activity activity, Callbacks callbacks) {
         this.activity = activity;
         this.callbacks = callbacks;
         this.allRecords.addAll(StaffRegistryData.getMockRecords());
         buildUi();
+    }
+
+    public void bindLive(java.util.List<StaffRegistryData.RegistryRecordItem> records) {
+        binding=true;live=true;allRecords.clear();allRecords.addAll(records);
+        java.util.Set<String> cs=new java.util.TreeSet<>(),ps=new java.util.TreeSet<>();
+        for(var record:records){if(!record.college.isBlank())cs.add(record.college);if(!record.academicPeriod.isBlank())ps.add(record.academicPeriod);}
+        if(!selectedCollege.equals("All colleges"))cs.add(selectedCollege);
+        if(!selectedPeriod.equals("All academic periods"))ps.add(selectedPeriod);
+        colleges=java.util.stream.Stream.concat(java.util.stream.Stream.of("All colleges"),cs.stream()).toArray(String[]::new);
+        periods=java.util.stream.Stream.concat(java.util.stream.Stream.of("All academic periods"),ps.stream()).toArray(String[]::new);
+        String currentCollege=selectedCollege,currentPeriod=selectedPeriod;
+        collegeSpinner.setAdapter(new ArrayAdapter<>(activity,android.R.layout.simple_spinner_dropdown_item,colleges));
+        periodSpinner.setAdapter(new ArrayAdapter<>(activity,android.R.layout.simple_spinner_dropdown_item,periods));
+        collegeSpinner.setSelection(Math.max(0,java.util.Arrays.asList(colleges).indexOf(currentCollege)));
+        periodSpinner.setSelection(Math.max(0,java.util.Arrays.asList(periods).indexOf(currentPeriod)));
+        applyFilterAndRender();binding=false;
     }
 
     public ViewGroup getContentLayout() {
@@ -192,7 +214,7 @@ public class ResearchRegistryView {
         ScreenTypography.apply(collegeLabel, 12);
         rootLayout.addView(collegeLabel);
 
-        collegeSpinner = createSpinner(COLLEGES);
+        collegeSpinner = createSpinner(colleges);
         LinearLayout.LayoutParams collegeSpinnerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         collegeSpinnerParams.topMargin = dp(4);
@@ -206,7 +228,7 @@ public class ResearchRegistryView {
         ScreenTypography.apply(periodLabel, 12);
         rootLayout.addView(periodLabel);
 
-        periodSpinner = createSpinner(PERIODS);
+        periodSpinner = createSpinner(periods);
         LinearLayout.LayoutParams periodSpinnerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         periodSpinnerParams.topMargin = dp(4);
@@ -216,7 +238,7 @@ public class ResearchRegistryView {
         collegeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                selectedCollege = COLLEGES[position];
+                selectedCollege = colleges[position];
                 applyFilterAndRender();
             }
 
@@ -227,7 +249,7 @@ public class ResearchRegistryView {
         periodSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                selectedPeriod = PERIODS[position];
+                selectedPeriod = periods[position];
                 applyFilterAndRender();
             }
 
@@ -364,6 +386,7 @@ public class ResearchRegistryView {
     }
 
     public void applyFilterAndRender() {
+        if(live&&!binding&&callbacks!=null)callbacks.onFiltersChanged(searchQuery,"All colleges".equals(selectedCollege)?"":selectedCollege,"All academic periods".equals(selectedPeriod)?"":selectedPeriod);
         List<StaffRegistryData.RegistryRecordItem> filtered = new ArrayList<>();
         boolean collegeFilterActive = !"All colleges".equalsIgnoreCase(selectedCollege);
         boolean periodFilterActive = !"All academic periods".equalsIgnoreCase(selectedPeriod);
@@ -379,7 +402,7 @@ public class ResearchRegistryView {
                 continue;
             }
             // Check search query
-            if (!TextUtils.isEmpty(searchQuery)) {
+            if (!live && !TextUtils.isEmpty(searchQuery)) {
                 String q = searchQuery.toLowerCase();
                 boolean matches = record.id.toLowerCase().contains(q)
                         || record.title.toLowerCase().contains(q)

@@ -33,6 +33,37 @@ public final class MilestoneEditorDialog {
 
     private MilestoneEditorDialog() {}
 
+    public interface LiveSave { void save(org.json.JSONObject fields,java.util.function.BiConsumer<String,String> result); }
+    public static void showLive(Activity activity,org.json.JSONObject item,LiveSave save,Runnable saved,Runnable reload){
+        Dialog dialog=new Dialog(activity);
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(activity,"Edit milestone",null,null);
+        var card=page.section(item.optString("title"));
+        String[] statuses={"Pending","In progress","Completed","Not applicable"};
+        android.widget.Spinner status=new android.widget.Spinner(activity);status.setContentDescription("Milestone status");status.setAdapter(new android.widget.ArrayAdapter<>(activity,android.R.layout.simple_spinner_dropdown_item,statuses));status.setSelection(Math.max(0,java.util.Arrays.asList(statuses).indexOf(item.optString("status"))));card.addView(status);
+        EditText date=new EditText(activity);date.setContentDescription("Milestone date (YYYY-MM-DD)");date.setHint("YYYY-MM-DD");date.setText(item.isNull("effective_date")?"":item.optString("effective_date"));ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(date,false);card.addView(date);
+        EditText evidence=new EditText(activity);evidence.setContentDescription("Evidence reference");evidence.setHint("Evidence reference");evidence.setText(item.optString("evidence",""));ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(evidence,true);card.addView(evidence);
+        android.widget.Spinner review=new android.widget.Spinner(activity);review.setContentDescription("Evidence review state");review.setAdapter(new android.widget.ArrayAdapter<>(activity,android.R.layout.simple_spinner_dropdown_item,new String[]{"No evidence recorded","Received","Verified"}));review.setSelection(item.isNull("evidence_state")?0:"verified".equals(item.optString("evidence_state"))?2:1);card.addView(review);
+        Button submit=ph.edu.umak.crm.app.common.components.UiButton.primary(activity,"Save milestone",null);card.addView(submit);
+        card.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Cancel",UiTheme.BORDER,UiTheme.NAVY,dialog::dismiss));
+        submit.setOnClickListener(view->{
+            try{
+                String day=date.getText().toString().trim();if(!day.isEmpty())java.time.LocalDate.parse(day);
+                org.json.JSONObject fields=new org.json.JSONObject().put("milestone_code",item.getString("code")).put("status",status.getSelectedItem().toString())
+                    .put("effective_date",day.isEmpty()?org.json.JSONObject.NULL:day).put("evidence",evidence.getText().toString().trim())
+                    .put("evidence_state",review.getSelectedItemPosition()==0?org.json.JSONObject.NULL:review.getSelectedItemPosition()==2?"verified":"received");
+                Runnable restore=ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(card);dialog.setCancelable(false);page.status.working("Saving milestone…");
+                save.save(fields,(data,error)->{
+                    restore.run();dialog.setCancelable(true);if(!dialog.isShowing())return;
+                    if(error==null){dialog.dismiss();saved.run();}else{
+                        page.status.result(error,true);
+                        if(error.toLowerCase(java.util.Locale.ROOT).contains("reload")){submit.setEnabled(false);card.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Reload research progress",UiTheme.BORDER,UiTheme.NAVY,()->{dialog.dismiss();reload.run();}));}else submit.setEnabled(true);
+                    }
+                });
+            }catch(org.json.JSONException|java.time.DateTimeException invalid){page.status.result("Check the milestone date and evidence.",true);}
+        });
+        android.widget.ScrollView scroll=new android.widget.ScrollView(activity);scroll.addView(page);ph.edu.umak.crm.app.common.dialogs.BottomSheet.show(dialog,scroll);
+    }
+
     private static int dp(Activity activity, int value) {
         return (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,

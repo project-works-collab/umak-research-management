@@ -27,6 +27,8 @@ public final class StaffRegistryData {
     }
 
     public static class DocumentVersion {
+        public String fileId = "";
+        public String mime = "";
         public final String fileName;
         public final String fileSize;
         public final String date;
@@ -86,6 +88,8 @@ public final class StaffRegistryData {
 
     public static class RegistryRecordItem {
         public final String id;
+        public int serverId;
+        public int version;
         public String title;
         public String stage; // "In progress", "Registered", "For revision", "Completed"
         public final String registeredDate;

@@ -10,8 +10,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import ph.edu.umak.crm.app.R;
-import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class ManageHubView {
@@ -21,7 +21,7 @@ public final class ManageHubView {
         void onOpenApprovedForms();
         void onOpenUserAccounts();
         void onOpenAuditHistory();
-        default void onOpenAnalyticsReporting() {}
+        void onOpenAnalyticsReporting();
     }
 
     private final Context context;
@@ -58,7 +58,7 @@ public final class ManageHubView {
 
         addSpacing(context, card, 12);
 
-        // 1. Service Catalog Row (routes to 5.2)
+        // 1. Service Catalog Row
         card.addView(createActionRow(
                 R.drawable.ic_crm_book,
                 "Service Catalog",
@@ -70,7 +70,7 @@ public final class ManageHubView {
 
         addDivider(card);
 
-        // 2. Approved Forms & Resources Row (routes to 5.4)
+        // 2. Approved Forms & Resources Row
         card.addView(createActionRow(
                 R.drawable.ic_crm_doc,
                 "Approved Forms & Resources",
@@ -82,7 +82,7 @@ public final class ManageHubView {
 
         addDivider(card);
 
-        // 3. User Accounts Row (routes to 5.8)
+        // 3. User Accounts Row
         card.addView(createActionRow(
                 R.drawable.ic_crm_users,
                 "User Accounts",
@@ -94,7 +94,7 @@ public final class ManageHubView {
 
         addDivider(card);
 
-        // 4. Audit History Row (routes to 5.7)
+        // 4. Audit History Row
         card.addView(createActionRow(
                 R.drawable.ic_crm_history,
                 "Audit History",
@@ -104,7 +104,26 @@ public final class ManageHubView {
                 }
         ));
 
+        addDivider(card);
+
+        // 5. Analytics & Reporting Row
+        card.addView(createActionRow(
+                R.drawable.ic_crm_info,
+                "Analytics & Reporting",
+                "Research reports and service utilization.",
+                () -> {
+                    if (listener != null) listener.onOpenAnalyticsReporting();
+                }
+        ));
         layout.addView(card);
+    }
+
+    public void setVisibleActions(java.util.Set<String> names) {
+        for(int i=0;i<layout.getChildCount();i++) {
+            View child=layout.getChildAt(i);
+            if(child instanceof LinearLayout card && card.getChildCount()>0 && card.getChildAt(0) instanceof TextView title)
+                child.setVisibility(names.contains(title.getText().toString())?View.VISIBLE:View.GONE);
+        }
     }
 
     private View createActionRow(int iconRes, String title, String description, Runnable onClick) {
@@ -117,7 +136,6 @@ public final class ManageHubView {
         row.setFocusable(true);
         row.setBackground(UiTheme.ripple(null, 0x15082d50));
 
-        // Left Icon
         ImageView iconView = new ImageView(context);
         iconView.setImageResource(iconRes);
         iconView.setColorFilter(0xff082d50);
@@ -126,7 +144,6 @@ public final class ManageHubView {
         iconLp.rightMargin = UiTheme.dp(context, 14);
         row.addView(iconView, iconLp);
 
-        // Text Column
         LinearLayout textCol = new LinearLayout(context);
         textCol.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -145,28 +162,22 @@ public final class ManageHubView {
         ScreenTypography.apply(dView, 12);
         dView.setPadding(0, UiTheme.dp(context, 2), 0, 0);
         textCol.addView(dView);
-
         row.addView(textCol, textLp);
 
-        // Right Chevron >
         ImageView chevron = new ImageView(context);
         chevron.setImageResource(R.drawable.ic_crm_chevron_right);
         chevron.setColorFilter(0xff94a3b8);
         int cSize = UiTheme.dp(context, 18);
         row.addView(chevron, new LinearLayout.LayoutParams(cSize, cSize));
-
-        row.setOnClickListener(v -> {
-            if (onClick != null) onClick.run();
-        });
-
+        row.setOnClickListener(v -> { if (onClick != null) onClick.run(); });
         return row;
     }
 
     private void addDivider(LinearLayout parent) {
         View line = new View(context);
         line.setBackgroundColor(0xfff1f5f9);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 1));
-        parent.addView(line, lp);
+        parent.addView(line, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 1)));
     }
 
     private static void addSpacing(Context context, LinearLayout parent, int dp) {
@@ -179,6 +190,6 @@ public final class ManageHubView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return PageTitle.wrap(layout, "Manage", "Services, forms, accounts and audit records.", false);
+        return PageTitle.wrap(layout, "Manage", "Services, forms, accounts, and audit records.", false);
     }
 }

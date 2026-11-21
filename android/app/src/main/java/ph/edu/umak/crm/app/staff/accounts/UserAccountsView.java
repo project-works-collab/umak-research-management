@@ -162,6 +162,7 @@ public class UserAccountsView {
         applyFilterAndRender();
     }
 
+    public void bindLive(java.util.List<StaffData.StaffAccountItem> accounts){allAccounts.clear();allAccounts.addAll(accounts);applyFilterAndRender();}
     public View getContentLayout() {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);

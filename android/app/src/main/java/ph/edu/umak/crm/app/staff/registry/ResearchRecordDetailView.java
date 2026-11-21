@@ -1,20 +1,21 @@
 package ph.edu.umak.crm.app.staff.registry;
 
 import android.app.Activity;
-import android.graphics.Color;
+import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import ph.edu.umak.crm.app.R;
-import ph.edu.umak.crm.app.ScreenTypography;
+import java.util.List;
+
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -31,6 +32,9 @@ public class ResearchRecordDetailView {
         void onManageDocuments(StaffRegistryData.RegistryRecordItem record);
         void onOpenLinkedRequest(String requestId);
         void onMilestonesAndOutcomes(StaffRegistryData.RegistryRecordItem record);
+        default boolean canEdit() { return true; }
+        default boolean canProgress() { return true; }
+        default boolean canOpenRequests() { return true; }
     }
 
     private final Activity activity;
@@ -52,13 +56,20 @@ public class ResearchRecordDetailView {
         }
     }
 
-    private LinearLayout pageWrapper;
-
     public ViewGroup getContentLayout() {
-        if (pageWrapper != null && pageWrapper.getParent() instanceof ViewGroup) {
-            ((ViewGroup) pageWrapper.getParent()).removeView(pageWrapper);
+        if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
+            ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
-        return pageWrapper;
+        restrict(rootLayout);
+        return PageTitle.wrap(rootLayout, "Research Record", null, false);
+    }
+
+    private void restrict(View view) {
+        if(callbacks!=null && view instanceof android.widget.Button button) {
+            String label=button.getText().toString().toLowerCase(java.util.Locale.ROOT);
+            if((label.contains("edit")&&!callbacks.canEdit()) || (label.contains("milestone")&&!callbacks.canProgress()))button.setVisibility(View.GONE);
+        }
+        if(view instanceof ViewGroup group)for(int i=0;i<group.getChildCount();i++)restrict(group.getChildAt(i));
     }
 
     private int dp(int value) {
@@ -70,61 +81,81 @@ public class ResearchRecordDetailView {
     }
 
     private void buildUi() {
-        pageWrapper = new LinearLayout(activity);
-        pageWrapper.setOrientation(LinearLayout.VERTICAL);
-
-        // Dark Navy Header Band (#082d50)
-        LinearLayout band = new LinearLayout(activity);
-        band.setOrientation(LinearLayout.VERTICAL);
-        band.setBackgroundColor(0xff082d50);
-        int pad = dp(16);
-        band.setPadding(pad, pad, pad, pad);
-
-        TextView heading = new TextView(activity);
-        heading.setText("Research Record");
-        heading.setTextColor(0xffffffff);
-        heading.setTypeface(UiTheme.headingFont(activity));
-        ScreenTypography.apply(heading, 24);
-        ScreenTypography.heading(heading);
-        band.addView(heading);
-
-        pageWrapper.addView(band);
-
         rootLayout = new LinearLayout(activity);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
-        pageWrapper.addView(rootLayout);
 
-        Typeface bold = UiTheme.boldFont(activity);
+        // 1. Back button
+        TextView backBtn = new TextView(activity);
+        backBtn.setText("< Back to Registry");
+        backBtn.setTextColor(UiTheme.ACCENT);
+        backBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        backBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        backBtn.setPadding(0, 0, dp(16), dp(12));
+        backBtn.setClickable(true);
+        backBtn.setFocusable(true);
+        backBtn.setOnClickListener(v -> {
+            if (callbacks != null) {
+                callbacks.onBackToRegistry();
+            }
+        });
+        rootLayout.addView(backBtn);
 
-        // 2. Record Summary Card (ID, Title, Stage, Meta)
+        // 2. Header
+
+
+        // 3. Record Summary Card (ID, Title, Stage, Meta)
         rootLayout.addView(createRecordHeaderCard());
 
-        // 3. Team Members Card
+        // 4. Team Members Card
         rootLayout.addView(createTeamMembersCard());
 
-        // 4. Metadata Card (Adviser, College, Academic Period, Registrant Category)
+        // 5. Metadata Card (Adviser, College, Academic Period, Registrant Category)
         rootLayout.addView(createMetadataCard());
 
-        // 5. Documents Card
+        // 6. Documents Card
         rootLayout.addView(createDocumentsCard());
 
-        // 6. Linked Service Requests Card
+        // 7. Linked Service Requests Card
         rootLayout.addView(createLinkedRequestsCard());
 
-        // 7. Action Buttons (Edit Record & Correction History)
-        Button editBtn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
+        // 8. Action Buttons
+        Button milestonesBtn = new Button(activity);
+        milestonesBtn.setText("Milestones & Outcomes");
+        milestonesBtn.setTextColor(UiTheme.WHITE);
+        milestonesBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        milestonesBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        milestonesBtn.setAllCaps(false);
+        GradientDrawable mBg = new GradientDrawable();
+        mBg.setColor(UiTheme.ACCENT);
+        mBg.setCornerRadius(dp(8));
+        milestonesBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), mBg, null));
+        LinearLayout.LayoutParams mParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        mParams.topMargin = dp(16);
+        mParams.bottomMargin = dp(10);
+        rootLayout.addView(milestonesBtn, mParams);
+
+        milestonesBtn.setOnClickListener(v -> {
+            if (callbacks != null) {
+                callbacks.onMilestonesAndOutcomes(record);
+            }
+        });
+
+        Button editBtn = new Button(activity);
         editBtn.setText("Edit Record");
+        editBtn.setTextColor(UiTheme.WHITE);
+        editBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        editBtn.setTypeface(Typeface.DEFAULT_BOLD);
         editBtn.setAllCaps(false);
-        editBtn.setTextColor(0xffffffff);
-        editBtn.setTypeface(bold);
-        ScreenTypography.apply(editBtn, 15);
-        editBtn.setBackground(UiTheme.ripple(UiTheme.shape(activity, 0xff131c4b, 8, 0), 0x20ffffff));
+        GradientDrawable editBg = new GradientDrawable();
+        editBg.setColor(UiTheme.NAVY);
+        editBg.setCornerRadius(dp(8));
+        editBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), editBg, null));
         LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
-        editParams.topMargin = dp(16);
-        editParams.bottomMargin = dp(10);
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+        editParams.bottomMargin = dp(12);
         rootLayout.addView(editBtn, editParams);
 
         editBtn.setOnClickListener(v -> {
@@ -133,15 +164,19 @@ public class ResearchRecordDetailView {
             }
         });
 
-        Button historyBtn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
+        Button historyBtn = new Button(activity);
         historyBtn.setText("Correction History");
+        historyBtn.setTextColor(UiTheme.NAVY);
+        historyBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        historyBtn.setTypeface(Typeface.DEFAULT_BOLD);
         historyBtn.setAllCaps(false);
-        historyBtn.setTextColor(0xff082d50);
-        historyBtn.setTypeface(bold);
-        ScreenTypography.apply(historyBtn, 15);
-        historyBtn.setBackground(UiTheme.ripple(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER), 0x20082d50));
+        GradientDrawable histBg = new GradientDrawable();
+        histBg.setColor(UiTheme.WHITE);
+        histBg.setCornerRadius(dp(8));
+        histBg.setStroke(dp(1), UiTheme.BORDER);
+        historyBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22131c4b), histBg, null));
         LinearLayout.LayoutParams histParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
         rootLayout.addView(historyBtn, histParams);
 
         historyBtn.setOnClickListener(v -> {
@@ -152,9 +187,6 @@ public class ResearchRecordDetailView {
     }
 
     private View createRecordHeaderCard() {
-        Typeface bold = UiTheme.boldFont(activity);
-        Typeface regular = UiTheme.bodyFont(activity);
-
         LinearLayout card = createBaseCard();
 
         LinearLayout topRow = new LinearLayout(activity);
@@ -163,73 +195,53 @@ public class ResearchRecordDetailView {
 
         TextView idText = new TextView(activity);
         idText.setText(record.id);
-        idText.setTextColor(0xff185d9d);
-        idText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        idText.setTypeface(bold);
+        idText.setTextColor(UiTheme.NAVY);
+        idText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        idText.setTypeface(Typeface.DEFAULT_BOLD);
         topRow.addView(idText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        TextView stageBadge = new TextView(activity);
+        stageBadge.setText("Stage " + record.stage);
+        stageBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        stageBadge.setTypeface(Typeface.DEFAULT_BOLD);
+        stageBadge.setPadding(dp(10), dp(4), dp(10), dp(4));
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setColor(UiTheme.STATUS_IN_REVIEW_BG);
+        badgeBg.setCornerRadius(dp(12));
+        stageBadge.setTextColor(UiTheme.STATUS_IN_REVIEW_TEXT);
+        stageBadge.setBackground(badgeBg);
+        topRow.addView(stageBadge);
 
         card.addView(topRow);
 
         TextView titleText = new TextView(activity);
         titleText.setText(record.title);
-        titleText.setTextColor(0xff082d50);
-        titleText.setTypeface(bold);
-        ScreenTypography.apply(titleText, 18);
+        titleText.setTextColor(UiTheme.NAVY);
+        titleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        titleText.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(4);
-        titleParams.bottomMargin = dp(6);
+        titleParams.topMargin = dp(8);
+        titleParams.bottomMargin = dp(8);
         card.addView(titleText, titleParams);
-
-        // Stage Row: Stage [In progress]
-        LinearLayout stageRow = new LinearLayout(activity);
-        stageRow.setOrientation(LinearLayout.HORIZONTAL);
-        stageRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView stageLbl = new TextView(activity);
-        stageLbl.setText("Stage ");
-        stageLbl.setTextColor(0xff586b83);
-        stageLbl.setTypeface(regular);
-        ScreenTypography.apply(stageLbl, 12);
-        stageRow.addView(stageLbl);
-
-        TextView stageBadge = new TextView(activity);
-        stageBadge.setText(record.stage);
-        ScreenTypography.apply(stageBadge, 11);
-        stageBadge.setTypeface(bold);
-        stageBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
-        GradientDrawable badgeBg = new GradientDrawable();
-        badgeBg.setCornerRadius(dp(4));
-        badgeBg.setColor(Color.parseColor("#FEF3C7"));
-        stageBadge.setTextColor(Color.parseColor("#D97706"));
-        stageBadge.setBackground(badgeBg);
-        stageRow.addView(stageBadge);
-
-        LinearLayout.LayoutParams stageParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        stageParams.bottomMargin = dp(6);
-        card.addView(stageRow, stageParams);
 
         TextView metaText = new TextView(activity);
         metaText.setText("Registered " + record.registeredDate + " · Last edit " + record.lastEditDate);
-        metaText.setTextColor(0xff64748b);
-        metaText.setTypeface(regular);
-        ScreenTypography.apply(metaText, 12);
+        metaText.setTextColor(UiTheme.MUTED);
+        metaText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         card.addView(metaText);
 
         return card;
     }
 
     private View createTeamMembersCard() {
-        Typeface bold = UiTheme.boldFont(activity);
-
         LinearLayout card = createBaseCard();
 
         TextView title = new TextView(activity);
         title.setText("Team members");
-        title.setTextColor(0xff082d50);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 15);
+        title.setTextColor(UiTheme.NAVY);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setPadding(0, 0, 0, dp(12));
         card.addView(title);
 
@@ -251,9 +263,6 @@ public class ResearchRecordDetailView {
     }
 
     private View createMemberRow(StaffRegistryData.TeamMember member) {
-        Typeface bold = UiTheme.boldFont(activity);
-        Typeface regular = UiTheme.bodyFont(activity);
-
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -262,13 +271,13 @@ public class ResearchRecordDetailView {
         // Initials Avatar
         TextView avatar = new TextView(activity);
         avatar.setText(member.initials);
-        avatar.setTextColor(0xff0284c7);
-        avatar.setTypeface(bold);
-        ScreenTypography.apply(avatar, 13);
+        avatar.setTextColor(UiTheme.WHITE);
+        avatar.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        avatar.setTypeface(Typeface.DEFAULT_BOLD);
         avatar.setGravity(Gravity.CENTER);
         GradientDrawable avatarBg = new GradientDrawable();
         avatarBg.setShape(GradientDrawable.OVAL);
-        avatarBg.setColor(Color.parseColor("#E0F2FE"));
+        avatarBg.setColor(UiTheme.ACCENT);
         avatar.setBackground(avatarBg);
         LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(dp(36), dp(36));
         avatarParams.rightMargin = dp(12);
@@ -280,16 +289,15 @@ public class ResearchRecordDetailView {
 
         TextView nameText = new TextView(activity);
         nameText.setText(member.name);
-        nameText.setTextColor(0xff082d50);
-        nameText.setTypeface(bold);
-        ScreenTypography.apply(nameText, 14);
+        nameText.setTextColor(UiTheme.NAVY);
+        nameText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        nameText.setTypeface(Typeface.DEFAULT_BOLD);
         textCol.addView(nameText);
 
         TextView roleText = new TextView(activity);
         roleText.setText(member.role);
-        roleText.setTextColor(0xff64748b);
-        roleText.setTypeface(regular);
-        ScreenTypography.apply(roleText, 12);
+        roleText.setTextColor(UiTheme.MUTED);
+        roleText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         textCol.addView(roleText);
 
         row.addView(textCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -297,13 +305,13 @@ public class ResearchRecordDetailView {
         // Category Tag (Student / Faculty)
         TextView catTag = new TextView(activity);
         catTag.setText(member.category);
-        ScreenTypography.apply(catTag, 11);
-        catTag.setTypeface(bold);
+        catTag.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        catTag.setTypeface(Typeface.DEFAULT_BOLD);
         catTag.setPadding(dp(8), dp(3), dp(8), dp(3));
         GradientDrawable tagBg = new GradientDrawable();
-        tagBg.setCornerRadius(dp(4));
-        tagBg.setColor(Color.parseColor("#E0F2FE"));
-        catTag.setTextColor(0xff0284c7);
+        tagBg.setColor(UiTheme.TAG_BG);
+        tagBg.setCornerRadius(dp(6));
+        catTag.setTextColor(UiTheme.TAG_TEXT);
         catTag.setBackground(tagBg);
         row.addView(catTag);
 
@@ -313,59 +321,34 @@ public class ResearchRecordDetailView {
     private View createMetadataCard() {
         LinearLayout card = createBaseCard();
 
-        addMetaItem(card, "ADVISER", record.facultyAdviser != null ? record.facultyAdviser : "None", null, false);
-        addMetaItem(card, "COLLEGE", record.college, null, false);
-        addMetaItem(card, "ACADEMIC PERIOD", record.academicPeriod, null, false);
-        addMetaItem(card, "REGISTRANT CATEGORY", record.registrantCategory, "🔒 Retained from registration", true);
+        addMetaItem(card, "Adviser", record.facultyAdviser != null ? record.facultyAdviser : "None", false);
+        addMetaItem(card, "College", record.college, false);
+        addMetaItem(card, "Academic period", record.academicPeriod, false);
+        addMetaItem(card, "Registrant category", record.registrantCategory + " (Retained from registration)", true);
 
         return card;
     }
 
-    private void addMetaItem(LinearLayout card, String label, String value, String subtext, boolean isLast) {
-        Typeface bold = UiTheme.boldFont(activity);
-        Typeface regular = UiTheme.bodyFont(activity);
-
+    private void addMetaItem(LinearLayout card, String label, String value, boolean isLast) {
         TextView labelView = new TextView(activity);
         labelView.setText(label);
-        labelView.setTextColor(0xff586b83);
-        labelView.setTypeface(bold);
-        ScreenTypography.apply(labelView, 11);
+        labelView.setTextColor(UiTheme.MUTED);
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         card.addView(labelView);
 
         TextView valView = new TextView(activity);
         valView.setText(value);
-        valView.setTextColor(0xff082d50);
-        valView.setTypeface(regular);
-        ScreenTypography.apply(valView, 14);
+        valView.setTextColor(UiTheme.NAVY);
+        valView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        valView.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams valParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         valParams.topMargin = dp(2);
+        valParams.bottomMargin = isLast ? 0 : dp(12);
         card.addView(valView, valParams);
-
-        if (subtext != null) {
-            TextView subView = new TextView(activity);
-            subView.setText(subtext);
-            subView.setTextColor(0xff64748b);
-            subView.setTypeface(regular);
-            ScreenTypography.apply(subView, 12);
-            LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            subParams.topMargin = dp(2);
-            card.addView(subView, subParams);
-        }
-
-        if (!isLast) {
-            View space = new View(activity);
-            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(12));
-            card.addView(space, sp);
-        }
     }
 
     private View createDocumentsCard() {
-        Typeface bold = UiTheme.boldFont(activity);
-        Typeface regular = UiTheme.bodyFont(activity);
-
         LinearLayout card = createBaseCard();
 
         LinearLayout headerRow = new LinearLayout(activity);
@@ -375,16 +358,16 @@ public class ResearchRecordDetailView {
 
         TextView title = new TextView(activity);
         title.setText("Documents");
-        title.setTextColor(0xff082d50);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 15);
+        title.setTextColor(UiTheme.NAVY);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
         headerRow.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         TextView manageLink = new TextView(activity);
         manageLink.setText("Manage");
-        manageLink.setTextColor(0xff185d9d);
-        manageLink.setTypeface(bold);
-        ScreenTypography.apply(manageLink, 13);
+        manageLink.setTextColor(UiTheme.ACCENT);
+        manageLink.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        manageLink.setTypeface(Typeface.DEFAULT_BOLD);
         manageLink.setClickable(true);
         manageLink.setFocusable(true);
         manageLink.setOnClickListener(v -> {
@@ -403,45 +386,37 @@ public class ResearchRecordDetailView {
             docRow.setGravity(Gravity.CENTER_VERTICAL);
             docRow.setPadding(0, dp(6), 0, dp(6));
 
-            ImageView docIcon = new ImageView(activity);
-            docIcon.setImageResource(R.drawable.ic_crm_doc);
-            docIcon.setColorFilter(0xff185d9d);
-            LinearLayout.LayoutParams dParams = new LinearLayout.LayoutParams(dp(18), dp(18));
-            dParams.rightMargin = dp(10);
-            docRow.addView(docIcon, dParams);
-
             LinearLayout nameCol = new LinearLayout(activity);
             nameCol.setOrientation(LinearLayout.VERTICAL);
 
             TextView nameText = new TextView(activity);
             nameText.setText(doc.fileName);
-            nameText.setTextColor(0xff082d50);
-            nameText.setTypeface(bold);
-            ScreenTypography.apply(nameText, 13);
+            nameText.setTextColor(UiTheme.NAVY);
+            nameText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            nameText.setTypeface(Typeface.DEFAULT_BOLD);
             nameCol.addView(nameText);
 
             TextView sizeText = new TextView(activity);
             sizeText.setText(doc.fileSize);
-            sizeText.setTextColor(0xff64748b);
-            sizeText.setTypeface(regular);
-            ScreenTypography.apply(sizeText, 12);
+            sizeText.setTextColor(UiTheme.MUTED);
+            sizeText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
             nameCol.addView(sizeText);
 
             docRow.addView(nameCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
             TextView badge = new TextView(activity);
             badge.setText(doc.isCurrent ? "Current" : "Earlier version");
-            ScreenTypography.apply(badge, 11);
-            badge.setTypeface(bold);
+            badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            badge.setTypeface(Typeface.DEFAULT_BOLD);
             badge.setPadding(dp(8), dp(3), dp(8), dp(3));
             GradientDrawable bg = new GradientDrawable();
-            bg.setCornerRadius(dp(4));
+            bg.setCornerRadius(dp(10));
             if (doc.isCurrent) {
-                bg.setColor(Color.parseColor("#DCFCE7"));
-                badge.setTextColor(Color.parseColor("#16A34A"));
+                bg.setColor(UiTheme.STATUS_COMPLETED_BG);
+                badge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
             } else {
-                bg.setColor(Color.parseColor("#F1F5F9"));
-                badge.setTextColor(Color.parseColor("#64748B"));
+                bg.setColor(UiTheme.TAG_BG);
+                badge.setTextColor(UiTheme.TAG_TEXT);
             }
             badge.setBackground(bg);
             docRow.addView(badge);
@@ -463,19 +438,24 @@ public class ResearchRecordDetailView {
     }
 
     private View createLinkedRequestsCard() {
-        Typeface bold = UiTheme.boldFont(activity);
-        Typeface regular = UiTheme.bodyFont(activity);
-
         LinearLayout card = createBaseCard();
 
         TextView title = new TextView(activity);
         title.setText("Linked service requests");
-        title.setTextColor(0xff082d50);
-        title.setTypeface(bold);
-        ScreenTypography.apply(title, 15);
+        title.setTextColor(UiTheme.NAVY);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(title);
 
-        addSpacing(card, 8);
+        TextView note = new TextView(activity);
+        note.setText("Each service request links to at most one research record.");
+        note.setTextColor(UiTheme.MUTED);
+        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        noteParams.topMargin = dp(2);
+        noteParams.bottomMargin = dp(12);
+        card.addView(note, noteParams);
 
         for (int i = 0; i < record.linkedRequests.size(); i++) {
             StaffRegistryData.LinkedRequest req = record.linkedRequests.get(i);
@@ -489,36 +469,35 @@ public class ResearchRecordDetailView {
 
             TextView reqId = new TextView(activity);
             reqId.setText(req.requestId);
-            reqId.setTextColor(0xff185d9d);
-            reqId.setTypeface(bold);
-            ScreenTypography.apply(reqId, 12);
+            reqId.setTextColor(UiTheme.NAVY);
+            reqId.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            reqId.setTypeface(Typeface.DEFAULT_BOLD);
             infoCol.addView(reqId);
 
             TextView serviceText = new TextView(activity);
             serviceText.setText(req.serviceTitle);
-            serviceText.setTextColor(0xff082d50);
-            serviceText.setTypeface(bold);
-            ScreenTypography.apply(serviceText, 14);
+            serviceText.setTextColor(UiTheme.MUTED);
+            serviceText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
             infoCol.addView(serviceText);
 
             reqRow.addView(infoCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
             TextView statusBadge = new TextView(activity);
             statusBadge.setText(req.status);
-            ScreenTypography.apply(statusBadge, 11);
-            statusBadge.setTypeface(bold);
+            statusBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            statusBadge.setTypeface(Typeface.DEFAULT_BOLD);
             statusBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
             GradientDrawable badgeBg = new GradientDrawable();
-            badgeBg.setCornerRadius(dp(4));
+            badgeBg.setCornerRadius(dp(10));
             if ("For correction".equalsIgnoreCase(req.status)) {
-                badgeBg.setColor(Color.parseColor("#FEF3C7"));
-                statusBadge.setTextColor(Color.parseColor("#D97706"));
+                badgeBg.setColor(UiTheme.STATUS_CORRECTION_BG);
+                statusBadge.setTextColor(UiTheme.STATUS_CORRECTION_TEXT);
             } else if ("Submitted".equalsIgnoreCase(req.status)) {
-                badgeBg.setColor(Color.parseColor("#E0F2FE"));
-                statusBadge.setTextColor(Color.parseColor("#0284c7"));
+                badgeBg.setColor(UiTheme.STATUS_SUBMITTED_BG);
+                statusBadge.setTextColor(UiTheme.STATUS_SUBMITTED_TEXT);
             } else {
-                badgeBg.setColor(Color.parseColor("#DCFCE7"));
-                statusBadge.setTextColor(Color.parseColor("#16A34A"));
+                badgeBg.setColor(UiTheme.STATUS_COMPLETED_BG);
+                statusBadge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
             }
             statusBadge.setBackground(badgeBg);
             reqRow.addView(statusBadge);
@@ -544,15 +523,6 @@ public class ResearchRecordDetailView {
             }
         }
 
-        addSpacing(card, 6);
-
-        TextView note = new TextView(activity);
-        note.setText("Each service request links to at most one research record.");
-        note.setTextColor(0xff64748b);
-        note.setTypeface(regular);
-        ScreenTypography.apply(note, 12);
-        card.addView(note);
-
         return card;
     }
 
@@ -560,17 +530,17 @@ public class ResearchRecordDetailView {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
-        card.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(UiTheme.WHITE);
+        bg.setCornerRadius(dp(10));
+        bg.setStroke(dp(1), UiTheme.BORDER);
+        card.setBackground(bg);
+
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.bottomMargin = dp(12);
         card.setLayoutParams(params);
         return card;
-    }
-
-    private void addSpacing(LinearLayout parent, int dp) {
-        View s = new View(activity);
-        s.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(dp)));
-        parent.addView(s);
     }
 }

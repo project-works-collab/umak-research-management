@@ -21,25 +21,38 @@ public final class LiveReportsView extends LinearLayout {
     public interface Actions {
         void request(JSONObject filters, BiConsumer<String, String> result);
         void back();
+        default void openRecord(String id) {}
+        default void openRequest(String id) {}
     }
     private final Actions actions;
     private boolean research = true;
     private final Map<String, String> filters = new LinkedHashMap<>();
     private PendingStatus status;
     private boolean loading;
+    private boolean showingReport;
+    private JSONObject snapshot;
+    private LinearLayout filterBody;
     public LiveReportsView(Context context, Actions actions) {
         super(context); this.actions = actions; setOrientation(VERTICAL);
         int padding = UiTheme.dp(context, 16); setPadding(padding, padding, padding, padding);
     }
 
+    public boolean handleBack() {
+        if (!showingReport) return false;
+        load(); return true;
+    }
+
     public void load() {
+        showingReport = false;
         removeAllViews();
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(getContext(),"Analytics & Reporting","Back to Manage",actions::back);
+        addView(page);filterBody=page.section("Report filters");
         button("Back to Manage", actions::back);
         button(research ? "Service utilization report" : "Research report", () -> {
             if (loading) return;
             research = !research; filters.clear(); load();
         });
-        RegisteredProgressView.line(this, research ? "Research Report" : "Service Utilization", true);
+        RegisteredProgressView.line(filterBody, research ? "Research Report" : "Service Utilization", true);
         Map<String, EditText> inputs = new LinkedHashMap<>();
         Map<String, Spinner> choices = new LinkedHashMap<>();
         input(inputs, "college", "College or institute");
@@ -56,7 +69,7 @@ public final class LiveReportsView extends LinearLayout {
         }
         input(inputs, "service", research ? "Linked service code" : "Service code");
         choice(choices, "category", research ? "Registrant category" : "Requester category", new String[]{"All", "Student", "Faculty"});
-        status = new PendingStatus(getContext()); addView(status);
+        status = new PendingStatus(getContext()); filterBody.addView(status);
         LinearLayout results = new LinearLayout(getContext()); results.setOrientation(VERTICAL);
         Button generate = button("Generate report", null);
         generate.setOnClickListener(view -> {
@@ -79,9 +92,12 @@ public final class LiveReportsView extends LinearLayout {
                 PendingStatus current = status; current.working("Generating report…");
                 actions.request(request, (data, error) -> {
                     loading = false;
-                    if (!isAttachedToWindow() || current != status) return;
+                    if (current != status) return;
                     generate.setEnabled(true);
-                    if (error != null) { current.result(error, true); return; }
+                    if (error != null) {
+                        if(error.toLowerCase(java.util.Locale.ROOT).contains("access denied")){removeAllViews();addView(new AccessDeniedReportingView((android.app.Activity)getContext(),actions::back).getContentLayout());showingReport=true;}
+                        else current.result(error,true);return;
+                    }
                     try {
                         JSONObject report = new JSONObject(data); current.clear();
                         showReport(results, report, request);
@@ -90,59 +106,58 @@ public final class LiveReportsView extends LinearLayout {
             } catch (JSONException invalid) { status.result("Review the report filters.", true); }
         });
         button("Clear filters", () -> { if (!loading) { filters.clear(); load(); } });
-        addView(results);
+        filterBody.addView(results);
     }
 
     private void showReport(LinearLayout panel, JSONObject report, JSONObject request) throws JSONException {
-        RegisteredProgressView.line(panel, "Generated " + report.getString("generated_at"), false);
-        JSONObject applied = report.getJSONObject("filters");
-        for (var keys = applied.keys(); keys.hasNext();) {
-            String key = keys.next();
-            RegisteredProgressView.line(panel, key.replace('_', ' ') + ": " + applied.getString(key), false);
-        }
-        JSONArray metrics = report.getJSONArray("metrics");
-        for (int i = 0; i < metrics.length(); i++) {
-            JSONArray metric = metrics.getJSONArray(i);
-            RegisteredProgressView.line(panel, metric.getString(0) + ": " + metric.getInt(1), true);
-        }
-        if (report.getBoolean("empty")) RegisteredProgressView.line(panel, "No matching records", true);
-        JSONArray definitions = report.getJSONArray("definitions");
-        RegisteredProgressView.line(panel, "Metric definitions", true);
-        for (int i = 0; i < definitions.length(); i++) RegisteredProgressView.line(panel, definitions.getString(i), false);
-        JSONArray counts = report.getJSONArray("service_counts");
-        for (int i = 0; i < counts.length(); i++) {
-            JSONArray row = counts.getJSONArray(i);
-            RegisteredProgressView.line(panel, row.getString(0) + " · " + row.getInt(1) + " requests", false);
-        }
-        Button export = UiButton.outline(getContext(), "Export report", UiTheme.BORDER, UiTheme.NAVY,
-                () -> actions.request(request, (fresh, error) -> {
-                    if (!panel.isAttachedToWindow()) return;
-                    if (error != null) { status.result(error, true); return; }
-                    ExportReportDialog.showLiveReport(getContext(), report);
-                }));
-        panel.addView(export);
-        JSONArray rows = report.getJSONArray("rows");
-        RegisteredProgressView.line(panel, "Underlying records", true);
-        for (int i = 0; i < rows.length(); i++) {
-            JSONArray row = rows.getJSONArray(i);
-            RegisteredProgressView.line(panel, row.getString(0) + " · " + row.getString(1) + " · " + row.getString(2), false);
+        var researchModel=research?LiveReportData.research(report):null;
+        var serviceModel=research?null:LiveReportData.service(report);
+        snapshot = new JSONObject(report.toString());
+        removeAllViews();
+        showingReport = true;
+        if (research) {
+            ResearchReportView design = new ResearchReportView((android.app.Activity)getContext(), new ResearchReportView.Callbacks() {
+                public void onBackToFilters() { load(); }
+                public void onOpenRecord(String id) { actions.openRecord(id); }
+                public boolean onExport() { exportDisplayed(request); return true; }
+            });
+            design.setModel(researchModel);
+            addView(design.getContentLayout());
+        } else {
+            ServiceUtilizationView design = new ServiceUtilizationView((android.app.Activity)getContext(), new ServiceUtilizationView.Callbacks() {
+                public void onBackToFilters() { load(); }
+                public void onOpenRequest(StaffReportingData.RequestSummary request) { actions.openRequest(request.id); }
+                public boolean onExport() { exportDisplayed(request); return true; }
+            });
+            design.setModel(serviceModel);
+            addView(design.getContentLayout());
         }
     }
 
+    private void exportDisplayed(JSONObject request){
+        if(loading)return;loading=true;JSONObject displayed=snapshot;
+        // Recheck current report permission without replacing the displayed snapshot.
+        actions.request(request,(data,error)->{
+            loading=false;if(!showingReport||snapshot!=displayed)return;
+            if(error==null)ExportReportDialog.showLiveReport(getContext(),displayed);
+            else new android.app.AlertDialog.Builder(getContext()).setTitle("Export unavailable").setMessage(error).setPositiveButton("Close",null).show();
+        });
+    }
+
     private void input(Map<String, EditText> fields, String key, String title) {
-        RegisteredProgressView.line(this, title, false); EditText field = new EditText(getContext());
-        field.setContentDescription(title); field.setText(filters.getOrDefault(key, "")); addView(field); fields.put(key, field);
+        RegisteredProgressView.line(filterBody, title, false); EditText field = new EditText(getContext());
+        field.setContentDescription(title); field.setText(filters.getOrDefault(key, "")); ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(field,false); filterBody.addView(field); fields.put(key, field);
     }
     private void choice(Map<String, Spinner> fields, String key, String title, String[] options) {
-        RegisteredProgressView.line(this, title, false); Spinner field = new Spinner(getContext());
+        RegisteredProgressView.line(filterBody, title, false); Spinner field = new Spinner(getContext());
         field.setContentDescription(title); field.setAdapter(new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, options));
         String value = filters.getOrDefault(key, "");
         if ("In-Progress".equals(value)) value = "In progress";
         if ("UnderReview".equals(value)) value = "For revision";
         for (int i = 0; i < options.length; i++) if (options[i].equalsIgnoreCase(value)) field.setSelection(i);
-        addView(field); fields.put(key, field);
+        field.setMinimumHeight(UiTheme.dp(getContext(),48));filterBody.addView(field); fields.put(key, field);
     }
     private Button button(String title, Runnable action) {
-        Button button = UiButton.outline(getContext(), title, UiTheme.BORDER, UiTheme.NAVY, action); addView(button); return button;
+        Button button = UiButton.outline(getContext(), title, UiTheme.BORDER, UiTheme.NAVY, action); filterBody.addView(button); return button;
     }
 }

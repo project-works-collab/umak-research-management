@@ -355,6 +355,8 @@ public class MainActivity extends Activity {
         root.addView(fab);
 
         final int innerPadding = UiTheme.dp(this, 20);
+        final int navigationClearance = content instanceof StaffScreen || content instanceof ResearcherScreen
+                ? UiTheme.dp(this, 96) : 0;
 
         // Position restoring and bounds clamping
         root.post(() -> {
@@ -365,7 +367,7 @@ public class MainActivity extends Activity {
             int minX = innerPadding;
             int maxX = rootW - fab.getWidth() - innerPadding;
             int minY = innerPadding;
-            int maxY = rootH - fab.getHeight() - innerPadding;
+            int maxY = Math.max(minY, rootH - fab.getHeight() - innerPadding - navigationClearance);
 
             if (savedFabX < 0 || savedFabY < 0) {
                 savedFabX = maxX;
@@ -410,7 +412,7 @@ public class MainActivity extends Activity {
                             int minX = innerPadding;
                             int maxX = root.getWidth() - v.getWidth() - innerPadding;
                             int minY = innerPadding;
-                            int maxY = root.getHeight() - v.getHeight() - innerPadding;
+                            int maxY = Math.max(minY, root.getHeight() - v.getHeight() - innerPadding - navigationClearance);
 
                             if (maxX > minX) newX = Math.max(minX, Math.min(newX, maxX));
                             if (maxY > minY) newY = Math.max(minY, Math.min(newY, maxY));
@@ -449,6 +451,7 @@ public class MainActivity extends Activity {
     }
 
     void showPreviewMenu() {
+        if(staffScreen!=null && staffScreen.hasPendingWrite())return;
         java.util.List<String> options = new java.util.ArrayList<>();
         options.add("Part 1: Access & Account Previews");
         options.add("Part 2: Service Directory Previews");
@@ -887,6 +890,7 @@ public class MainActivity extends Activity {
     private void ensureStaffScreen() {
         if (staffScreen == null) {
             page = "account";
+            setLightSystemBars(true);
             staffScreen = new StaffScreen(this, "areyes@umak.edu.ph", "Manage");
             applySystemInsets(staffScreen);
             setContentView(wrapWithFloatingPreview(staffScreen));
@@ -1463,6 +1467,7 @@ public class MainActivity extends Activity {
         String role = account.optString("role");
         if ("staff".equals(role)) {
             page = "account";
+            setLightSystemBars(true);
             staffScreen = new StaffScreen(this, account.optString("email"), staffTab, true, account.optJSONArray("permissions"));
             applySystemInsets(staffScreen);
             staffScreen.loadInitialData();
@@ -1745,7 +1750,8 @@ public class MainActivity extends Activity {
     private void uploadSelectedCatalogForm(int result, Intent intent) {
         CatalogUpload upload = catalogUpload;
         catalogUpload = null;
-        if (upload == null || result != RESULT_OK || intent == null || intent.getData() == null) return;
+        if (upload == null) return;
+        if (result != RESULT_OK || intent == null || intent.getData() == null) {upload.failure().accept("Form upload cancelled.");return;}
         android.net.Uri uri = intent.getData();
         executor.execute(() -> {
             String error = null;

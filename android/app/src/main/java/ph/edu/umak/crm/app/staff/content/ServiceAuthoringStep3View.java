@@ -327,6 +327,22 @@ public final class ServiceAuthoringStep3View {
         parent.addView(space);
     }
 
+    public void bindLive(org.json.JSONObject revision){
+        layout.removeAllViews();
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(context,"Access & Publishing",null,null);
+        var card=page.section("Step 3 of 3: Access & Publishing");
+        var details=revision.optJSONObject("details");if(details==null)details=new org.json.JSONObject();
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(card,details.optString("name","Untitled service")+" · Version "+revision.optInt("version"),true);
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(card,"Applicant eligibility",false);
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(studentCb);ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(facultyCb);
+        studentCb.setChecked(details.optString("applicants","").contains("Student"));facultyCb.setChecked(details.optString("applicants","").contains("Faculty"));card.addView(studentCb);card.addView(facultyCb);
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(card,"Publishing makes this revision available to eligible researchers. Previous versions remain in publication history.",false);
+        card.addView(UiButton.primary(context,"Publish Service",()->listener.onPublish()));
+        card.addView(UiButton.outline(context,"Save as Draft",UiTheme.BORDER,UiTheme.NAVY,()->listener.onSaveDraft()));
+        card.addView(UiButton.text(context,"Back",UiTheme.NAVY,()->listener.onBack()));ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(page.content);layout.addView(page.content);
+    }
+    public org.json.JSONArray liveApplicants(){org.json.JSONArray result=new org.json.JSONArray();if(studentCb.isChecked())result.put("Student");if(facultyCb.isChecked())result.put("Faculty");return result;}
+
     public void setPreviewState(String state) {
         if ("draft".equalsIgnoreCase(state) || "5.5_draft".equalsIgnoreCase(state)) {
             studentCb.setChecked(true);

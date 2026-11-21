@@ -25,6 +25,7 @@ import java.util.List;
 import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.ScreenTypography;
+import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -41,6 +42,13 @@ public final class QueueFilterDialog {
 
     public static void show(Context context, String currentService, String currentStatus,
                             String currentFrom, String currentTo, FilterCallback callback) {
+        show(context, currentService, currentStatus, currentFrom, currentTo,
+                java.util.List.of("Ethics Clearance", "Research Consultation", "Research Registration",
+                        "CRM Clearance Processing", "Statistical Report Generation", "UNIVERSITY Journal Endorsement"), callback);
+    }
+
+    public static void show(Context context, String currentService, String currentStatus,
+                            String currentFrom, String currentTo, List<String> availableServices, FilterCallback callback) {
         Typeface bold = UiTheme.boldFont(context);
         Typeface regular = UiTheme.bodyFont(context);
 
@@ -52,7 +60,6 @@ public final class QueueFilterDialog {
         layout.setPadding(pad, UiTheme.dp(context, 12), pad, pad);
         scrollView.addView(layout);
 
-        // Top drag handle
         View handle = new View(context);
         handle.setBackground(UiTheme.shape(context, 0xffcbd5e1, 2, 0));
         LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(UiTheme.dp(context, 36), UiTheme.dp(context, 4));
@@ -64,34 +71,25 @@ public final class QueueFilterDialog {
         // Header Title
         TextView title = new TextView(context);
         title.setText("Filter queue");
-        title.setTextColor(0xff082d50);
+        title.setTextColor(UiTheme.NAVY);
         title.setTypeface(bold);
-        ScreenTypography.apply(title, 18);
+        ScreenTypography.apply(title, 20);
         title.setPadding(0, 0, 0, UiTheme.dp(context, 16));
         layout.addView(title);
 
-        // 1. Service Dropdown
+        // Service Dropdown
         TextView serviceLabel = new TextView(context);
         serviceLabel.setText("Service");
-        serviceLabel.setTextColor(0xff082d50);
+        serviceLabel.setTextColor(UiTheme.NAVY);
         serviceLabel.setTypeface(bold);
         ScreenTypography.apply(serviceLabel, 13);
         serviceLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
         layout.addView(serviceLabel);
 
-        FrameLayout spinnerContainer = new FrameLayout(context);
-        spinnerContainer.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
-
         Spinner serviceSpinner = new Spinner(context);
-        serviceSpinner.setBackground(null);
         List<String> services = new ArrayList<>();
         services.add("All Services");
-        services.add("Ethics Clearance");
-        services.add("Research Consultation");
-        services.add("Research Registration");
-        services.add("CRM Clearance Processing");
-        services.add("Statistical Report Generation");
-        services.add("UNIVERSITY Journal Endorsement");
+        for (String service : availableServices) if (!services.contains(service)) services.add(service);
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, services);
         serviceSpinner.setAdapter(adapter);
@@ -99,30 +97,23 @@ public final class QueueFilterDialog {
         if (currentService != null) {
             int idx = services.indexOf(currentService);
             if (idx >= 0) serviceSpinner.setSelection(idx);
-        } else {
-            // Default in 6.2 wireframe is Ethics Clearance
-            serviceSpinner.setSelection(1);
         }
 
-        FrameLayout.LayoutParams sLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 44));
-        spinnerContainer.addView(serviceSpinner, sLp);
-
-        ImageView chevron = new ImageView(context);
-        chevron.setImageResource(R.drawable.ic_crm_chevron_down);
-        chevron.setColorFilter(0xff64748b);
-        FrameLayout.LayoutParams cLp = new FrameLayout.LayoutParams(UiTheme.dp(context, 20), UiTheme.dp(context, 20));
-        cLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-        cLp.rightMargin = UiTheme.dp(context, 12);
-        spinnerContainer.addView(chevron, cLp);
-
-        layout.addView(spinnerContainer);
+        GradientDrawable spinnerBg = new GradientDrawable();
+        spinnerBg.setColor(UiTheme.WHITE);
+        spinnerBg.setCornerRadius(UiTheme.dp(context, 8));
+        spinnerBg.setStroke(UiTheme.dp(context, 1), UiTheme.BORDER);
+        serviceSpinner.setBackground(spinnerBg);
+        serviceSpinner.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
+                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
+        layout.addView(serviceSpinner);
 
         addSpacing(context, layout, 16);
 
-        // 2. Status Selector
+        // Status Selector
         TextView statusLabel = new TextView(context);
         statusLabel.setText("Status");
-        statusLabel.setTextColor(0xff082d50);
+        statusLabel.setTextColor(UiTheme.NAVY);
         statusLabel.setTypeface(bold);
         ScreenTypography.apply(statusLabel, 13);
         statusLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
@@ -133,22 +124,23 @@ public final class QueueFilterDialog {
         LinearLayout statusRow = new LinearLayout(context);
         statusRow.setOrientation(LinearLayout.HORIZONTAL);
 
-        String[] statusOptions = {"Submitted", "In review", "For correction", "Completed"};
-        final String[] selectedStatus = {currentStatus != null ? currentStatus : "In review"};
+        String[] statusOptions = {"All", "Submitted", "In review", "For correction", "Completed"};
+        final String[] selectedStatus = {currentStatus != null ? currentStatus : "All"};
         final List<TextView> statusChips = new ArrayList<>();
 
         for (String opt : statusOptions) {
             TextView chip = new TextView(context);
+            chip.setText(opt);
             chip.setTypeface(bold);
             ScreenTypography.apply(chip, 12);
             chip.setPadding(UiTheme.dp(context, 14), UiTheme.dp(context, 8),
                     UiTheme.dp(context, 14), UiTheme.dp(context, 8));
-            updateChipAppearance(chip, opt, opt.equalsIgnoreCase(selectedStatus[0]));
+            updateChipAppearance(context, chip, opt.equalsIgnoreCase(selectedStatus[0]));
 
             chip.setOnClickListener(v -> {
                 selectedStatus[0] = opt;
                 for (int i = 0; i < statusOptions.length; i++) {
-                    updateChipAppearance(statusChips.get(i), statusOptions[i], statusOptions[i].equalsIgnoreCase(selectedStatus[0]));
+                    updateChipAppearance(context, statusChips.get(i), statusOptions[i].equalsIgnoreCase(selectedStatus[0]));
                 }
             });
 
@@ -164,10 +156,10 @@ public final class QueueFilterDialog {
 
         addSpacing(context, layout, 16);
 
-        // 3. Date Range
+        // Date Range
         TextView dateLabel = new TextView(context);
         dateLabel.setText("Date");
-        dateLabel.setTextColor(0xff082d50);
+        dateLabel.setTextColor(UiTheme.NAVY);
         dateLabel.setTypeface(bold);
         ScreenTypography.apply(dateLabel, 13);
         dateLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
@@ -183,14 +175,16 @@ public final class QueueFilterDialog {
 
         TextView fromLbl = new TextView(context);
         fromLbl.setText("From");
-        fromLbl.setTextColor(0xff586b83);
+        fromLbl.setTextColor(UiTheme.MUTED);
         fromLbl.setTypeface(regular);
         ScreenTypography.apply(fromLbl, 12);
         fromCol.addView(fromLbl);
 
         EditText fromInput = new EditText(context);
-        fromInput.setText(currentFrom != null ? currentFrom : "2026-10-01");
-        fromInput.setTextColor(0xff082d50);
+        fromInput.setText(currentFrom != null ? currentFrom : "");
+        fromInput.setHint("YYYY-MM-DD");
+        fromInput.setContentDescription("Submitted from date");
+        fromInput.setTextColor(UiTheme.NAVY);
         fromInput.setTypeface(regular);
         ScreenTypography.apply(fromInput, 14);
         fromInput.setPadding(UiTheme.dp(context, 10), UiTheme.dp(context, 10),
@@ -210,14 +204,16 @@ public final class QueueFilterDialog {
 
         TextView toLbl = new TextView(context);
         toLbl.setText("To");
-        toLbl.setTextColor(0xff586b83);
+        toLbl.setTextColor(UiTheme.MUTED);
         toLbl.setTypeface(regular);
         ScreenTypography.apply(toLbl, 12);
         toCol.addView(toLbl);
 
         EditText toInput = new EditText(context);
-        toInput.setText(currentTo != null ? currentTo : "2026-10-31");
-        toInput.setTextColor(0xff082d50);
+        toInput.setText(currentTo != null ? currentTo : "");
+        toInput.setHint("YYYY-MM-DD");
+        toInput.setContentDescription("Submitted to date");
+        toInput.setTextColor(UiTheme.NAVY);
         toInput.setTypeface(regular);
         ScreenTypography.apply(toInput, 14);
         toInput.setPadding(UiTheme.dp(context, 10), UiTheme.dp(context, 10),
@@ -232,35 +228,31 @@ public final class QueueFilterDialog {
 
         Dialog dialog = new Dialog(context);
 
-        // Action Buttons: Apply Filters & Clear filters
-        Button applyBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
-        applyBtn.setText("Apply Filters");
-        applyBtn.setAllCaps(false);
-        applyBtn.setTextColor(0xffffffff);
-        applyBtn.setTypeface(bold);
-        ScreenTypography.apply(applyBtn, 15);
-        applyBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, 0xff131c4b, 8, 0), 0x20ffffff));
-        applyBtn.setMinHeight(UiTheme.dp(context, 46));
-        applyBtn.setOnClickListener(v -> {
+        // Action Buttons
+        Button applyBtn = UiButton.primary(context, "Apply Filters", () -> {
+            String from = fromInput.getText().toString().trim(), to = toInput.getText().toString().trim();
+            try {
+                if (!from.isEmpty()) java.time.LocalDate.parse(from);
+                if (!to.isEmpty()) java.time.LocalDate.parse(to);
+            } catch (java.time.DateTimeException invalid) {
+                fromInput.setError("Use dates in YYYY-MM-DD format.");
+                return;
+            }
+            if (!from.isEmpty() && !to.isEmpty() && from.compareTo(to) > 0) {
+                toInput.setError("End date must be on or after the start date.");
+                return;
+            }
             dialog.dismiss();
             if (callback != null) {
                 String selSvc = serviceSpinner.getSelectedItem() != null ? serviceSpinner.getSelectedItem().toString() : "All Services";
-                callback.onApply(selSvc, selectedStatus[0], fromInput.getText().toString(), toInput.getText().toString());
+                callback.onApply(selSvc, selectedStatus[0], from, to);
             }
         });
         layout.addView(applyBtn);
 
         addSpacing(context, layout, 10);
 
-        Button clearBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
-        clearBtn.setText("Clear filters");
-        clearBtn.setAllCaps(false);
-        clearBtn.setTextColor(0xff082d50);
-        clearBtn.setTypeface(bold);
-        ScreenTypography.apply(clearBtn, 15);
-        clearBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
-        clearBtn.setMinHeight(UiTheme.dp(context, 44));
-        clearBtn.setOnClickListener(v -> {
+        Button clearBtn = UiButton.outline(context, "Clear filters", UiTheme.BORDER, UiTheme.NAVY, () -> {
             dialog.dismiss();
             if (callback != null) {
                 callback.onClear();
@@ -271,19 +263,16 @@ public final class QueueFilterDialog {
         BottomSheet.show(dialog, scrollView);
     }
 
-    private static void updateChipAppearance(TextView chip, String label, boolean selected) {
+    private static void updateChipAppearance(Context context, TextView chip, boolean selected) {
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(16);
+        bg.setCornerRadius(UiTheme.dp(context, 16));
         if (selected) {
-            chip.setText("✓ " + label);
-            bg.setColor(0xffffffff);
-            bg.setStroke(2, 0xff082d50);
-            chip.setTextColor(0xff082d50);
+            bg.setColor(UiTheme.NAVY);
+            chip.setTextColor(UiTheme.WHITE);
         } else {
-            chip.setText(label);
-            bg.setColor(0xffffffff);
-            bg.setStroke(1, Color.parseColor("#CBD5E1"));
-            chip.setTextColor(0xff586b83);
+            bg.setColor(UiTheme.WHITE);
+            bg.setStroke(UiTheme.dp(context, 1), UiTheme.BORDER);
+            chip.setTextColor(UiTheme.NAVY);
         }
         chip.setBackground(bg);
     }

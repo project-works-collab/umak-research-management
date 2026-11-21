@@ -89,6 +89,33 @@ public class AccountDetailsView {
         buildView();
     }
 
+    public interface LiveActions {
+        void permissions(org.json.JSONArray selected);void category(String selected);void state(boolean active);void recovery();void history();void back();
+    }
+    public void bindLive(StaffData.StaffAccountItem account,LiveActions actions){
+        currentAccount=account;contentLayout.removeAllViews();
+        contentLayout.addView(UiButton.text(context,"Back to Accounts",UiTheme.NAVY,actions::back));
+        contentLayout.addView(createProfileSummaryCard());
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(context,"Account access",null,null);
+        var card=page.section("CRM Staff".equals(account.role)?"Permissions":"Researcher category");
+        if("CRM Staff".equals(account.role)){
+            java.util.List<Switch> toggles=new java.util.ArrayList<>();
+            for(var entry:account.permissions.entrySet()){
+                Switch toggle=new Switch(context);toggle.setText(entry.getKey().replace('_',' '));toggle.setTag(entry.getKey());toggle.setChecked(Boolean.TRUE.equals(entry.getValue()));toggle.setMinHeight(UiTheme.dp(context,48));card.addView(toggle);toggles.add(toggle);
+            }
+            card.addView(UiButton.primary(context,"Save permissions",()->{org.json.JSONArray selected=new org.json.JSONArray();for(Switch toggle:toggles)if(toggle.isChecked())selected.put(toggle.getTag().toString());actions.permissions(selected);}));
+        }else{
+            RadioGroup category=new RadioGroup(context);category.setOrientation(LinearLayout.VERTICAL);
+            String[] selected={"Faculty".equals(account.category)?"faculty":"student"};
+            for(String value:new String[]{"student","faculty"}){RadioButton choice=new RadioButton(context);choice.setId(View.generateViewId());choice.setText(value.equals("student")?"Student":"Faculty");category.addView(choice);choice.setChecked(value.equals(selected[0]));choice.setOnCheckedChangeListener((button,checked)->{if(checked)selected[0]=value;});}
+            card.addView(category);card.addView(UiButton.primary(context,"Save Category Correction",()->actions.category(selected[0])));
+        }
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(page.content);contentLayout.addView(page.content);
+        contentLayout.addView(UiButton.outline(context,"Active".equals(account.status)?"Deactivate Account":"Activate Account",UiTheme.BORDER,UiTheme.NAVY,()->actions.state(!"Active".equals(account.status))));
+        contentLayout.addView(UiButton.outline(context,"Issue Temporary Credential",UiTheme.BORDER,UiTheme.NAVY,actions::recovery));
+        contentLayout.addView(UiButton.text(context,"View Account Audit History",UiTheme.NAVY,actions::history));
+    }
+
     public void setPreviewState(String state) {
         if ("5.10a".equals(state)) {
             setAccount(findStaffAccount("STF-0042")); // Ana M. Reyes
