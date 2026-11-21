@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -59,7 +60,29 @@ public class PublicationHistoryView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return PageTitle.wrap(contentLayout, "Publication History", "Services and approved form versions.", false);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout band = new LinearLayout(context);
+        band.setOrientation(LinearLayout.VERTICAL);
+        band.setBackgroundColor(0xff082d50);
+        int pad = UiTheme.dp(context, 16);
+        band.setPadding(pad, pad, pad, pad);
+        TextView heading = new TextView(context);
+        heading.setText("Publication History");
+        heading.setTextColor(0xffffffff);
+        heading.setTypeface(UiTheme.headingFont(context));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        band.addView(heading);
+        TextView copy = new TextView(context);
+        copy.setText("Services and approved form versions.");
+        copy.setTextColor(UiTheme.PALE);
+        copy.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(copy, 13);
+        band.addView(copy);
+        root.addView(band);
+        root.addView(contentLayout);
+        return root;
     }
 
     private void buildView() {
@@ -79,19 +102,28 @@ public class PublicationHistoryView {
             contentLayout.addView(backBtn);
         }
 
-        // Account audit history link
+        // Right-aligned account audit history link
+        FrameLayout topLinkContainer = new FrameLayout(context);
+        topLinkContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView auditLink = new TextView(context);
-        auditLink.setText("Account audit history ->");
-        auditLink.setTextColor(UiTheme.ACCENT);
+        auditLink.setText("Account audit history →");
+        auditLink.setTextColor(0xff185d9d);
         auditLink.setTypeface(bold);
-        ScreenTypography.apply(auditLink, 14);
-        auditLink.setPadding(0, 0, 0, UiTheme.dp(context, 16));
+        ScreenTypography.apply(auditLink, 13);
+        auditLink.setPadding(0, 0, 0, UiTheme.dp(context, 12));
         auditLink.setOnClickListener(v -> {
             if (callbacks != null) {
                 callbacks.onNavigateToAccountAudit();
             }
         });
-        if(liveItems==null)contentLayout.addView(auditLink);
+        if(liveItems==null) {
+            FrameLayout.LayoutParams aLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            aLp.gravity = Gravity.END;
+            topLinkContainer.addView(auditLink, aLp);
+            contentLayout.addView(topLinkContainer);
+        }
 
         // Publication history cards
         List<StaffData.PublicationHistoryItem> list = liveItems==null?StaffData.getPublicationHistory():liveItems;

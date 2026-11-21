@@ -1756,9 +1756,7 @@ final class StaffScreen extends LinearLayout {
         previewRegistry=true;
         selectedRegistryRecord = StaffRegistryData.getMockRecords().get(0);
         openRegistrySubPage("edit_entry");
-        CenteredActionDialog.show(activity, "This research record was updated. Reload before saving.",
-                "Your changes have not been saved. Reload the latest version, then review it before making changes.",
-                "Reload", null, () -> openRegistrySubPage("detail"), null);
+        addResearchEntryView.showPreview7_5_StaleDataConflict();
     }
 
     void showPreview7_6_DocumentsVersionList() {

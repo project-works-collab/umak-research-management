@@ -5,9 +5,11 @@ import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -39,20 +41,26 @@ public final class ManageHubView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
-        addSpacing(context, layout, 20);
+        addSpacing(context, layout, 14);
 
-        // Staff Actions Header
+        // Staff Actions Single Container Card
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
+        card.setPadding(pad, pad, pad, pad);
+
         TextView sectionTitle = new TextView(context);
         sectionTitle.setText("Staff Actions");
-        sectionTitle.setTextColor(UiTheme.NAVY);
+        sectionTitle.setTextColor(0xff082d50);
         sectionTitle.setTypeface(bold);
         ScreenTypography.apply(sectionTitle, 16);
-        layout.addView(sectionTitle);
+        card.addView(sectionTitle);
 
-        addSpacing(context, layout, 12);
+        addSpacing(context, card, 12);
 
-        // 1. Service Catalog Card
-        layout.addView(createActionCard(
+        // 1. Service Catalog Row
+        card.addView(createActionRow(
+                R.drawable.ic_crm_book,
                 "Service Catalog",
                 "Create, edit, publish or withdraw services.",
                 () -> {
@@ -60,10 +68,11 @@ public final class ManageHubView {
                 }
         ));
 
-        addSpacing(context, layout, 10);
+        addDivider(card);
 
-        // 2. Approved Forms & Resources Card
-        layout.addView(createActionCard(
+        // 2. Approved Forms & Resources Row
+        card.addView(createActionRow(
+                R.drawable.ic_crm_doc,
                 "Approved Forms & Resources",
                 "Manage current and superseded form versions.",
                 () -> {
@@ -71,10 +80,11 @@ public final class ManageHubView {
                 }
         ));
 
-        addSpacing(context, layout, 10);
+        addDivider(card);
 
-        // 3. User Accounts Card
-        layout.addView(createActionCard(
+        // 3. User Accounts Row
+        card.addView(createActionRow(
+                R.drawable.ic_crm_users,
                 "User Accounts",
                 "Create staff accounts and manage access.",
                 () -> {
@@ -82,10 +92,11 @@ public final class ManageHubView {
                 }
         ));
 
-        addSpacing(context, layout, 10);
+        addDivider(card);
 
-        // 4. Audit History Card
-        layout.addView(createActionCard(
+        // 4. Audit History Row
+        card.addView(createActionRow(
+                R.drawable.ic_crm_history,
                 "Audit History",
                 "Publication and account change records.",
                 () -> {
@@ -93,16 +104,18 @@ public final class ManageHubView {
                 }
         ));
 
-        addSpacing(context, layout, 10);
+        addDivider(card);
 
-        // 5. Analytics & Reporting Card (Part 9, C-05)
-        layout.addView(createActionCard(
+        // 5. Analytics & Reporting Row
+        card.addView(createActionRow(
+                R.drawable.ic_crm_info,
                 "Analytics & Reporting",
                 "Research reports and service utilization.",
                 () -> {
                     if (listener != null) listener.onOpenAnalyticsReporting();
                 }
         ));
+        layout.addView(card);
     }
 
     public void setVisibleActions(java.util.Set<String> names) {
@@ -113,36 +126,58 @@ public final class ManageHubView {
         }
     }
 
-    private View createActionCard(String title, String description, Runnable onClick) {
-        LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        int pad = UiTheme.dp(context, 16);
-        card.setPadding(pad, pad, pad, pad);
-        card.setClickable(true);
-        card.setFocusable(true);
+    private View createActionRow(int iconRes, String title, String description, Runnable onClick) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        int padV = UiTheme.dp(context, 12);
+        row.setPadding(0, padV, 0, padV);
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setBackground(UiTheme.ripple(null, 0x15082d50));
+
+        ImageView iconView = new ImageView(context);
+        iconView.setImageResource(iconRes);
+        iconView.setColorFilter(0xff082d50);
+        int iconSize = UiTheme.dp(context, 20);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(iconSize, iconSize);
+        iconLp.rightMargin = UiTheme.dp(context, 14);
+        row.addView(iconView, iconLp);
+
+        LinearLayout textCol = new LinearLayout(context);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
 
         TextView tView = new TextView(context);
         tView.setText(title);
-        tView.setTextColor(UiTheme.NAVY);
+        tView.setTextColor(0xff082d50);
         tView.setTypeface(UiTheme.boldFont(context));
-        ScreenTypography.apply(tView, 16);
-        card.addView(tView);
-
-        addSpacing(context, card, 4);
+        ScreenTypography.apply(tView, 14);
+        textCol.addView(tView);
 
         TextView dView = new TextView(context);
         dView.setText(description);
-        dView.setTextColor(UiTheme.MUTED);
+        dView.setTextColor(0xff586b83);
         dView.setTypeface(UiTheme.bodyFont(context));
-        ScreenTypography.apply(dView, 13);
-        card.addView(dView);
+        ScreenTypography.apply(dView, 12);
+        dView.setPadding(0, UiTheme.dp(context, 2), 0, 0);
+        textCol.addView(dView);
+        row.addView(textCol, textLp);
 
-        card.setOnClickListener(v -> {
-            if (onClick != null) onClick.run();
-        });
+        ImageView chevron = new ImageView(context);
+        chevron.setImageResource(R.drawable.ic_crm_chevron_right);
+        chevron.setColorFilter(0xff94a3b8);
+        int cSize = UiTheme.dp(context, 18);
+        row.addView(chevron, new LinearLayout.LayoutParams(cSize, cSize));
+        row.setOnClickListener(v -> { if (onClick != null) onClick.run(); });
+        return row;
+    }
 
-        return card;
+    private void addDivider(LinearLayout parent) {
+        View line = new View(context);
+        line.setBackgroundColor(0xfff1f5f9);
+        parent.addView(line, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 1)));
     }
 
     private static void addSpacing(Context context, LinearLayout parent, int dp) {

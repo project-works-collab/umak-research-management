@@ -132,9 +132,9 @@ public final class ResearchData {
     public static List<CoAuthorItem> getAvailableResearchers() {
         List<CoAuthorItem> list = new ArrayList<>();
         list.add(new CoAuthorItem("1", "Juan D. Inlwan", "Student · CCIS", "jinlwan.A1235@umak.edu.ph"));
+        list.add(new CoAuthorItem("4", "Peter Parker", "Faculty · CCIS", "pparker@umak.edu.ph"));
         list.add(new CoAuthorItem("2", "Jonard L. Wala", "Student · CET", "jwala.A1236@umak.edu.ph"));
         list.add(new CoAuthorItem("3", "Maria A. Santos", "Faculty · CCSS", "msantos@umak.edu.ph"));
-        list.add(new CoAuthorItem("4", "Peter Parker", "Faculty · CCIS", "pparker@umak.edu.ph"));
         return list;
     }
 

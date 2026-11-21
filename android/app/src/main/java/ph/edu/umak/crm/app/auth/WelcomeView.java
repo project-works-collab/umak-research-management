@@ -18,7 +18,6 @@ public final class WelcomeView {
     private WelcomeView() {}
 
     public static View create(Context context, AuthCallbacks callbacks) {
-        Typeface heading = UiTheme.headingFont(context);
         Typeface bold = UiTheme.boldFont(context);
 
         FrameLayout screen = new FrameLayout(context);
@@ -30,21 +29,34 @@ public final class WelcomeView {
         brand.setTranslationY(-UiTheme.dp(context, 34));
         brand.setPadding(UiTheme.dp(context, 16), 0, UiTheme.dp(context, 16), 0);
 
-        ImageView emblems = new ImageView(context);
-        emblems.setImageResource(R.drawable.shared_access_emblems);
-        emblems.setContentDescription("University of Makati and Center for Research Management emblems");
-        emblems.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        brand.addView(emblems, new LinearLayout.LayoutParams(UiTheme.dp(context, 188), UiTheme.dp(context, 91)));
+        LinearLayout emblemsRow = new LinearLayout(context);
+        emblemsRow.setOrientation(LinearLayout.HORIZONTAL);
+        emblemsRow.setGravity(Gravity.CENTER);
 
-        TextView title = new TextView(context);
-        title.setText("UNIVERSITY OF MAKATI");
-        title.setTextColor(UiTheme.WHITE);
-        title.setTypeface(heading);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, UiTheme.dp(context, 7), 0, 0);
-        ScreenTypography.apply(title, 19);
-        ScreenTypography.heading(title);
-        brand.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        ImageView umakLogo = new ImageView(context);
+        umakLogo.setImageResource(R.drawable.umak_logo_white);
+        umakLogo.setContentDescription("University of Makati emblem");
+        umakLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        emblemsRow.addView(umakLogo, new LinearLayout.LayoutParams(UiTheme.dp(context, 86), UiTheme.dp(context, 86)));
+
+        View emblemGap = new View(context);
+        emblemsRow.addView(emblemGap, new LinearLayout.LayoutParams(UiTheme.dp(context, 16), 1));
+
+        ImageView crmLogo = new ImageView(context);
+        crmLogo.setImageResource(R.drawable.crm_logo);
+        crmLogo.setContentDescription("Center for Research Management emblem");
+        crmLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        emblemsRow.addView(crmLogo, new LinearLayout.LayoutParams(UiTheme.dp(context, 86), UiTheme.dp(context, 86)));
+
+        brand.addView(emblemsRow, new LinearLayout.LayoutParams(-2, -2));
+
+        ImageView title = new ImageView(context);
+        title.setImageResource(R.drawable.umak_type_white);
+        title.setContentDescription("UNIVERSITY OF MAKATI");
+        title.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(UiTheme.dp(context, 230), UiTheme.dp(context, 38));
+        titleParams.topMargin = UiTheme.dp(context, 10);
+        brand.addView(title, titleParams);
 
         TextView subtitle = new TextView(context);
         subtitle.setText("Center for Research Management - RMLIS");

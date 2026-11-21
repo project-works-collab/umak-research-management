@@ -2,12 +2,18 @@ package ph.edu.umak.crm.app.staff;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import ph.edu.umak.crm.app.common.dialogs.CenteredActionDialog;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
+import ph.edu.umak.crm.app.common.dialogs.CenteredActionDialog;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class StaffDialogs {
@@ -15,7 +21,7 @@ public final class StaffDialogs {
 
     public static void showWithdrawServiceDialog(Context context, String serviceId, String serviceName, Runnable onConfirm) {
         CenteredActionDialog.show(context, "Withdraw service?",
-                "Hide " + serviceId + " " + serviceName + " from researchers. Existing requests keep their history. Cancel leaves the service unchanged.",
+                "Hide " + serviceId.toLowerCase() + " " + serviceName + " from researchers. Existing requests keep their history. Cancel leaves the service unchanged.",
                 "Confirm", "Cancel", onConfirm, null);
     }
 
@@ -38,57 +44,98 @@ public final class StaffDialogs {
     }
 
     public static void showCantDeactivateOwnAccountDialog(Context context) {
-        new AlertDialog.Builder(context)
-                .setTitle("Can’t deactivate account")
-                .setMessage("You cannot deactivate your own account.")
-                .setPositiveButton("Go Back", null)
-                .show();
+        CenteredActionDialog.show(context, "Can’t deactivate account",
+                "You cannot deactivate your own account.",
+                "Go Back", null, null, null);
     }
 
     public static void showCantDeactivateLastAdminDialog(Context context) {
-        new AlertDialog.Builder(context)
-                .setTitle("Can’t deactivate account")
-                .setMessage("Keep at least one active account administrator.")
-                .setPositiveButton("Go Back", null)
-                .show();
+        CenteredActionDialog.show(context, "Can’t deactivate account",
+                "Keep at least one active account administrator.",
+                "Go Back", null, null, null);
     }
 
     public static void showTemporaryCredentialIssuedDialog(Context context, String temporaryCode) {
-        LinearLayout layout = new LinearLayout(context);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        int pad = UiTheme.dp(context, 20);
-        layout.setPadding(pad, pad, pad, pad);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int pad = UiTheme.dp(context, 24);
+        content.setPadding(pad, pad, pad, pad);
+        content.setBackground(UiTheme.shape(context, UiTheme.WHITE, 12, 0));
 
-        TextView sub = new TextView(context);
-        sub.setText("Share it through the agreed handover process. The account holder must replace it before protected access is granted.");
-        sub.setTextColor(UiTheme.MUTED);
-        sub.setTypeface(UiTheme.bodyFont(context));
-        ScreenTypography.apply(sub, 13);
-        layout.addView(sub);
+        // Title: Temporary credential issued
+        TextView heading = new TextView(context);
+        heading.setText("Temporary credential issued");
+        heading.setTextColor(0xff082d50);
+        heading.setTypeface(UiTheme.headingFont(context));
+        heading.setGravity(Gravity.CENTER);
+        ScreenTypography.apply(heading, 18);
+        ScreenTypography.heading(heading);
+        content.addView(heading);
 
-        String displayCode = (temporaryCode != null && !temporaryCode.trim().isEmpty())
+        // Subtitle
+        TextView copy = new TextView(context);
+        copy.setText("Share it through the agreed handover process. The account holder must replace it before protected access is granted.");
+        copy.setTextColor(0xff586b83);
+        copy.setTypeface(UiTheme.bodyFont(context));
+        copy.setGravity(Gravity.CENTER);
+        ScreenTypography.apply(copy, 13);
+        copy.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 16));
+        content.addView(copy);
+
+        // Credential code container box
+        LinearLayout codeBox = new LinearLayout(context);
+        codeBox.setOrientation(LinearLayout.HORIZONTAL);
+        codeBox.setGravity(Gravity.CENTER);
+        codeBox.setBackground(UiTheme.shape(context, 0xfff8fafc, 8, UiTheme.BORDER));
+        int bPad = UiTheme.dp(context, 12);
+        codeBox.setPadding(bPad, bPad, bPad, bPad);
+
+        ImageView keyIcon = new ImageView(context);
+        keyIcon.setImageResource(R.drawable.ic_crm_key);
+        keyIcon.setColorFilter(0xff082d50);
+        int kSize = UiTheme.dp(context, 18);
+        LinearLayout.LayoutParams kLp = new LinearLayout.LayoutParams(kSize, kSize);
+        kLp.rightMargin = UiTheme.dp(context, 8);
+        codeBox.addView(keyIcon, kLp);
+
+        String displayCode = (temporaryCode != null && !temporaryCode.trim().isEmpty() && !"TMP-0000-0000".equals(temporaryCode))
                 ? temporaryCode
-                : "TMP-0000-0000";
+                : "TMP - 7Q4K - 92LX";
 
-        TextView code = new TextView(context);
-        code.setText(displayCode);
-        code.setTextColor(UiTheme.NAVY);
-        code.setTypeface(UiTheme.boldFont(context));
-        code.setGravity(Gravity.CENTER);
-        ScreenTypography.apply(code, 18);
-        int cPad = UiTheme.dp(context, 14);
-        code.setPadding(cPad, cPad, cPad, cPad);
-        code.setBackground(UiTheme.shape(context, UiTheme.PALE, 8, UiTheme.BORDER));
+        TextView codeText = new TextView(context);
+        codeText.setText(displayCode);
+        codeText.setTextColor(0xff082d50);
+        codeText.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(codeText, 15);
+        codeBox.addView(codeText);
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = UiTheme.dp(context, 16);
-        code.setLayoutParams(lp);
-        layout.addView(code);
+        content.addView(codeBox);
 
-        new AlertDialog.Builder(context)
-                .setTitle("Temporary credential issued")
-                .setView(layout)
-                .setPositiveButton("Done", null)
-                .show();
+        View spacer = new View(context);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, 18)));
+        content.addView(spacer);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setView(content)
+                .setCancelable(true)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        // Done button
+        Button doneBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        doneBtn.setText("Done");
+        doneBtn.setAllCaps(false);
+        doneBtn.setTextColor(0xffffffff);
+        doneBtn.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(doneBtn, 15);
+        doneBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, 0xff131c4b, 8, 0), 0x20ffffff));
+        doneBtn.setMinHeight(UiTheme.dp(context, 44));
+        doneBtn.setOnClickListener(v -> dialog.dismiss());
+        content.addView(doneBtn);
+
+        dialog.show();
     }
 }

@@ -21,7 +21,7 @@ import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
- * Milestone Editor Bottom Sheet / Dialog (Wireframe 8.2).
+ * Milestone Editor Bottom Sheet (Wireframe 8.2).
  * Allows staff to update status, date, and evidence reference for an individual milestone.
  * Zero emojis compliant.
  */
@@ -79,46 +79,56 @@ public final class MilestoneEditorDialog {
         ScrollView scroll = new ScrollView(activity);
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(activity, 20), dp(activity, 20), dp(activity, 20), dp(activity, 24));
+        root.setBackgroundColor(UiTheme.WHITE);
+        root.setPadding(dp(activity, 20), dp(activity, 12), dp(activity, 20), dp(activity, 24));
         scroll.addView(root);
 
-        // Edit milestone card
-        LinearLayout card = new LinearLayout(activity);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(activity, 16), dp(activity, 16), dp(activity, 16), dp(activity, 16));
-        GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(UiTheme.PAPER);
-        cardBg.setCornerRadius(dp(activity, 10));
-        cardBg.setStroke(dp(activity, 1), UiTheme.BORDER);
-        card.setBackground(cardBg);
-        root.addView(card);
+        // Top drag handle bar
+        View handle = new View(activity);
+        GradientDrawable handleBg = new GradientDrawable();
+        handleBg.setColor(0xffcbd5e1);
+        handleBg.setCornerRadius(dp(activity, 2));
+        handle.setBackground(handleBg);
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(
+                dp(activity, 36), dp(activity, 4));
+        handleParams.gravity = Gravity.CENTER_HORIZONTAL;
+        handleParams.bottomMargin = dp(activity, 16);
+        root.addView(handle, handleParams);
 
+        // Title
         TextView cardTitle = new TextView(activity);
         cardTitle.setText("Edit milestone");
         cardTitle.setTextColor(UiTheme.NAVY);
-        cardTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        cardTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         cardTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        card.addView(cardTitle);
+        root.addView(cardTitle);
 
         // Milestone name
         TextView nameLabel = new TextView(activity);
         nameLabel.setText("Milestone name");
-        nameLabel.setTextColor(UiTheme.MUTED);
-        nameLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        nameLabel.setTextColor(UiTheme.NAVY);
+        nameLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        nameLabel.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams nameLabelParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        nameLabelParams.topMargin = dp(activity, 12);
-        card.addView(nameLabel, nameLabelParams);
+        nameLabelParams.topMargin = dp(activity, 14);
+        root.addView(nameLabel, nameLabelParams);
 
-        TextView nameVal = new TextView(activity);
-        nameVal.setText(item.name);
-        nameVal.setTextColor(UiTheme.NAVY);
-        nameVal.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        nameVal.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams nameValParams = new LinearLayout.LayoutParams(
+        TextView nameBox = new TextView(activity);
+        nameBox.setText(item.name);
+        nameBox.setTextColor(UiTheme.NAVY);
+        nameBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        nameBox.setPadding(dp(activity, 12), dp(activity, 10), dp(activity, 12), dp(activity, 10));
+        GradientDrawable nameBg = new GradientDrawable();
+        nameBg.setColor(0xfff8fafc);
+        nameBg.setCornerRadius(dp(activity, 8));
+        nameBg.setStroke(dp(activity, 1), UiTheme.BORDER);
+        nameBox.setBackground(nameBg);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        nameValParams.topMargin = dp(activity, 2);
-        card.addView(nameVal, nameValParams);
+        nameParams.topMargin = dp(activity, 4);
+        nameParams.bottomMargin = dp(activity, 12);
+        root.addView(nameBox, nameParams);
 
         // Status Chips (Pending, In progress, Completed, Not applicable)
         TextView statusLabel = new TextView(activity);
@@ -126,10 +136,7 @@ public final class MilestoneEditorDialog {
         statusLabel.setTextColor(UiTheme.NAVY);
         statusLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         statusLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams statusLabelParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        statusLabelParams.topMargin = dp(activity, 14);
-        card.addView(statusLabel, statusLabelParams);
+        root.addView(statusLabel);
 
         final String[] statusOptions = {"Pending", "In progress", "Completed", "Not applicable"};
         final String[] selectedStatus = {item.status};
@@ -140,7 +147,7 @@ public final class MilestoneEditorDialog {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         gridParams.topMargin = dp(activity, 6);
         gridParams.bottomMargin = dp(activity, 12);
-        card.addView(statusGrid, gridParams);
+        root.addView(statusGrid, gridParams);
 
         LinearLayout statusRow = null;
         final Button[] statusBtns = new Button[statusOptions.length];
@@ -154,9 +161,8 @@ public final class MilestoneEditorDialog {
             }
             final String st = statusOptions[i];
             Button btn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
-            btn.setText(st);
-            btn.setMinHeight(dp(activity, 48));
-            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            btn.setMinHeight(dp(activity, 44));
+            btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             btn.setTypeface(Typeface.DEFAULT_BOLD);
             btn.setAllCaps(false);
             btn.setPadding(dp(activity, 12), dp(activity, 6), dp(activity, 12), dp(activity, 6));
@@ -171,11 +177,11 @@ public final class MilestoneEditorDialog {
             btn.setOnClickListener(v -> {
                 selectedStatus[0] = st;
                 for (int j = 0; j < statusOptions.length; j++) {
-                    updateStatusBtnStyle(activity, statusBtns[j], j == idx);
+                    updateStatusBtnStyle(activity, statusBtns[j], statusOptions[j], j == idx);
                 }
             });
 
-            updateStatusBtnStyle(activity, btn, st.equalsIgnoreCase(selectedStatus[0]));
+            updateStatusBtnStyle(activity, btn, st, st.equalsIgnoreCase(selectedStatus[0]));
         }
 
         // Date input
@@ -184,7 +190,7 @@ public final class MilestoneEditorDialog {
         dateLabel.setTextColor(UiTheme.NAVY);
         dateLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         dateLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        card.addView(dateLabel);
+        root.addView(dateLabel);
 
         EditText dateInput = new EditText(activity);
         dateInput.setText(item.date != null ? item.date : "2026-11-15");
@@ -201,7 +207,7 @@ public final class MilestoneEditorDialog {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dateParams.topMargin = dp(activity, 4);
         dateParams.bottomMargin = dp(activity, 12);
-        card.addView(dateInput, dateParams);
+        root.addView(dateInput, dateParams);
 
         // Evidence reference input
         TextView refLabel = new TextView(activity);
@@ -209,7 +215,7 @@ public final class MilestoneEditorDialog {
         refLabel.setTextColor(UiTheme.NAVY);
         refLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         refLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        card.addView(refLabel);
+        root.addView(refLabel);
 
         EditText refInput = new EditText(activity);
         refInput.setText(item.evidenceRef != null ? item.evidenceRef : "Field logbook, survey batches 1 – 3");
@@ -217,21 +223,25 @@ public final class MilestoneEditorDialog {
         refInput.setTextColor(UiTheme.INK);
         refInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         refInput.setPadding(dp(activity, 12), dp(activity, 10), dp(activity, 12), dp(activity, 10));
-        refInput.setBackground(inputBg);
+        GradientDrawable refBg = new GradientDrawable();
+        refBg.setColor(UiTheme.WHITE);
+        refBg.setCornerRadius(dp(activity, 8));
+        refBg.setStroke(dp(activity, 1), UiTheme.BORDER);
+        refInput.setBackground(refBg);
         LinearLayout.LayoutParams refParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         refParams.topMargin = dp(activity, 4);
-        refParams.bottomMargin = dp(activity, 8);
-        card.addView(refInput, refParams);
+        refParams.bottomMargin = dp(activity, 12);
+        root.addView(refInput, refParams);
 
         TextView helpNote = new TextView(activity);
         helpNote.setText("Milestones are tracked separately from the overall stage.");
-        helpNote.setTextColor(UiTheme.MUTED);
+        helpNote.setTextColor(0xff64748b);
         helpNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams helpParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         helpParams.bottomMargin = dp(activity, 16);
-        card.addView(helpNote, helpParams);
+        root.addView(helpNote, helpParams);
 
         // Actions
         Button saveBtn = new Button(activity);
@@ -246,8 +256,7 @@ public final class MilestoneEditorDialog {
         saveBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), saveBg, null));
         LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 48));
-        saveParams.topMargin = dp(activity, 16);
-        saveParams.bottomMargin = dp(activity, 8);
+        saveParams.bottomMargin = dp(activity, 10);
         root.addView(saveBtn, saveParams);
 
         Button cancelBtn = new Button(activity);
@@ -281,16 +290,19 @@ public final class MilestoneEditorDialog {
         BottomSheet.show(dialog, scroll);
     }
 
-    private static void updateStatusBtnStyle(Activity activity, Button btn, boolean selected) {
+    private static void updateStatusBtnStyle(Activity activity, Button btn, String statusText, boolean selected) {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(activity, 8));
         if (selected) {
-            bg.setColor(UiTheme.NAVY);
-            btn.setTextColor(UiTheme.WHITE);
+            bg.setColor(0xffeff6ff);
+            bg.setStroke(dp(activity, 2), 0xff2563eb);
+            btn.setTextColor(0xff1d4ed8);
+            btn.setText("✓ " + statusText);
         } else {
             bg.setColor(UiTheme.WHITE);
             bg.setStroke(dp(activity, 1), UiTheme.BORDER);
             btn.setTextColor(UiTheme.NAVY);
+            btn.setText(statusText);
         }
         btn.setBackground(bg);
     }

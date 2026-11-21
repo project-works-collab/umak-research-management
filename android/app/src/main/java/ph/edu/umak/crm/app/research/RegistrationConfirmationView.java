@@ -6,11 +6,13 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class RegistrationConfirmationView {
@@ -35,32 +37,37 @@ public final class RegistrationConfirmationView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
-        // Institution Header
-        TextView institution = new TextView(context);
-        institution.setText("Center for Research Management");
-        institution.setTextColor(UiTheme.MUTED);
-        institution.setTypeface(regular);
-        ScreenTypography.apply(institution, 12);
-        layout.addView(institution);
+        addSpacing(context, layout, 28);
 
-        // Screen Title
-        TextView screenTitle = new TextView(context);
-        screenTitle.setText("Research registered");
-        screenTitle.setTextColor(UiTheme.NAVY);
-        screenTitle.setTypeface(bold);
-        ScreenTypography.apply(screenTitle, 22);
-        screenTitle.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
-        layout.addView(screenTitle);
+        // Success Checkmark Badge (Mint Green Circle with Green Checkmark)
+        FrameLayout badgeBox = new FrameLayout(context);
+        int badgeSize = UiTheme.dp(context, 56);
+        badgeBox.setBackground(UiTheme.shape(context, 0xffdcfce7, badgeSize / 2, 0));
 
-        // Subtitle
-        TextView subtitle = new TextView(context);
-        subtitle.setText("Your research project has been registered with the Center for Research Management.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
-        ScreenTypography.apply(subtitle, 14);
-        layout.addView(subtitle);
+        ImageView checkIcon = new ImageView(context);
+        checkIcon.setImageResource(R.drawable.ic_crm_check_small);
+        checkIcon.setColorFilter(0xff16a34a);
+        int iconSize = UiTheme.dp(context, 26);
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER);
+        badgeBox.addView(checkIcon, iconParams);
+
+        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(badgeSize, badgeSize);
+        badgeParams.gravity = Gravity.CENTER_HORIZONTAL;
+        layout.addView(badgeBox, badgeParams);
 
         addSpacing(context, layout, 16);
+
+        // Title: "Research registered"
+        TextView screenTitle = new TextView(context);
+        screenTitle.setText("Research registered");
+        screenTitle.setTextColor(0xff082d50);
+        screenTitle.setTypeface(UiTheme.headingFont(context));
+        ScreenTypography.apply(screenTitle, 24);
+        ScreenTypography.heading(screenTitle);
+        screenTitle.setGravity(Gravity.CENTER);
+        layout.addView(screenTitle);
+
+        addSpacing(context, layout, 24);
 
         // Receipt Card
         LinearLayout card = new LinearLayout(context);
@@ -70,10 +77,11 @@ public final class RegistrationConfirmationView {
 
         String regId = researchId != null ? researchId : "REG-2026-089";
         String regTitle = title != null ? title : "Impact of AI on Student Engagement";
+        String regDateDisplay = registeredDate != null ? "Registered on " + registeredDate : "Registered on Oct 29, 2026";
 
-        addReceiptRow(card, "Research ID", regId, bold);
-        addReceiptRow(card, "Title", regTitle, bold);
-        addReceiptRow(card, "Registered on", registeredDate, regular);
+        addReceiptRow(card, "Research ID", regId, 0xff185d9d, bold);
+        addReceiptRow(card, "Title", regTitle, 0xff082d50, bold);
+        addReceiptRow(card, "Registered", regDateDisplay, 0xff082d50, bold);
 
         // Stage Row with badge
         LinearLayout stageRow = new LinearLayout(context);
@@ -83,21 +91,21 @@ public final class RegistrationConfirmationView {
 
         TextView stageLabel = new TextView(context);
         stageLabel.setText("Stage");
-        stageLabel.setTextColor(UiTheme.MUTED);
+        stageLabel.setTextColor(0xff586b83);
         stageLabel.setTypeface(regular);
-        ScreenTypography.apply(stageLabel, 14);
+        ScreenTypography.apply(stageLabel, 13);
         LinearLayout.LayoutParams lblLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         stageRow.addView(stageLabel, lblLp);
 
         TextView badge = new TextView(context);
         badge.setText("Registered");
-        badge.setTextColor(UiTheme.STATUS_SUBMITTED_TEXT);
+        badge.setTextColor(0xff185d9d);
         badge.setTypeface(bold);
         ScreenTypography.apply(badge, 12);
         int px = UiTheme.dp(context, 8);
-        int py = UiTheme.dp(context, 4);
+        int py = UiTheme.dp(context, 3);
         badge.setPadding(px, py, px, py);
-        badge.setBackground(UiTheme.shape(context, UiTheme.STATUS_SUBMITTED_BG, 4, 0));
+        badge.setBackground(UiTheme.shape(context, 0xffe5edf7, 4, 0));
         stageRow.addView(badge);
         card.addView(stageRow);
 
@@ -105,21 +113,38 @@ public final class RegistrationConfirmationView {
 
         addSpacing(context, layout, 24);
 
-        // Actions
-        Button viewProgressBtn = UiButton.primary(context, "View Research Progress", () -> {
+        // Primary Action Button: View Research Progress (Dark Navy)
+        Button viewProgressBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        viewProgressBtn.setText("View Research Progress");
+        viewProgressBtn.setAllCaps(false);
+        viewProgressBtn.setTypeface(bold);
+        viewProgressBtn.setTextColor(0xffffffff);
+        ScreenTypography.apply(viewProgressBtn, 15);
+        viewProgressBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, 0xff131c4b, 8, 0), 0x20ffffff));
+        viewProgressBtn.setMinHeight(UiTheme.dp(context, 46));
+        viewProgressBtn.setOnClickListener(v -> {
             if (listener != null) listener.onViewProgress();
         });
         layout.addView(viewProgressBtn);
 
         addSpacing(context, layout, 12);
 
-        Button backBtn = UiButton.outline(context, "Back to Dashboard", UiTheme.BORDER, UiTheme.NAVY, () -> {
+        // Secondary Action Button: Back to Dashboard (White outline)
+        Button backBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        backBtn.setText("Back to Dashboard");
+        backBtn.setAllCaps(false);
+        backBtn.setTypeface(bold);
+        backBtn.setTextColor(0xff082d50);
+        ScreenTypography.apply(backBtn, 15);
+        backBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+        backBtn.setMinHeight(UiTheme.dp(context, 46));
+        backBtn.setOnClickListener(v -> {
             if (listener != null) listener.onBackToDashboard();
         });
         layout.addView(backBtn);
     }
 
-    private void addReceiptRow(LinearLayout parent, String label, String value, Typeface valTypeface) {
+    private void addReceiptRow(LinearLayout parent, String label, String value, int valueColor, Typeface valTypeface) {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -127,17 +152,17 @@ public final class RegistrationConfirmationView {
 
         TextView lbl = new TextView(context);
         lbl.setText(label);
-        lbl.setTextColor(UiTheme.MUTED);
+        lbl.setTextColor(0xff586b83);
         lbl.setTypeface(UiTheme.bodyFont(context));
-        ScreenTypography.apply(lbl, 14);
+        ScreenTypography.apply(lbl, 13);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         row.addView(lbl, lp);
 
         TextView val = new TextView(context);
         val.setText(value);
-        val.setTextColor(UiTheme.NAVY);
+        val.setTextColor(valueColor);
         val.setTypeface(valTypeface);
-        ScreenTypography.apply(val, 14);
+        ScreenTypography.apply(val, 13);
         row.addView(val);
 
         parent.addView(row);

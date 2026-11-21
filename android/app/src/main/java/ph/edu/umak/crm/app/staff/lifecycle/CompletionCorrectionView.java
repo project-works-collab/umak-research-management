@@ -7,11 +7,13 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,7 +23,7 @@ import ph.edu.umak.crm.app.common.util.UiTheme;
 /**
  * Completion Record Correction (Wireframe 8.4).
  * Allows authorized staff to correct a recorded completion date with mandatory reason.
- * Zero emojis compliant.
+ * Zero emojis compliant. Defensive view detachment on wrap.
  */
 public final class CompletionCorrectionView {
 
@@ -66,85 +68,139 @@ public final class CompletionCorrectionView {
 
     public static View create(Activity activity, String recordId, String studyTitle,
                               String recordedDate, Callbacks callbacks, Runnable onClose) {
+        ScrollView scroll = new ScrollView(activity);
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(activity, 20), dp(activity, 20), dp(activity, 20), dp(activity, 24));
+        root.setPadding(dp(activity, 16), dp(activity, 16), dp(activity, 16), dp(activity, 32));
         root.setBackgroundColor(UiTheme.PAPER);
+        scroll.addView(root);
 
-        TextView subContext = new TextView(activity);
-        subContext.setText(studyTitle + "\n" + recordId + "\nCurrent overall stage: Completed");
-        subContext.setTextColor(UiTheme.NAVY);
-        int summaryPadding = dp(activity, 12);
-        subContext.setPadding(summaryPadding, summaryPadding, summaryPadding, summaryPadding);
-        subContext.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
-        subContext.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
+        // 1. Summary Card
+        LinearLayout summaryCard = new LinearLayout(activity);
+        summaryCard.setOrientation(LinearLayout.VERTICAL);
+        summaryCard.setPadding(dp(activity, 16), dp(activity, 16), dp(activity, 16), dp(activity, 16));
+        GradientDrawable sBg = new GradientDrawable();
+        sBg.setColor(UiTheme.WHITE);
+        sBg.setCornerRadius(dp(activity, 10));
+        sBg.setStroke(dp(activity, 1), UiTheme.BORDER);
+        summaryCard.setBackground(sBg);
+        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        subParams.bottomMargin = dp(activity, 16);
-        root.addView(subContext, subParams);
+        summaryParams.bottomMargin = dp(activity, 12);
+        summaryCard.setLayoutParams(summaryParams);
 
-        // Card
+        TextView titleView = new TextView(activity);
+        titleView.setText(studyTitle != null ? studyTitle : "Impact of AI on Student Engagement");
+        titleView.setTextColor(UiTheme.NAVY);
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        summaryCard.addView(titleView);
+
+        TextView idView = new TextView(activity);
+        idView.setText(recordId != null ? recordId : "REG-2026-089");
+        idView.setTextColor(0xff64748b);
+        idView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        LinearLayout.LayoutParams idParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        idParams.topMargin = dp(activity, 2);
+        idParams.bottomMargin = dp(activity, 8);
+        summaryCard.addView(idView, idParams);
+
+        LinearLayout stageRow = new LinearLayout(activity);
+        stageRow.setOrientation(LinearLayout.HORIZONTAL);
+        stageRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView stageLabel = new TextView(activity);
+        stageLabel.setText("Current overall stage:   ");
+        stageLabel.setTextColor(UiTheme.NAVY);
+        stageLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        stageLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        stageRow.addView(stageLabel);
+
+        TextView stageBadge = new TextView(activity);
+        stageBadge.setText("Completed");
+        stageBadge.setTextColor(0xff059669);
+        stageBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        stageBadge.setTypeface(Typeface.DEFAULT_BOLD);
+        stageBadge.setPadding(dp(activity, 8), dp(activity, 3), dp(activity, 8), dp(activity, 3));
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setColor(0xffecfdf5);
+        badgeBg.setCornerRadius(dp(activity, 12));
+        badgeBg.setStroke(dp(activity, 1), 0xffa7f3d0);
+        stageBadge.setBackground(badgeBg);
+        stageRow.addView(stageBadge);
+
+        summaryCard.addView(stageRow);
+        root.addView(summaryCard);
+
+        // 2. Correction Form Card (Amber/peach container)
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(activity, 16), dp(activity, 16), dp(activity, 16), dp(activity, 16));
         GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(UiTheme.AMBER_BG);
+        cardBg.setColor(0xfffffbeb);
         cardBg.setCornerRadius(dp(activity, 10));
-        cardBg.setStroke(dp(activity, 1), UiTheme.AMBER_BORDER);
+        cardBg.setStroke(dp(activity, 1), 0xfffde68a);
         card.setBackground(cardBg);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(activity, 12);
+        card.setLayoutParams(cardParams);
         root.addView(card);
 
         TextView cardTitle = new TextView(activity);
-        cardTitle.setText("Correct completion record");
+        cardTitle.setText("🛡 Correct completion record");
         cardTitle.setTextColor(UiTheme.NAVY);
         cardTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         cardTitle.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(cardTitle);
 
-        TextView banner = new TextView(activity);
-        banner.setText("Stage and completion record stay consistent. Reason and change history are retained.");
-        banner.setTextColor(UiTheme.MUTED);
-        banner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        LinearLayout.LayoutParams bannerParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        bannerParams.topMargin = dp(activity, 6);
-        bannerParams.bottomMargin = dp(activity, 14);
-        card.addView(banner, bannerParams);
-
         // Completion status
         TextView stLabel = new TextView(activity);
         stLabel.setText("Completion status");
-        stLabel.setTextColor(UiTheme.MUTED);
-        stLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        card.addView(stLabel);
-
-        TextView stVal = new TextView(activity);
-        stVal.setText("Completed");
-        stVal.setTextColor(UiTheme.NAVY);
-        stVal.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        stVal.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams stValParams = new LinearLayout.LayoutParams(
+        stLabel.setTextColor(UiTheme.NAVY);
+        stLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        stLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams stParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        stValParams.topMargin = dp(activity, 2);
-        stValParams.bottomMargin = dp(activity, 12);
-        card.addView(stVal, stValParams);
+        stParams.topMargin = dp(activity, 12);
+        card.addView(stLabel, stParams);
+
+        TextView stBox = new TextView(activity);
+        stBox.setText("Completed");
+        stBox.setTextColor(UiTheme.NAVY);
+        stBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        stBox.setPadding(dp(activity, 12), dp(activity, 10), dp(activity, 12), dp(activity, 10));
+        GradientDrawable boxBg = new GradientDrawable();
+        boxBg.setColor(0xfffef9c3);
+        boxBg.setCornerRadius(dp(activity, 8));
+        boxBg.setStroke(dp(activity, 1), 0xfffde68a);
+        stBox.setBackground(boxBg);
+        LinearLayout.LayoutParams stBoxParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        stBoxParams.topMargin = dp(activity, 4);
+        stBoxParams.bottomMargin = dp(activity, 10);
+        card.addView(stBox, stBoxParams);
 
         // Recorded completion date
         TextView recLabel = new TextView(activity);
         recLabel.setText("Recorded completion date");
-        recLabel.setTextColor(UiTheme.MUTED);
-        recLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        recLabel.setTextColor(UiTheme.NAVY);
+        recLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        recLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(recLabel);
 
-        TextView recVal = new TextView(activity);
-        recVal.setText(recordedDate != null && !recordedDate.isEmpty() ? recordedDate : "2027-03-15");
-        recVal.setTextColor(UiTheme.MUTED);
-        recVal.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        LinearLayout.LayoutParams recValParams = new LinearLayout.LayoutParams(
+        TextView recBox = new TextView(activity);
+        recBox.setText(recordedDate != null && !recordedDate.isEmpty() ? recordedDate : "2027-03-15");
+        recBox.setTextColor(0xff64748b);
+        recBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        recBox.setPadding(dp(activity, 12), dp(activity, 10), dp(activity, 12), dp(activity, 10));
+        recBox.setBackground(boxBg);
+        LinearLayout.LayoutParams recBoxParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        recValParams.topMargin = dp(activity, 2);
-        recValParams.bottomMargin = dp(activity, 12);
-        card.addView(recVal, recValParams);
+        recBoxParams.topMargin = dp(activity, 4);
+        recBoxParams.bottomMargin = dp(activity, 10);
+        card.addView(recBox, recBoxParams);
 
         // Corrected completion date *
         TextView corrDateLabel = new TextView(activity);
@@ -168,7 +224,7 @@ public final class CompletionCorrectionView {
         LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         dateParams.topMargin = dp(activity, 4);
-        dateParams.bottomMargin = dp(activity, 12);
+        dateParams.bottomMargin = dp(activity, 10);
         card.addView(corrDateInput, dateParams);
 
         // Reason for correction *
@@ -185,20 +241,56 @@ public final class CompletionCorrectionView {
         reasonInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         reasonInput.setPadding(dp(activity, 12), dp(activity, 10), dp(activity, 12), dp(activity, 10));
         reasonInput.setMinLines(3);
+        reasonInput.setGravity(Gravity.TOP);
         reasonInput.setBackground(inputBg);
         LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         reasonParams.topMargin = dp(activity, 4);
-        reasonParams.bottomMargin = dp(activity, 10);
+        reasonParams.bottomMargin = dp(activity, 12);
         card.addView(reasonInput, reasonParams);
 
         TextView note = new TextView(activity);
-        note.setText("Presentation: Not recorded  Publication: Not recorded");
-        note.setTextColor(UiTheme.MUTED);
-        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        note.setText("Stage and completion record stay consistent. Reason and change history are retained.");
+        note.setTextColor(0xffb45309);
+        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
         card.addView(note);
 
-        // Actions
+        // 3. Presentation and Publication status pills
+        LinearLayout outcomePillsRow = new LinearLayout(activity);
+        outcomePillsRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams pillsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        pillsParams.bottomMargin = dp(activity, 16);
+        outcomePillsRow.setLayoutParams(pillsParams);
+
+        TextView presPill = new TextView(activity);
+        presPill.setText("Presentation: Not recorded");
+        presPill.setTextColor(0xff1d4ed8);
+        presPill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+        presPill.setTypeface(Typeface.DEFAULT_BOLD);
+        presPill.setPadding(dp(activity, 10), dp(activity, 4), dp(activity, 10), dp(activity, 4));
+        GradientDrawable pillBg = new GradientDrawable();
+        pillBg.setColor(0xffeff6ff);
+        pillBg.setCornerRadius(dp(activity, 12));
+        pillBg.setStroke(dp(activity, 1), 0xffbfdbfe);
+        presPill.setBackground(pillBg);
+        outcomePillsRow.addView(presPill);
+
+        View pillSpacer = new View(activity);
+        outcomePillsRow.addView(pillSpacer, new LinearLayout.LayoutParams(dp(activity, 8), 1));
+
+        TextView pubPill = new TextView(activity);
+        pubPill.setText("Publication: Not recorded");
+        pubPill.setTextColor(0xff1d4ed8);
+        pubPill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+        pubPill.setTypeface(Typeface.DEFAULT_BOLD);
+        pubPill.setPadding(dp(activity, 10), dp(activity, 4), dp(activity, 10), dp(activity, 4));
+        pubPill.setBackground(pillBg);
+        outcomePillsRow.addView(pubPill);
+
+        root.addView(outcomePillsRow);
+
+        // 4. Action Buttons
         Button saveBtn = new Button(activity);
         saveBtn.setText("Save Correction");
         saveBtn.setTextColor(UiTheme.WHITE);
@@ -211,8 +303,7 @@ public final class CompletionCorrectionView {
         saveBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), saveBg, null));
         LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 48));
-        saveParams.topMargin = dp(activity, 16);
-        saveParams.bottomMargin = dp(activity, 8);
+        saveParams.bottomMargin = dp(activity, 10);
         root.addView(saveBtn, saveParams);
 
         Button cancelBtn = new Button(activity);
@@ -238,7 +329,7 @@ public final class CompletionCorrectionView {
                 return;
             }
             if (TextUtils.isEmpty(reason)) {
-                reasonInput.setError("Please explain reason for correction.");
+                reasonInput.setError("Please enter a reason for correction.");
                 return;
             }
             Toast.makeText(activity, "Completion correction saved.", Toast.LENGTH_SHORT).show();

@@ -95,9 +95,9 @@ public class ResearchReportView {
         rootLayout.addView(filtersCard, params);
 
         TextView header = new TextView(activity);
-        header.setText("Applied filters");
-        header.setTextColor(UiTheme.NAVY);
-        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        header.setText("APPLIED FILTERS");
+        header.setTextColor(0xff64748b);
+        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         filtersCard.addView(header);
 
@@ -367,7 +367,8 @@ public class ResearchReportView {
 
         // Export Button
         Button exportBtn = new Button(activity);
-        exportBtn.setText("Export");
+        exportBtn.setText("⇪ Export");
+        exportBtn.setAllCaps(false);
         exportBtn.setMinHeight(dp(48));
         exportBtn.setTextColor(UiTheme.WHITE);
         exportBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);

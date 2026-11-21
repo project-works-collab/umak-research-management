@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -19,9 +20,9 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.List;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class MyRequestsView {
@@ -69,30 +70,61 @@ public final class MyRequestsView {
         int pad = UiTheme.dp(context, 16);
         layout.setPadding(pad, pad, pad, pad);
 
-        addSpacing(context, layout, 16);
+        addSpacing(context, layout, 12);
 
         // Search & Filter Row
         LinearLayout searchRow = new LinearLayout(context);
         searchRow.setOrientation(LinearLayout.HORIZONTAL);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
 
+        // Search Input Box with Search Icon and Clear button
+        LinearLayout searchBox = new LinearLayout(context);
+        searchBox.setOrientation(LinearLayout.HORIZONTAL);
+        searchBox.setGravity(Gravity.CENTER_VERTICAL);
+        searchBox.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        searchBox.setPadding(UiTheme.dp(context, 12), 0, UiTheme.dp(context, 8), 0);
+        searchBox.setMinimumHeight(UiTheme.dp(context, 46));
+
+        ImageView searchIcon = new ImageView(context);
+        searchIcon.setImageResource(R.drawable.ic_researcher_search);
+        searchIcon.setColorFilter(0xff586b83);
+        int icon18 = UiTheme.dp(context, 18);
+        searchBox.addView(searchIcon, new LinearLayout.LayoutParams(icon18, icon18));
+
         searchInput = new EditText(context);
         searchInput.setHint("Search by request ID or service");
-        searchInput.setHintTextColor(UiTheme.MUTED);
-        searchInput.setTextColor(UiTheme.NAVY);
+        searchInput.setHintTextColor(0xff8898aa);
+        searchInput.setTextColor(0xff082d50);
         searchInput.setTypeface(regular);
         ScreenTypography.apply(searchInput, 14);
-        searchInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
-        int sPad = UiTheme.dp(context, 10);
-        searchInput.setPadding(sPad, sPad, sPad, sPad);
+        searchInput.setBackgroundColor(0);
         searchInput.setSingleLine(true);
-        searchInput.setMinHeight(UiTheme.dp(context, 48));
+        searchInput.setPadding(UiTheme.dp(context, 8), 0, UiTheme.dp(context, 8), 0);
+        searchBox.addView(searchInput, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView clearSearchBtn = new TextView(context);
+        clearSearchBtn.setText("×");
+        clearSearchBtn.setTextColor(0xff586b83);
+        clearSearchBtn.setTypeface(bold);
+        clearSearchBtn.setTextSize(18);
+        clearSearchBtn.setPadding(UiTheme.dp(context, 6), 0, UiTheme.dp(context, 6), 0);
+        clearSearchBtn.setVisibility(View.GONE);
+        clearSearchBtn.setOnClickListener(v -> searchInput.setText(""));
+        searchBox.addView(clearSearchBtn);
+
         LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         searchLp.rightMargin = UiTheme.dp(context, 8);
-        searchRow.addView(searchInput, searchLp);
+        searchRow.addView(searchBox, searchLp);
 
-        Button filterBtn = UiButton.outline(context, "Filter", UiTheme.BORDER, UiTheme.NAVY, this::openFilterDialog);
-        filterBtn.setPadding(UiTheme.dp(context, 12), 0, UiTheme.dp(context, 12), 0);
+        Button filterBtn = new Button(context);
+        filterBtn.setText("Filter");
+        filterBtn.setTextColor(0xff082d50);
+        filterBtn.setTypeface(bold);
+        ScreenTypography.apply(filterBtn, 14);
+        filterBtn.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1));
+        filterBtn.setPadding(UiTheme.dp(context, 16), 0, UiTheme.dp(context, 16), 0);
+        filterBtn.setHeight(UiTheme.dp(context, 46));
+        filterBtn.setOnClickListener(v -> openFilterDialog());
         searchRow.addView(filterBtn);
 
         layout.addView(searchRow);
@@ -110,7 +142,7 @@ public final class MyRequestsView {
 
         // Request Counter (e.g. "4 requests")
         counterText = new TextView(context);
-        counterText.setTextColor(UiTheme.MUTED);
+        counterText.setTextColor(0xff586b83);
         counterText.setTypeface(bold);
         ScreenTypography.apply(counterText, 13);
         layout.addView(counterText);
@@ -137,6 +169,7 @@ public final class MyRequestsView {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 currentSearchQuery = s != null ? s.toString().trim() : "";
+                clearSearchBtn.setVisibility(currentSearchQuery.isEmpty() ? View.GONE : View.VISIBLE);
                 applyFilters();
             }
 
@@ -206,31 +239,44 @@ public final class MyRequestsView {
 
     private void applyFilters() {
         activeFiltersContainer.removeAllViews();
-        boolean hasFilter = !currentSearchQuery.isEmpty();
+        boolean hasFilter = false;
+
+        LinearLayout chipsRow = new LinearLayout(context);
+        chipsRow.setOrientation(LinearLayout.HORIZONTAL);
+        chipsRow.setGravity(Gravity.CENTER_VERTICAL);
 
         if (!"All".equalsIgnoreCase(currentStatusFilter)) {
             hasFilter = true;
-            TextView chip = createFilterChip("Status: " + currentStatusFilter, () -> {
+            View chip = createFilterChip("Status: " + currentStatusFilter, () -> {
                 currentStatusFilter = "All";
                 applyFilters();
             });
-            activeFiltersContainer.addView(chip);
+            chipsRow.addView(chip);
         }
 
         if (!currentFromDate.isEmpty() || !currentToDate.isEmpty()) {
             hasFilter = true;
             String dateLabel = (currentFromDate.isEmpty() ? "Any" : currentFromDate) + " - " + (currentToDate.isEmpty() ? "Any" : currentToDate);
-            TextView chip = createFilterChip(dateLabel, () -> {
+            View chip = createFilterChip(dateLabel, () -> {
                 currentFromDate = "";
                 currentToDate = "";
                 applyFilters();
             });
-            activeFiltersContainer.addView(chip);
+            chipsRow.addView(chip);
         }
 
         if (hasFilter) {
-            Button clearBtn = UiButton.text(context, "Clear filters", UiTheme.ACCENT, this::clearAllFilters);
-            activeFiltersContainer.addView(clearBtn);
+            Button clearBtn = new Button(context);
+            clearBtn.setText("Clear filters");
+            clearBtn.setTextColor(0xff185d9d);
+            clearBtn.setTypeface(UiTheme.boldFont(context));
+            ScreenTypography.apply(clearBtn, 12);
+            clearBtn.setBackgroundColor(0);
+            clearBtn.setPadding(UiTheme.dp(context, 8), 0, UiTheme.dp(context, 8), 0);
+            clearBtn.setOnClickListener(v -> clearAllFilters());
+            chipsRow.addView(clearBtn);
+
+            activeFiltersContainer.addView(chipsRow);
             activeFiltersContainer.setVisibility(View.VISIBLE);
         } else {
             activeFiltersContainer.setVisibility(View.GONE);
@@ -239,24 +285,33 @@ public final class MyRequestsView {
         renderList();
     }
 
-    private TextView createFilterChip(String label, Runnable onRemove) {
-        TextView chip = new TextView(context);
-        chip.setText(label + " [x]");
-        chip.setContentDescription("Remove filter: " + label);
+    private View createFilterChip(String label, Runnable onRemove) {
+        LinearLayout chip = new LinearLayout(context);
+        chip.setOrientation(LinearLayout.HORIZONTAL);
         chip.setGravity(Gravity.CENTER_VERTICAL);
-        chip.setMinHeight(UiTheme.dp(context, 48));
-        chip.setMinWidth(UiTheme.dp(context, 48));
-        chip.setFocusable(true);
-        chip.setTextColor(UiTheme.NAVY);
-        chip.setTypeface(UiTheme.bodyFont(context));
-        ScreenTypography.apply(chip, 12);
-        chip.setBackground(UiTheme.shape(context, UiTheme.TAG_BG, 12, 0));
-        int px = UiTheme.dp(context, 8);
+        chip.setBackground(UiTheme.shape(context, 0xffe5edf7, 12, 0));
+        int px = UiTheme.dp(context, 10);
         int py = UiTheme.dp(context, 4);
         chip.setPadding(px, py, px, py);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.rightMargin = UiTheme.dp(context, 6);
+        lp.rightMargin = UiTheme.dp(context, 8);
         chip.setLayoutParams(lp);
+
+        TextView text = new TextView(context);
+        text.setText(label);
+        text.setTextColor(0xff185d9d);
+        text.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(text, 12);
+        chip.addView(text);
+
+        TextView close = new TextView(context);
+        close.setText(" ×");
+        close.setTextColor(0xff185d9d);
+        close.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(close, 14);
+        close.setPadding(UiTheme.dp(context, 2), 0, 0, 0);
+        chip.addView(close);
+
         chip.setOnClickListener(v -> onRemove.run());
         return chip;
     }
@@ -337,7 +392,7 @@ public final class MyRequestsView {
 
         TextView idText = new TextView(context);
         idText.setText(item.id);
-        idText.setTextColor(UiTheme.MUTED);
+        idText.setTextColor(0xff586b83);
         idText.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(idText, 13);
         LinearLayout.LayoutParams idLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -352,7 +407,7 @@ public final class MyRequestsView {
         // Service Title
         TextView serviceTitle = new TextView(context);
         serviceTitle.setText(item.service);
-        serviceTitle.setTextColor(UiTheme.NAVY);
+        serviceTitle.setTextColor(0xff082d50);
         serviceTitle.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(serviceTitle, 16);
         card.addView(serviceTitle);
@@ -362,7 +417,7 @@ public final class MyRequestsView {
         // Submitted Date
         TextView dateText = new TextView(context);
         dateText.setText("Submitted " + item.submittedDate);
-        dateText.setTextColor(UiTheme.MUTED);
+        dateText.setTextColor(0xff586b83);
         dateText.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(dateText, 13);
         card.addView(dateText);
@@ -381,28 +436,28 @@ public final class MyRequestsView {
         badge.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(badge, 12);
         int px = UiTheme.dp(context, 8);
-        int py = UiTheme.dp(context, 4);
+        int py = UiTheme.dp(context, 3);
         badge.setPadding(px, py, px, py);
 
         int bg;
         int fg;
         switch (status) {
             case "In review":
-                bg = UiTheme.STATUS_IN_REVIEW_BG;
-                fg = UiTheme.STATUS_IN_REVIEW_TEXT;
+                bg = 0xffede9fe;
+                fg = 0xff4338ca;
                 break;
             case "For correction":
-                bg = UiTheme.STATUS_CORRECTION_BG;
-                fg = UiTheme.STATUS_CORRECTION_TEXT;
+                bg = 0xfffef3c7;
+                fg = 0xffb45309;
                 break;
             case "Completed":
-                bg = UiTheme.STATUS_COMPLETED_BG;
-                fg = UiTheme.STATUS_COMPLETED_TEXT;
+                bg = 0xffdcfce7;
+                fg = 0xff16a34a;
                 break;
             case "Submitted":
             default:
-                bg = UiTheme.STATUS_SUBMITTED_BG;
-                fg = UiTheme.STATUS_SUBMITTED_TEXT;
+                bg = 0xffe5edf7;
+                fg = 0xff185d9d;
                 break;
         }
 
@@ -416,7 +471,7 @@ public final class MyRequestsView {
 
         TextView emptyTitle = new TextView(context);
         emptyTitle.setText("No requests yet");
-        emptyTitle.setTextColor(UiTheme.NAVY);
+        emptyTitle.setTextColor(0xff082d50);
         emptyTitle.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(emptyTitle, 18);
         emptyTitle.setGravity(Gravity.CENTER);
@@ -426,7 +481,7 @@ public final class MyRequestsView {
 
         TextView emptySubtitle = new TextView(context);
         emptySubtitle.setText("Start a request to track clearance, ethics, and consultation requests.");
-        emptySubtitle.setTextColor(UiTheme.MUTED);
+        emptySubtitle.setTextColor(0xff586b83);
         emptySubtitle.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(emptySubtitle, 14);
         emptySubtitle.setGravity(Gravity.CENTER);
@@ -434,10 +489,16 @@ public final class MyRequestsView {
 
         addSpacing(context, emptyContainer, 16);
 
-        Button submitBtn = UiButton.primary(context, "Submit request", () -> {
+        Button submitBtn = new Button(context);
+        submitBtn.setText("Submit request");
+        submitBtn.setTextColor(0xffffffff);
+        submitBtn.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(submitBtn, 15);
+        submitBtn.setBackground(UiTheme.shape(context, 0xff131c4b, 8, 0));
+        submitBtn.setOnClickListener(v -> {
             if (listener != null) listener.onSubmitNewRequest();
         });
-        emptyContainer.addView(submitBtn);
+        emptyContainer.addView(submitBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
     }
 
     private void renderEmptySearch() {
@@ -445,7 +506,7 @@ public final class MyRequestsView {
 
         TextView emptyTitle = new TextView(context);
         emptyTitle.setText("No matching requests");
-        emptyTitle.setTextColor(UiTheme.NAVY);
+        emptyTitle.setTextColor(0xff082d50);
         emptyTitle.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(emptyTitle, 18);
         emptyTitle.setGravity(Gravity.CENTER);
@@ -455,7 +516,7 @@ public final class MyRequestsView {
 
         TextView emptySubtitle = new TextView(context);
         emptySubtitle.setText("Try adjusting your search terms or filters.");
-        emptySubtitle.setTextColor(UiTheme.MUTED);
+        emptySubtitle.setTextColor(0xff586b83);
         emptySubtitle.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(emptySubtitle, 14);
         emptySubtitle.setGravity(Gravity.CENTER);
@@ -463,8 +524,14 @@ public final class MyRequestsView {
 
         addSpacing(context, emptyContainer, 16);
 
-        Button clearBtn = UiButton.outline(context, "Clear filters", UiTheme.BORDER, UiTheme.NAVY, this::clearAllFilters);
-        emptyContainer.addView(clearBtn);
+        Button clearBtn = new Button(context);
+        clearBtn.setText("Clear filters");
+        clearBtn.setTextColor(0xff082d50);
+        clearBtn.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(clearBtn, 14);
+        clearBtn.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1));
+        clearBtn.setOnClickListener(v -> clearAllFilters());
+        emptyContainer.addView(clearBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
     }
 
     public void setPreviewState(String state) {

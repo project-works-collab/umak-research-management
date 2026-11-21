@@ -11,7 +11,9 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -20,6 +22,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.common.dialogs.BottomSheet;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
@@ -54,8 +57,16 @@ public final class QueueFilterDialog {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(UiTheme.PAPER);
         int pad = UiTheme.dp(context, 20);
-        layout.setPadding(pad, pad, pad, pad);
+        layout.setPadding(pad, UiTheme.dp(context, 12), pad, pad);
         scrollView.addView(layout);
+
+        View handle = new View(context);
+        handle.setBackground(UiTheme.shape(context, 0xffcbd5e1, 2, 0));
+        LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(UiTheme.dp(context, 36), UiTheme.dp(context, 4));
+        hLp.gravity = Gravity.CENTER_HORIZONTAL;
+        hLp.bottomMargin = UiTheme.dp(context, 14);
+        handle.setLayoutParams(hLp);
+        layout.addView(handle);
 
         // Header Title
         TextView title = new TextView(context);

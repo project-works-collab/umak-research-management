@@ -5,15 +5,17 @@ import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class NotificationsView {
@@ -29,6 +31,7 @@ public final class NotificationsView {
 
     private final List<RequestData.NotificationItem> items = new ArrayList<>();
     private final TextView subtitle;
+    private final Button markReadBtn;
     private final LinearLayout listContainer;
     private final LinearLayout emptyContainer;
     private boolean isEmptyPreview = false;
@@ -39,7 +42,6 @@ public final class NotificationsView {
 
         items.addAll(RequestData.getInitialNotifications());
 
-        Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
         int pad = UiTheme.dp(context, 16);
 
@@ -48,17 +50,30 @@ public final class NotificationsView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
+        // Header Actions Row (Unread count + Mark read button)
         LinearLayout actions = new LinearLayout(context);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setGravity(Gravity.CENTER_VERTICAL);
+
         subtitle = new TextView(context);
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTypeface(regular);
+        subtitle.setTextColor(0xff586b83);
+        subtitle.setTypeface(bold);
         ScreenTypography.apply(subtitle, 13);
         actions.addView(subtitle, new LinearLayout.LayoutParams(0, -2, 1));
-        actions.addView(UiButton.text(context, "Mark read", UiTheme.ACCENT, this::markAllRead));
+
+        markReadBtn = new Button(context);
+        markReadBtn.setText("Mark read");
+        markReadBtn.setTextColor(0xff185d9d);
+        markReadBtn.setTypeface(bold);
+        ScreenTypography.apply(markReadBtn, 13);
+        markReadBtn.setBackgroundColor(0);
+        markReadBtn.setPadding(UiTheme.dp(context, 8), 0, UiTheme.dp(context, 8), 0);
+        markReadBtn.setOnClickListener(v -> markAllRead());
+        actions.addView(markReadBtn);
+
         layout.addView(actions);
 
-        addSpacing(context, layout, 16);
+        addSpacing(context, layout, 12);
 
         // List container
         listContainer = new LinearLayout(context);
@@ -99,6 +114,7 @@ public final class NotificationsView {
 
         if (isEmptyPreview) {
             subtitle.setText("0 unread");
+            markReadBtn.setVisibility(View.GONE);
             listContainer.setVisibility(View.GONE);
             emptyContainer.setVisibility(View.VISIBLE);
             renderEmpty();
@@ -110,6 +126,7 @@ public final class NotificationsView {
             if (it.unread) unreadCount++;
         }
         subtitle.setText(unreadCount + " unread");
+        markReadBtn.setVisibility(unreadCount > 0 ? View.VISIBLE : View.GONE);
 
         listContainer.setVisibility(View.VISIBLE);
         emptyContainer.setVisibility(View.GONE);
@@ -134,7 +151,7 @@ public final class NotificationsView {
 
         TextView titleView = new TextView(context);
         titleView.setText(item.title);
-        titleView.setTextColor(UiTheme.NAVY);
+        titleView.setTextColor(0xff082d50);
         titleView.setTypeface(item.unread ? UiTheme.boldFont(context) : UiTheme.bodyFont(context));
         ScreenTypography.apply(titleView, 14);
         LinearLayout.LayoutParams tLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -143,10 +160,10 @@ public final class NotificationsView {
         if (item.unread) {
             TextView unreadDot = new TextView(context);
             unreadDot.setText("New");
-            unreadDot.setTextColor(UiTheme.WHITE);
+            unreadDot.setTextColor(0xffffffff);
             unreadDot.setTypeface(UiTheme.boldFont(context));
             ScreenTypography.apply(unreadDot, 10);
-            unreadDot.setBackground(UiTheme.shape(context, UiTheme.ACCENT, 10, 0));
+            unreadDot.setBackground(UiTheme.shape(context, 0xff185d9d, 10, 0));
             unreadDot.setPadding(UiTheme.dp(context, 6), UiTheme.dp(context, 2), UiTheme.dp(context, 6), UiTheme.dp(context, 2));
             topRow.addView(unreadDot);
         }
@@ -157,7 +174,7 @@ public final class NotificationsView {
 
         TextView reqCode = new TextView(context);
         reqCode.setText("Request: " + item.requestCode);
-        reqCode.setTextColor(UiTheme.MUTED);
+        reqCode.setTextColor(0xff586b83);
         reqCode.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(reqCode, 12);
         card.addView(reqCode);
@@ -166,11 +183,12 @@ public final class NotificationsView {
 
         TextView dateView = new TextView(context);
         dateView.setText(item.date);
-        dateView.setTextColor(UiTheme.MUTED);
+        dateView.setTextColor(0xff586b83);
         dateView.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(dateView, 11);
         card.addView(dateView);
 
+        card.setFocusable(true);
         card.setOnClickListener(v -> {
             item.unread = false;
             renderList();
@@ -183,9 +201,17 @@ public final class NotificationsView {
     private void renderEmpty() {
         emptyContainer.setPadding(0, UiTheme.dp(context, 48), 0, UiTheme.dp(context, 48));
 
+        ImageView icon = new ImageView(context);
+        icon.setImageResource(R.drawable.ic_crm_info);
+        icon.setColorFilter(0xff586b83);
+        int icon32 = UiTheme.dp(context, 32);
+        emptyContainer.addView(icon, new LinearLayout.LayoutParams(icon32, icon32));
+
+        addSpacing(context, emptyContainer, 12);
+
         TextView emptyTitle = new TextView(context);
         emptyTitle.setText("No notifications yet");
-        emptyTitle.setTextColor(UiTheme.NAVY);
+        emptyTitle.setTextColor(0xff082d50);
         emptyTitle.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(emptyTitle, 18);
         emptyTitle.setGravity(Gravity.CENTER);
@@ -195,7 +221,7 @@ public final class NotificationsView {
 
         TextView emptySubtitle = new TextView(context);
         emptySubtitle.setText("Updates about your requests, approvals, and deadlines will appear here.");
-        emptySubtitle.setTextColor(UiTheme.MUTED);
+        emptySubtitle.setTextColor(0xff586b83);
         emptySubtitle.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(emptySubtitle, 14);
         emptySubtitle.setGravity(Gravity.CENTER);
