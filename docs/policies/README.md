@@ -1,44 +1,73 @@
-# CRM policies — institutional documentation
+# CRM Policies — Institutional Documentation & Validation Record
 
-**Institutional Policy Suite — University of Makati Center for Research Management**
+**Final academic submission — proposed policy pending institutional adoption.**
 
 - [Privacy Policy](PRIVACY_POLICY.md)
 - [Terms and Conditions](TERMS_AND_CONDITIONS.md)
+- [Preserved Previous Privacy Policy (Comparison Baseline)](PRIVACY_POLICY_PREVIOUS_VERSION.md)
+- [Preserved Previous Terms and Conditions (Comparison Baseline)](TERMS_AND_CONDITIONS_PREVIOUS_VERSION.md)
 - [Generator source archive](generator-original/README.md) — unadapted evidence, not approved policies
 - [Technical privacy handoff](../implementation/PRIVACY.md)
 
-Updated: 21 November 2026. This policy suite aligns the University of Makati Research Management and Library Information System (UMak-RMLIS / CRM Application) with the official *University of Makati Data Privacy Policy Statement* and applicable Philippine statutory and regulatory requirements.
+Updated: 22 November 2026. This suite contains the revised Privacy Policy and Terms and Conditions for the **University of Makati Research Management and Lifecycle Information System (UMak-RMLIS)**, aligned with the official *University of Makati Data Privacy Policy Statement*, Philippine statutory laws, and the verified repository implementation.
 
-## Institutional adoption schedule
+---
 
-| Decision | Required information / review | Responsible institutional function |
+## Change Summary (Addressing Validation Findings)
+
+1. **System Name Consistency:** Unified the system name to **Research Management and Lifecycle Information System (UMak-RMLIS)** across all policy documents, removing conflicting references to "Library Information System."
+2. **Account Access & Role Model:** Documented that student and faculty researchers self-register using their institutional email (`@umak.edu.ph`) and verify ownership via email verification codes. Staff accounts are created and granted granular permissions exclusively by authorized CRM account administrators. Public browsing remains accessible without authentication.
+3. **Clear Academic Adoption Status:** Prominently marked both documents with `"Final academic submission — proposed policy pending institutional adoption"` and marked effective dates and operator appointments as pending institutional confirmation.
+4. **Reconciled Upload Limits:** Clarified the distinction between **service request attachments** (up to 10 MB per file, max 5 files per request, matching Requirements Engineering and the client UI) and **manuscript repository uploads** (up to 25,000,000 bytes per document file, supported by backend storage). Flagged institutional harmonization as an open adoption item.
+5. **Corrected Legal Provisions & Breach Reporting:** Updated legal citations to include **Section 20(f) of RA 10173**, **NPC Circular No. 16-03**, **NPC Circular No. 2024-01** (Breach Investigations), and **NPC Circular No. 2023-06** (Security of Personal Data). Explicitly specified the mandatory 72-hour notification rule to **both** the NPC and affected data subjects (subject to statutory exemptions/postponements). Clarified lawful processing criteria under Sections 12 and 13.
+6. **Removed Unsupported Operational Claims:** Removed unverified promises regarding fixed retention durations, instant backup purging, 2FA/MFA, active analytics SDKs, and production DRaaS/cloud infrastructure, clearly separating implemented source features from deployment-dependent controls.
+7. **Institutional Restraint:** Removed invented student disciplinary tribunal bodies, specific criminal/civil penalty terms, automatic deletion refusal rules, and exclusive court venue clauses. Referred instead to approved university codes (Student Handbook, Faculty Code, CSC rules) and applicable Philippine procedural law.
+8. **Updated Technical Appendix & Links:** Linked all policies to pinned revision `1a305391339b8258ab2f05737717aa0038fd3d97` and verified all internal documentation links. Preserved comparison baselines (`PRIVACY_POLICY_PREVIOUS_VERSION.md` and `TERMS_AND_CONDITIONS_PREVIOUS_VERSION.md`).
+
+---
+
+## Unresolved Items Requiring Institutional Confirmation
+
+Before operational adoption, the following decisions must be formally resolved by the responsible institutional functions:
+
+| Item | Open Decision / Unresolved Item | Responsible Function | Required Institutional Action |
+| --- | --- | --- | --- |
+| **U1 Operator & Governance** | Official legal operator entity, responsible university office, and approval authority (Board of Regents / VPRE). | Administration & Legal | Formally designate the CRM under the Office of the Vice President for Research and Extensions and adopt the policy suite. |
+| **U2 Minors & Eligibility** | Procedures and consent mechanisms for student researchers under the age of majority. | Academic Affairs & Legal | Define whether parental/guardian consent is required or if school enrollment and adviser supervision satisfy institutional requirements. |
+| **U3 Privacy Contacts** | Official privacy routing and request verification for `research@umak.edu.ph` and `dprms@umak.edu.ph`. | CDPRMS (DPO) & CRM | Confirm the designated mailbox and procedure for receiving, verifying, and responding to data subject rights requests. |
+| **U4 Lawful Bases per Purpose** | Documented lawful basis under RA 10173 Section 12 (personal data) and Section 13 (sensitive personal data). | DPO & Legal | Formally review and approve purpose-by-purpose lawful processing bases; confirm whether abstract publication is based on consent or academic charter fulfillment. |
+| **U5 Upload Limit Harmonization** | Harmonization between 10 MB (service request attachments) and 25 MB (manuscript storage). | CRM, ITC, & Academic Council | Establish unified university policy on file upload sizes and storage quota allocations. |
+| **U6 Retention Schedules** | Definitive retention periods and disposal triggers under RA 9470 (NAP Act). | Records Office & CDPRMS | Approve formal records disposition schedules for student theses, faculty papers, evaluation notes, and audit logs. |
+| **U7 Hosting & Processor Agreements** | Production cloud hosting provider, storage regions, and Data Sharing / Processor Agreements. | ITC & Legal | Execute formal Data Sharing Agreements (DSA) and Cloud Service Provider SLAs ensuring local compliance. |
+| **U8 Terms Acceptance Workflow** | In-app terms acknowledgment mechanism and version enforcement. | CRM & Development Team | Approve the UI/UX terms acceptance prompt and database version recording mechanism. |
+
+---
+
+## Feature-to-Clause Review
+
+| Source at Pinned Revision (`1a305391339b8258ab2f05737717aa0038fd3d97`) | Policy Connection | Implementation Boundary |
 | --- | --- | --- |
-| A1 Operator and eligibility | Legal entity (University of Makati), operating office (Center for Research Management - CRM), approval authority (Board of Regents / VPRE), account eligibility, minors procedure, effective date and version | Administration and legal |
-| A2 Contacts and rights | DPO contact (`dprms@umak.edu.ph`); research office contact (`research@umak.edu.ph`); physical postal address (J.P. Rizal Ext., West Rembo, Makati City); identity verification and response procedure | DPO (CDPRMS) and CRM |
-| A3 Purposes and permissions | Lawful basis per purpose under RA 10173 Sections 12 & 13, research ethics compliance (UMak-REC), coauthor authority, evaluation permissions, and public catalogue approval | DPO, research office, and legal |
-| A4 Providers and operations | Hosting infrastructure, backup and DRaaS safeguards, processor agreements, Information Technology Center (ITC) controls, and mobile offline caching rules | ITC and DPO |
-| A5 Retention and erasure | Retention schedules under the National Archives of the Philippines Act (RA 9470), academic holds, shared-study protection, and deletion-ledger re-application | CDPRMS, DPO, and ITC |
-| A6 Service procedures | Membership and reviewer assignments, evaluation dispute resolution, consultation scheduling under RA 11032, and terms amendment notices | CRM and legal |
+| [Application routes](../../src/app.js), [researcher registration](../../src/auth/researcher-registration.js), [account admin](../../src/auth/account-administration.js) | Self-registration with email verification, staff account provisioning with permissions, RBAC, public browsing | Verified in source; researchers self-register with 6-digit email code; staff accounts provisioned by admin; public search available without auth. |
+| [Document routes](../../src/storage/routes.js), [storage validation](../../src/storage/validate.js) | PDF/DOCX manuscript storage, 25 MB limit, temporary signed access links | Verified in source; checks MIME type, parses structures, enforces 25,000,000 bytes. Service request intake in client UI uses 10 MB / 5 files. |
+| [Implementation guide](../implementation/IAS_IMPLEMENTATION.md) and [technical privacy handoff](../implementation/PRIVACY.md) | Encryption, reviewed deletion transaction, deletion replay ledger, audit logs | Verified in source; deletion cascades live records; backup purging and object lifecycle rules require operational hosting verification. |
+| [Algorithm contract](../api/ALGORITHM_API.md), [search and scheduling](../api/SEARCH_AND_CONSULTATIONS.md) | Similarity checking, structural readiness estimates, consultation queues | Verified in source; advisory decision-support tools; does not guarantee originality, completion date, or instant advising turnaround. |
 
-## Feature-to-clause review
+---
 
-| Source at the pinned revision | Policy connection | Evidence boundary |
-| --- | --- | --- |
-| [Application routes](../../src/app.js), [validation](../../src/security/validation.js), [database migrations](../../db/migrations) | Accounts, research membership, assigned reviewers, separate notes, consent, reviewed deletion, and audit metadata | Source inspection; role-based access control, consent choices, and reviewed deletion workflows |
-| [Document routes](../../src/storage/routes.js), [storage adapter](../../src/storage/s3.js) | Restricted PDF/DOCX uploads, 25 MB limit, temporary signed access URLs | File inspection, MIME validation, and temporary signed download links |
-| [Implementation guide](../implementation/IAS_IMPLEMENTATION.md) and [implementation evidence](../../evidence/ias-plan/IMPLEMENTATION.md) | Encryption, recovery, deletion replay, Android offline library, and security audit logs | Security safeguards, encrypted session storage, and deletion ledger integrity |
-| [Algorithm contract](../api/ALGORITHM_API.md), [search and scheduling](../api/SEARCH_AND_CONSULTATIONS.md) | Suggestions, structural estimates, and consultation queue ordering | Decision-support suggestions; no automatic academic clearance or guaranteed turnaround |
+## Statutory and Regulatory References
 
-## References
-
-1. Republic of the Philippines, [Republic Act No. 10173, Data Privacy Act of 2012](https://privacy.gov.ph/data-privacy-act/), especially sections 11–14, 16, 18, 20–21. General principles (Transparency, Legitimate Purpose, Proportionality), lawful criteria, data subject rights, security safeguards, and breach notification.
-2. National Privacy Commission, [Implementing Rules and Regulations of the Data Privacy Act of 2012](https://privacy.gov.ph/implementing-rules-regulations-data-privacy-act-2012/), 2016, rules IV–VI and VIII–IX.
-3. National Privacy Commission Issuances: NPC Circular 16-01 (DPO registration), NPC Circular 16-02 (Data Sharing Agreements), and NPC Circular 16-03 (Personal Data Breach Management).
-4. Republic Act No. 10175, [Cybercrime Prevention Act of 2012](https://lawphil.net/statutes/repacts/ra2012/ra_10175_2012.html), section 4(a) (illegal access, data interference, system interference, misuse of devices).
-5. Republic Act No. 9470, [National Archives of the Philippines Act of 2007](https://www.officialgazette.gov.ph/2007/05/21/republic-act-no-9470/), governing the management, retention, and disposition of public and academic records.
-6. Batas Pambansa Blg. 232, [Education Act of 1982](https://www.officialgazette.gov.ph/1982/09/11/batas-pambansa-blg-232/), Chapter 2, Section 9(4) (student rights to access own school records and maintain their confidentiality).
-7. Republic Act No. 8293, [Intellectual Property Code of the Philippines](https://www.ipophil.gov.ph/intellectual-property-code-implementing-rules-and-regulations/), protecting author moral rights and original research copyright.
-8. Republic Act No. 6713, [Code of Conduct and Ethical Standards for Public Officials and Employees](https://www.officialgazette.gov.ph/1989/02/20/republic-act-no-6713/).
-9. Republic Act No. 11032, [Ease of Doing Business and Efficient Government Service Delivery Act of 2018](https://www.officialgazette.gov.ph/2018/05/28/republic-act-no-11032/).
-10. City Government of Makati, [Makati City Ordinance 2020-059 (Revised UMak Charter)](https://www.umak.edu.ph/) and University Board of Regents resolutions.
-11. University of Makati, *Data Privacy Policy Statement*, Center for Data Protection and Records Management Services (CDPRMS), official publication.
+1. **Republic Act No. 10173 (Data Privacy Act of 2012):** Sections 11–14 (general principles, lawful processing of personal and sensitive personal data), Section 16 (rights of data subjects), Section 20(f) (72-hour breach notification), and 2016 IRR (Rules IV–VI, VIII–IX).
+2. **National Privacy Commission (NPC) Issuances:**
+   - NPC Circular No. 16-03 (Personal Data Breach Management);
+   - NPC Circular No. 2024-01 (Breach Investigation Procedures);
+   - NPC Circular No. 2023-06 (Security of Personal Data in Government and Private Sector);
+   - NPC Circular No. 2022-04 (Registration of Personal Data Processing Systems and DPOs);
+   - NPC Circular No. 2022-01 (Administrative Fines).
+3. **Republic Act No. 10175 (Cybercrime Prevention Act of 2012):** Section 4(a) (illegal access, data interference, system interference, misuse of devices).
+4. **Republic Act No. 9470 (National Archives of the Philippines Act of 2007):** Public records management, archival retention schedules, and lawful disposal standards.
+5. **Batas Pambansa Blg. 232 (Education Act of 1982):** Chapter 2, Section 9(4) (confidentiality of student educational records).
+6. **Republic Act No. 8293 (Intellectual Property Code of the Philippines):** Author copyright and moral rights protection.
+7. **Republic Act No. 6713 (Code of Conduct and Ethical Standards for Public Officials and Employees):** Standards of professionalism and ethics for public university personnel.
+8. **Republic Act No. 11032 (Ease of Doing Business and Efficient Government Service Delivery Act of 2018):** Streamlined administrative processing and queue management.
+9. **Makati City Ordinance 2020-059 (Revised UMak Charter):** Municipal institutional charter and University Board of Regents resolutions.
+10. **University of Makati Data Privacy Policy Statement:** Center for Data Protection and Records Management Services (CDPRMS), official publication.
