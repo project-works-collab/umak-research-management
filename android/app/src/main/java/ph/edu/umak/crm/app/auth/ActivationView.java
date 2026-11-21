@@ -8,7 +8,6 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import ph.edu.umak.crm.app.BackControl;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiBanner;
 import ph.edu.umak.crm.app.common.components.UiButton;
@@ -87,15 +86,7 @@ public final class ActivationView {
         scroll.setFillViewport(true);
         scroll.addView(form);
 
-        LinearLayout screen = new LinearLayout(context);
-        screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(UiTheme.PAPER);
-        screen.addView(BackControl.create(context, "Back to sign-in", UiTheme.NAVY, () -> {
-            if (callbacks != null) callbacks.onShowSignIn();
-        }));
-        screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        root = screen;
+        root = scroll;
     }
 
     public void setTemporaryPassword(String value) {

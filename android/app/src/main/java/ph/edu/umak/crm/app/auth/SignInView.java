@@ -1,14 +1,18 @@
 package ph.edu.umak.crm.app.auth;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import ph.edu.umak.crm.app.BackControl;
@@ -27,6 +31,7 @@ public final class SignInView {
     private final UiInput.FormField passwordField;
     private final Button forgotBtn;
     private final Button signInBtn;
+    private final LinearLayout loadingLayout;
     private final Button createAccountBtn;
     private final Button contactBtn;
     private final Button guestBtn;
@@ -64,13 +69,6 @@ public final class SignInView {
         description.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 16));
         form.addView(description);
 
-        bannerContainer = new LinearLayout(context);
-        bannerContainer.setOrientation(LinearLayout.VERTICAL);
-        bannerContainer.setVisibility(View.GONE);
-        LinearLayout.LayoutParams bannerParams = new LinearLayout.LayoutParams(-1, -2);
-        bannerParams.bottomMargin = UiTheme.dp(context, 16);
-        form.addView(bannerContainer, bannerParams);
-
         usernameField = UiInput.field(context, form, "Username or Institutional Email", "e.g. jdelacruz.K1234@umak.edu.ph", false);
         usernameField.getInput().setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         if (initialEmail != null && !initialEmail.isEmpty()) {
@@ -85,13 +83,46 @@ public final class SignInView {
         forgotBtn.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams forgotParams = new LinearLayout.LayoutParams(-1, -2);
         forgotParams.topMargin = UiTheme.dp(context, 2);
-        forgotParams.bottomMargin = UiTheme.dp(context, 8);
+        forgotParams.bottomMargin = UiTheme.dp(context, 4);
         form.addView(forgotBtn, forgotParams);
 
+        bannerContainer = new LinearLayout(context);
+        bannerContainer.setOrientation(LinearLayout.VERTICAL);
+        bannerContainer.setVisibility(View.GONE);
+        LinearLayout.LayoutParams bannerParams = new LinearLayout.LayoutParams(-1, -2);
+        bannerParams.topMargin = UiTheme.dp(context, 4);
+        bannerParams.bottomMargin = UiTheme.dp(context, 8);
+        form.addView(bannerContainer, bannerParams);
+
         signInBtn = UiButton.primary(context, "Sign In", this::attemptSignIn);
+
+        loadingLayout = new LinearLayout(context);
+        loadingLayout.setOrientation(LinearLayout.HORIZONTAL);
+        loadingLayout.setGravity(Gravity.CENTER);
+        loadingLayout.setVisibility(View.GONE);
+
+        ProgressBar signInSpinner = new ProgressBar(context, null, android.R.attr.progressBarStyleSmall);
+        signInSpinner.setIndeterminate(true);
+        signInSpinner.setIndeterminateTintList(ColorStateList.valueOf(UiTheme.DISABLED_BTN_TEXT));
+        int spinnerSize = UiTheme.dp(context, 18);
+        LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(spinnerSize, spinnerSize);
+        spinnerParams.rightMargin = UiTheme.dp(context, 8);
+        loadingLayout.addView(signInSpinner, spinnerParams);
+
+        TextView loadingLabel = new TextView(context);
+        loadingLabel.setText("Signing in...");
+        loadingLabel.setTextColor(UiTheme.DISABLED_BTN_TEXT);
+        loadingLabel.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(loadingLabel, 14);
+        loadingLayout.addView(loadingLabel);
+
+        FrameLayout buttonContainer = new FrameLayout(context);
+        buttonContainer.addView(signInBtn, new FrameLayout.LayoutParams(-1, -2));
+        buttonContainer.addView(loadingLayout, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+
         LinearLayout.LayoutParams signInParams = new LinearLayout.LayoutParams(-1, -2);
         signInParams.topMargin = UiTheme.dp(context, 4);
-        form.addView(signInBtn, signInParams);
+        form.addView(buttonContainer, signInParams);
 
         pendingSubtext = new TextView(context);
         pendingSubtext.setText("Checking your account details...");
@@ -110,9 +141,10 @@ public final class SignInView {
         createParams.topMargin = UiTheme.dp(context, 12);
         form.addView(createAccountBtn, createParams);
 
-        contactBtn = UiButton.text(context, "Contact CRM for assistance", UiTheme.MUTED, () -> {
+        contactBtn = UiButton.text(context, "Contact CRM for assistance", 0xff334155, () -> {
             if (callbacks != null) callbacks.onShowAccessHelp();
         });
+        contactBtn.setPaintFlags(contactBtn.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
         LinearLayout.LayoutParams contactParams = new LinearLayout.LayoutParams(-1, -2);
         contactParams.topMargin = UiTheme.dp(context, 8);
         form.addView(contactBtn, contactParams);
@@ -183,16 +215,17 @@ public final class SignInView {
         guestBtn.setEnabled(!loading);
 
         if (loading) {
-            signInBtn.setText("Signing in...");
+            signInBtn.setText("");
             signInBtn.setBackground(UiTheme.shape(context, UiTheme.DISABLED_BTN_BG, 8, 0));
-            signInBtn.setTextColor(UiTheme.DISABLED_BTN_TEXT);
             signInBtn.setEnabled(false);
+            loadingLayout.setVisibility(View.VISIBLE);
             pendingSubtext.setVisibility(View.VISIBLE);
         } else {
             signInBtn.setText("Sign In");
             signInBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.NAVY, 8, 0), 0x20395072));
             signInBtn.setTextColor(UiTheme.WHITE);
             signInBtn.setEnabled(true);
+            loadingLayout.setVisibility(View.GONE);
             pendingSubtext.setVisibility(View.GONE);
         }
     }

@@ -20,7 +20,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.util.Locale;
-import ph.edu.umak.crm.app.BackControl;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
@@ -214,15 +213,7 @@ public final class EmailVerifyView {
         scroll.setFillViewport(true);
         scroll.addView(form);
 
-        LinearLayout screen = new LinearLayout(context);
-        screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(UiTheme.PAPER);
-        screen.addView(BackControl.create(context, "Back", UiTheme.NAVY, () -> {
-            if (callbacks != null) callbacks.onBackFromVerification();
-        }));
-        screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        root = screen;
+        root = scroll;
         startCountdown(45);
     }
 

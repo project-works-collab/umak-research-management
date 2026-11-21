@@ -13,7 +13,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
-import ph.edu.umak.crm.app.BackControl;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiBanner;
 import ph.edu.umak.crm.app.common.components.UiButton;
@@ -95,7 +94,7 @@ public final class CreateAccountView {
 
         // College / Institute *
         TextView collegeLabel = new TextView(context);
-        collegeLabel.setText("College / Institute *");
+        collegeLabel.setText(UiInput.formatLabel("College / Institute *"));
         collegeLabel.setTextColor(UiTheme.MUTED);
         collegeLabel.setTypeface(bold);
         ScreenTypography.apply(collegeLabel, 13);
@@ -105,10 +104,12 @@ public final class CreateAccountView {
         collegeBox = new LinearLayout(context);
         collegeBox.setGravity(Gravity.CENTER_VERTICAL);
         collegeBox.setBackground(UiTheme.shape(context, UiTheme.PAPER, 8, UiTheme.BORDER));
-        collegeBox.setPadding(UiTheme.dp(context, 6), UiTheme.dp(context, 2), UiTheme.dp(context, 6), UiTheme.dp(context, 2));
+        collegeBox.setMinimumHeight(UiTheme.dp(context, 48));
+        collegeBox.setPadding(UiTheme.dp(context, 6), UiTheme.dp(context, 4), UiTheme.dp(context, 6), UiTheme.dp(context, 4));
 
-        collegeSpinner = new Spinner(context);
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, COLLEGES) {
+        collegeSpinner = new Spinner(context, Spinner.MODE_DIALOG);
+        collegeSpinner.setPrompt("Select College / Institute");
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, COLLEGES) {
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
                 View v = super.getView(position, convertView, parent);
@@ -117,12 +118,33 @@ public final class CreateAccountView {
                     tv.setTypeface(UiTheme.bodyFont(context));
                     ScreenTypography.apply(tv, 14);
                     tv.setTextColor(position == 0 ? UiTheme.MUTED : UiTheme.INK);
+                    tv.setSingleLine(false);
+                    tv.setMaxLines(4);
+                    tv.setEllipsize(null);
+                }
+                return v;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View v = super.getDropDownView(position, convertView, parent);
+                if (v instanceof TextView) {
+                    TextView tv = (TextView) v;
+                    tv.setTypeface(UiTheme.bodyFont(context));
+                    ScreenTypography.apply(tv, 14);
+                    tv.setTextColor(position == 0 ? UiTheme.MUTED : UiTheme.INK);
+                    tv.setSingleLine(false);
+                    tv.setMaxLines(4);
+                    tv.setEllipsize(null);
+                    int pad = UiTheme.dp(context, 14);
+                    tv.setPadding(pad, pad, pad, pad);
                 }
                 return v;
             }
         };
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         collegeSpinner.setAdapter(adapter);
-        collegeBox.addView(collegeSpinner, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 48)));
+        collegeBox.addView(collegeSpinner, new LinearLayout.LayoutParams(-1, -2));
         form.addView(collegeBox);
 
         collegeError = new TextView(context);
@@ -178,15 +200,7 @@ public final class CreateAccountView {
         scroll.setFillViewport(true);
         scroll.addView(form);
 
-        LinearLayout screen = new LinearLayout(context);
-        screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setBackgroundColor(UiTheme.PAPER);
-        screen.addView(BackControl.create(context, "Back", UiTheme.NAVY, () -> {
-            if (callbacks != null) callbacks.onBackFromCreateAccount();
-        }));
-        screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        root = screen;
+        root = scroll;
     }
 
     private void setCategory(boolean student) {

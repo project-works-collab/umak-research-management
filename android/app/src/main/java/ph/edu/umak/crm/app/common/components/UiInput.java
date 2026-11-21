@@ -22,6 +22,20 @@ import ph.edu.umak.crm.app.common.util.UiTheme;
 public final class UiInput {
     private UiInput() {}
 
+    public static CharSequence formatLabel(CharSequence text) {
+        if (text == null) return null;
+        String str = text.toString();
+        int idx = str.indexOf('*');
+        if (idx == -1) return text;
+        android.text.SpannableString ss = new android.text.SpannableString(text);
+        while (idx != -1) {
+            ss.setSpan(new android.text.style.ForegroundColorSpan(UiTheme.ERROR_RED),
+                    idx, idx + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            idx = str.indexOf('*', idx + 1);
+        }
+        return ss;
+    }
+
     public static class FormField {
         private final Context context;
         private final LinearLayout container;
@@ -32,14 +46,14 @@ public final class UiInput {
         private final ImageView errorIcon;
         private final LinearLayout errorRow;
 
-        public FormField(Context context, String label, String hint, boolean secret) {
+        public FormField(Context context, CharSequence label, String hint, boolean secret) {
             this.context = context;
             container = new LinearLayout(context);
             container.setOrientation(LinearLayout.VERTICAL);
 
-            if (label != null && !label.isEmpty()) {
+            if (label != null && label.length() > 0) {
                 TextView caption = new TextView(context);
-                caption.setText(label);
+                caption.setText(formatLabel(label));
                 caption.setTextColor(UiTheme.MUTED);
                 caption.setTypeface(UiTheme.boldFont(context));
                 ScreenTypography.apply(caption, 13);
@@ -160,20 +174,20 @@ public final class UiInput {
         }
     }
 
-    public static FormField field(Context context, LinearLayout parent, String label, String hint, boolean secret) {
+    public static FormField field(Context context, LinearLayout parent, CharSequence label, String hint, boolean secret) {
         FormField ff = new FormField(context, label, hint, secret);
         if (parent != null) parent.addView(ff.getView());
         return ff;
     }
 
-    public static EditText create(Context context, LinearLayout parent, String label, String hint, boolean secret) {
+    public static EditText create(Context context, LinearLayout parent, CharSequence label, String hint, boolean secret) {
         return create(context, parent, label, hint, secret, UiTheme.boldFont(context), UiTheme.bodyFont(context));
     }
 
-    public static EditText create(Context context, LinearLayout parent, String label, String hint, boolean secret,
+    public static EditText create(Context context, LinearLayout parent, CharSequence label, String hint, boolean secret,
             Typeface labelFont, Typeface inputFont) {
         TextView caption = new TextView(context);
-        caption.setText(label);
+        caption.setText(formatLabel(label));
         caption.setTextColor(UiTheme.MUTED);
         caption.setTypeface(labelFont != null ? labelFont : UiTheme.boldFont(context));
         ScreenTypography.apply(caption, 13);
@@ -204,7 +218,8 @@ public final class UiInput {
         if (secret) {
             Button eye = new Button(context, null, android.R.attr.borderlessButtonStyle);
             eye.setText("");
-            eye.setContentDescription("Show " + label.toLowerCase(Locale.ROOT));
+            String labelStr = label != null ? label.toString().toLowerCase(Locale.ROOT) : "password";
+            eye.setContentDescription("Show " + labelStr);
             eye.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_shared_visibility, 0, 0, 0);
             eye.setPadding(UiTheme.dp(context, 12), 0, 0, 0);
             eye.setBackgroundColor(Color.TRANSPARENT);
@@ -212,7 +227,7 @@ public final class UiInput {
                 boolean reveal = input.getTransformationMethod() instanceof PasswordTransformationMethod;
                 input.setTransformationMethod(reveal ? null : PasswordTransformationMethod.getInstance());
                 input.setSelection(input.length());
-                eye.setContentDescription((reveal ? "Hide " : "Show ") + label.toLowerCase(Locale.ROOT));
+                eye.setContentDescription((reveal ? "Hide " : "Show ") + labelStr);
             });
             row.addView(eye, new LinearLayout.LayoutParams(UiTheme.dp(context, 48), UiTheme.dp(context, 48)));
         }
