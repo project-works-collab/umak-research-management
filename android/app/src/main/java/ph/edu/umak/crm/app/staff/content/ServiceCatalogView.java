@@ -30,6 +30,8 @@ public final class ServiceCatalogView {
         void onNewService();
         void onEditService(StaffData.ServiceCatalogItem item);
         void onWithdrawService(StaffData.ServiceCatalogItem item);
+        default void onForms(StaffData.ServiceCatalogItem item) {}
+        default void onHistory(StaffData.ServiceCatalogItem item) {}
     }
 
     private final Context context;
@@ -43,6 +45,8 @@ public final class ServiceCatalogView {
     private final TextView countText;
     private final LinearLayout cardsContainer;
 
+    private boolean live;
+    public void bindLive(List<StaffData.ServiceCatalogItem> items){live=true;allServices.clear();allServices.addAll(items);applyFilters();}
     private String selectedFilter = "All";
     private String currentSearch = "";
 
@@ -268,7 +272,7 @@ public final class ServiceCatalogView {
             btnRow.setOrientation(LinearLayout.HORIZONTAL);
             btnRow.setGravity(Gravity.END);
 
-            if ("SVC-02".equalsIgnoreCase(item.id) && "Published".equalsIgnoreCase(item.status)) {
+            if ((live || "SVC-02".equalsIgnoreCase(item.id)) && "Published".equalsIgnoreCase(item.status)) {
                 Button withdrawBtn = UiButton.outline(context, "Withdraw", UiTheme.BORDER, UiTheme.ERROR_RED, () -> {
                     if (listener != null) listener.onWithdrawService(item);
                 });
@@ -282,6 +286,10 @@ public final class ServiceCatalogView {
             btnRow.addView(editBtn);
 
             card.addView(btnRow);
+            if(live){
+                card.addView(UiButton.outline(context,"Approved Forms & Resources",UiTheme.BORDER,UiTheme.NAVY,()->listener.onForms(item)));
+                card.addView(UiButton.text(context,"Publication history",UiTheme.NAVY,()->listener.onHistory(item)));
+            }
 
             cardsContainer.addView(card);
             addSpacing(context, cardsContainer, 10);

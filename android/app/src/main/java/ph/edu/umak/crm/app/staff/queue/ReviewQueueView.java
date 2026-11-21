@@ -33,6 +33,7 @@ public class ReviewQueueView {
     public interface Callbacks {
         void onOpenRequest(StaffQueueData.QueueRequestItem request);
         void onRefreshQueue();
+        default void onLoadMore() {}
     }
 
     private final Context context;
@@ -53,6 +54,10 @@ public class ReviewQueueView {
     private String searchQuery = "";
     private String filterService = null;
     private String filterStatus = null;
+    private String filterFrom = "";
+    private String filterTo = "";
+    private final Button moreButton;
+    private final TextView pageSummary;
     private boolean forceEmptyState = false;
 
     private final String[] statusTabs = {"In review", "Submitted", "For correction", "Completed"};
@@ -75,36 +80,38 @@ public class ReviewQueueView {
         refreshStatus = new PendingStatus(context);
 
         // Status Tabs Row
-        HorizontalScrollView tabScroll = new HorizontalScrollView(context);
-        tabScroll.setHorizontalScrollBarEnabled(false);
         tabsContainer = new LinearLayout(context);
-        tabsContainer.setOrientation(LinearLayout.HORIZONTAL);
-
-        for (String tabName : statusTabs) {
+        tabsContainer.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout tabRow = null;
+        for (int tabIndex = 0; tabIndex < statusTabs.length; tabIndex++) {
+            String tabName = statusTabs[tabIndex];
+            if (tabIndex % 2 == 0) {
+                tabRow = new LinearLayout(context);
+                tabRow.setOrientation(LinearLayout.HORIZONTAL);
+                tabsContainer.addView(tabRow);
+            }
             TextView tabView = new TextView(context);
             tabView.setTypeface(bold);
             ScreenTypography.apply(tabView, 12);
             tabView.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 8),
                     UiTheme.dp(context, 12), UiTheme.dp(context, 8));
 
+            tabView.setMinHeight(UiTheme.dp(context, 48));
+            tabView.setGravity(Gravity.CENTER);
             tabView.setOnClickListener(v -> {
                 selectedTab = tabName;
                 forceEmptyState = false;
-                filterService = null;
                 filterStatus = null;
                 updateTabAppearance();
                 renderRequests();
             });
 
             tabViews.add(tabView);
-            tabsContainer.addView(tabView);
-
-            View space = new View(context);
-            space.setLayoutParams(new LinearLayout.LayoutParams(UiTheme.dp(context, 8), 1));
-            tabsContainer.addView(space);
+            LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            tabParams.setMargins(0, 0, UiTheme.dp(context, 8), UiTheme.dp(context, 8));
+            tabRow.addView(tabView, tabParams);
         }
-        tabScroll.addView(tabsContainer);
-        contentLayout.addView(tabScroll);
+        contentLayout.addView(tabsContainer);
 
         addSpacing(14);
 
@@ -115,6 +122,7 @@ public class ReviewQueueView {
 
         searchInput = new EditText(context);
         searchInput.setHint("Search by request ID, title or requester");
+        searchInput.setMinHeight(UiTheme.dp(context, 48));
         searchInput.setHintTextColor(UiTheme.MUTED);
         searchInput.setTextColor(UiTheme.NAVY);
         searchInput.setTypeface(regular);
@@ -136,17 +144,12 @@ public class ReviewQueueView {
         searchRow.addView(btnSpace);
 
         Button filterBtn = UiButton.outline(context, "Filter", UiTheme.BORDER, UiTheme.NAVY, () -> {
-            QueueFilterDialog.show(context, filterService, filterStatus, null, null, new QueueFilterDialog.FilterCallback() {
+            QueueFilterDialog.show(context, filterService, filterStatus, filterFrom, filterTo,
+                    preview ? java.util.List.of("Ethics Clearance", "Research Consultation", "Research Registration", "CRM Clearance Processing", "Statistical Report Generation", "UNIVERSITY Journal Endorsement")
+                            : availableServices(), new QueueFilterDialog.FilterCallback() {
                 @Override
                 public void onApply(String service, String status, String fromDate, String toDate) {
-                    filterService = "All Services".equalsIgnoreCase(service) ? null : service;
-                    filterStatus = "All".equalsIgnoreCase(status) ? null : status;
-                    if (filterStatus != null) {
-                        selectedTab = filterStatus;
-                    }
-                    forceEmptyState = false;
-                    updateTabAppearance();
-                    renderRequests();
+                    applyFilters(service, status, fromDate, toDate);
                 }
 
                 @Override
@@ -155,7 +158,7 @@ public class ReviewQueueView {
                 }
             });
         });
-        filterBtn.setMinHeight(UiTheme.dp(context, 44));
+        filterBtn.setMinHeight(UiTheme.dp(context, 48));
         searchRow.addView(filterBtn);
 
         contentLayout.addView(searchRow);
@@ -176,7 +179,7 @@ public class ReviewQueueView {
         activeFilterBanner.addView(activeFilterText, afLp);
 
         Button clearSmallBtn = UiButton.outline(context, "Clear", UiTheme.BORDER, UiTheme.NAVY, this::clearFilters);
-        clearSmallBtn.setMinHeight(UiTheme.dp(context, 32));
+        clearSmallBtn.setMinHeight(UiTheme.dp(context, 48));
         activeFilterBanner.addView(clearSmallBtn);
 
         activeFilterBanner.setVisibility(View.GONE);
@@ -201,6 +204,16 @@ public class ReviewQueueView {
         });
         contentLayout.addView(refreshBtn);
         contentLayout.addView(refreshStatus);
+        pageSummary = new TextView(context);
+        pageSummary.setTextColor(UiTheme.MUTED);
+        pageSummary.setTypeface(regular);
+        ScreenTypography.apply(pageSummary, 12);
+        pageSummary.setVisibility(View.GONE);
+        contentLayout.addView(pageSummary);
+        moreButton = UiButton.outline(context, "Load more requests", UiTheme.BORDER, UiTheme.NAVY,
+                () -> { if (!loading && callbacks != null) callbacks.onLoadMore(); });
+        moreButton.setVisibility(View.GONE);
+        contentLayout.addView(moreButton);
 
         // Search text watcher
         searchInput.addTextChangedListener(new TextWatcher() {
@@ -249,6 +262,8 @@ public class ReviewQueueView {
             QueueFilterDialog.show(context, "Ethics Clearance", "In review", "2026-10-01", "2026-10-31", new QueueFilterDialog.FilterCallback() {
                 @Override
                 public void onApply(String service, String status, String fromDate, String toDate) {
+                    filterFrom = fromDate;
+                    filterTo = toDate;
                     filterService = "All Services".equalsIgnoreCase(service) ? null : service;
                     filterStatus = "All".equalsIgnoreCase(status) ? null : status;
                     if (filterStatus != null) selectedTab = filterStatus;
@@ -310,9 +325,38 @@ public class ReviewQueueView {
         renderRequests();
     }
 
+    public void applyFilters(String service, String status, String fromDate, String toDate) {
+        filterFrom = fromDate == null ? "" : fromDate;
+        filterTo = toDate == null ? "" : toDate;
+        filterService = service == null || "All Services".equalsIgnoreCase(service) ? null : service;
+        filterStatus = status == null || "All".equalsIgnoreCase(status) ? null : status;
+        if (filterStatus != null) selectedTab = filterStatus;
+        forceEmptyState = false;
+        updateTabAppearance();
+        renderRequests();
+    }
+
+    private java.util.List<String> availableServices() {
+        java.util.Set<String> services = new java.util.TreeSet<>();
+        for (var request : allRequests) services.add(request.serviceType);
+        if (filterService != null) services.add(filterService);
+        return new java.util.ArrayList<>(services);
+    }
+
+    public void showPagination(boolean more, int loadedCount, boolean busy) {
+        moreButton.setVisibility(more ? View.VISIBLE : View.GONE);
+        moreButton.setEnabled(!busy);
+        pageSummary.setVisibility(View.VISIBLE);
+        pageSummary.setText(more ? "Status counts, search and filters cover " + loadedCount + " loaded requests. Load more to include older requests."
+                : loadedCount + " requests loaded.");
+    }
+
+    public void showMessage(String message, boolean error) { refreshStatus.result(message, error); }
+
     private void clearFilters() {
         filterService = null;
         filterStatus = null;
+        filterFrom = filterTo = "";
         forceEmptyState = false;
         searchQuery = "";
         searchInput.setText("");
@@ -362,7 +406,7 @@ public class ReviewQueueView {
     private void renderRequests() {
         requestsListLayout.removeAllViews();
 
-        if (filterService != null || filterStatus != null) {
+        if (filterService != null || filterStatus != null || !filterFrom.isEmpty() || !filterTo.isEmpty()) {
             activeFilterBanner.setVisibility(View.VISIBLE);
             String banner = "";
             if (filterService != null) banner += "Service: " + filterService;
@@ -370,6 +414,8 @@ public class ReviewQueueView {
                 if (!banner.isEmpty()) banner += " · ";
                 banner += "Status: " + filterStatus;
             }
+            if (!filterFrom.isEmpty()) banner += " · From: " + filterFrom;
+            if (!filterTo.isEmpty()) banner += " · To: " + filterTo;
             activeFilterText.setText(banner);
         } else {
             activeFilterBanner.setVisibility(View.GONE);
@@ -393,10 +439,14 @@ public class ReviewQueueView {
                 continue;
             }
 
+            if (!filterFrom.isEmpty() && req.submittedDate.compareTo(filterFrom) < 0) continue;
+            if (!filterTo.isEmpty() && req.submittedDate.compareTo(filterTo) > 0) continue;
+
             if (!query.isEmpty()) {
                 boolean match = req.id.toLowerCase(Locale.ROOT).contains(query)
                         || req.studyTitle.toLowerCase(Locale.ROOT).contains(query)
                         || req.requesterName.toLowerCase(Locale.ROOT).contains(query)
+                        || req.requesterEmail.toLowerCase(Locale.ROOT).contains(query)
                         || req.serviceType.toLowerCase(Locale.ROOT).contains(query);
                 if (!match) continue;
             }
@@ -459,6 +509,8 @@ public class ReviewQueueView {
 
         TextView idView = new TextView(context);
         idView.setText(item.id);
+        idView.setContentDescription("Open request " + item.id);
+        idView.setOnClickListener(view -> { if (callbacks != null) callbacks.onOpenRequest(item); });
         idView.setTextColor(UiTheme.NAVY);
         idView.setTypeface(bold);
         ScreenTypography.apply(idView, 14);
@@ -529,7 +581,7 @@ public class ReviewQueueView {
                 callbacks.onOpenRequest(item);
             }
         });
-        actionBtn.setMinHeight(UiTheme.dp(context, 40));
+        actionBtn.setMinHeight(UiTheme.dp(context, 48));
         card.addView(actionBtn);
 
         return card;

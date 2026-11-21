@@ -32,6 +32,9 @@ public class ResearchRecordDetailView {
         void onManageDocuments(StaffRegistryData.RegistryRecordItem record);
         void onOpenLinkedRequest(String requestId);
         void onMilestonesAndOutcomes(StaffRegistryData.RegistryRecordItem record);
+        default boolean canEdit() { return true; }
+        default boolean canProgress() { return true; }
+        default boolean canOpenRequests() { return true; }
     }
 
     private final Activity activity;
@@ -57,7 +60,16 @@ public class ResearchRecordDetailView {
         if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
         }
+        restrict(rootLayout);
         return PageTitle.wrap(rootLayout, "Research Record", null, false);
+    }
+
+    private void restrict(View view) {
+        if(callbacks!=null && view instanceof android.widget.Button button) {
+            String label=button.getText().toString().toLowerCase(java.util.Locale.ROOT);
+            if((label.contains("edit")&&!callbacks.canEdit()) || (label.contains("milestone")&&!callbacks.canProgress()))button.setVisibility(View.GONE);
+        }
+        if(view instanceof ViewGroup group)for(int i=0;i<group.getChildCount();i++)restrict(group.getChildAt(i));
     }
 
     private int dp(int value) {

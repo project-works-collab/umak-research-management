@@ -27,6 +27,17 @@ public final class LiveAccountsView extends LinearLayout {
     private final Actions actions;
     private PendingStatus status;
     private boolean saving;
+    private LinearLayout body;
+    private Runnable backAction;
+    private String editorBaseline;
+    private void guardEdits(){editorBaseline=ph.edu.umak.crm.app.staff.common.StaffDesignPage.fingerprint(body);}
+    private void back(){
+        if(saving||backAction==null)return;
+        if(editorBaseline!=null&&!editorBaseline.equals(ph.edu.umak.crm.app.staff.common.StaffDesignPage.fingerprint(body)))
+            ph.edu.umak.crm.app.staff.common.StaffDesignPage.confirmDiscard(getContext(),()->{editorBaseline=null;backAction.run();});
+        else backAction.run();
+    }
+    private UserAccountsView directory;
 
     public LiveAccountsView(Context context, Actions actions) {
         super(context);
@@ -41,68 +52,62 @@ public final class LiveAccountsView extends LinearLayout {
         PendingStatus current = status;
         current.working("Loading accounts…");
         actions.request("", null, (data, error) -> {
-            if (!isAttachedToWindow() || status != current) return;
+            if (status != current) return;
             if (error != null) { current.result(error, true); button("Retry", this::load); return; }
             try {
                 JSONArray users = new JSONArray(data);
                 current.clear();
-                button("Create staff account", this::create);
-                for (int i = 0; i < users.length(); i++) {
-                    JSONObject account = users.getJSONObject(i);
-                    button(account.optString("display_name", account.optString("email")) + " · "
-                            + account.optString("role") + " · " + (account.optBoolean("active") ? "Active" : "Inactive"),
-                            () -> detail(account));
-                }
+                List<ph.edu.umak.crm.app.staff.StaffData.StaffAccountItem> models=new ArrayList<>();
+                java.util.Map<Integer,JSONObject> accounts=new java.util.HashMap<>();
+                for(int i=0;i<users.length();i++){JSONObject row=users.getJSONObject(i);var model=model(row);models.add(model);accounts.put(model.serverId,row);}
+                if(directory==null)directory=new UserAccountsView(getContext(),new UserAccountsView.Callbacks(){
+                    public void onBack(){actions.back();}
+                    public void onCreateStaffAccount(){create();}
+                    public void onSelectAccount(ph.edu.umak.crm.app.staff.StaffData.StaffAccountItem account){detail(accounts.get(account.serverId));}
+                });
+                else directory=new UserAccountsView(getContext(),new UserAccountsView.Callbacks(){
+                    public void onBack(){actions.back();}public void onCreateStaffAccount(){create();}
+                    public void onSelectAccount(ph.edu.umak.crm.app.staff.StaffData.StaffAccountItem account){detail(accounts.get(account.serverId));}
+                });
+                directory.bindLive(models);body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(directory.getContentLayout()));
             } catch (JSONException invalid) { current.result("CRM returned invalid accounts.", true); }
         });
     }
 
-    private void create() {
-        reset("Create staff account", "Back to accounts", this::load);
-        EditText name = input("Name", "");
-        EditText email = input("Institutional email", "");
-        EditText college = input("College or unit", "");
-        List<CheckBox> choices = permissionChoices(new JSONArray());
-        Button save = button("Create account", null);
-        save.setOnClickListener(view -> {
-            if (!required(name, email, college)) return;
-            try {
-                post("", new JSONObject().put("display_name", value(name)).put("email", value(email))
-                        .put("college", value(college)).put("permissions", selected(choices)), save);
-            } catch (JSONException invalid) { status.result("Complete the highlighted account details.", true); }
-        });
+    private static ph.edu.umak.crm.app.staff.StaffData.StaffAccountItem model(JSONObject row)throws JSONException {
+        var permissions=new java.util.LinkedHashMap<String,Boolean>();JSONArray current=row.optJSONArray("permissions");
+        for(String permission:PERMISSIONS){boolean allowed=false;if(current!=null)for(int i=0;i<current.length();i++)if(permission.equals(current.optString(i)))allowed=true;permissions.put(permission,allowed);}
+        String name=row.isNull("display_name")?row.optString("email"):row.optString("display_name");
+        boolean staff="staff".equals(row.getString("role"));
+        var result=new ph.edu.umak.crm.app.staff.StaffData.StaffAccountItem(name.isEmpty()?"?":name.substring(0,1),name,staff?"CRM Staff":"Researcher",staff?null:"faculty".equals(row.optString("role"))?"Faculty":"Student",row.optBoolean("active")?"Active":"Inactive",row.getString("email"),String.valueOf(row.getInt("id")),permissions);
+        result.serverId=row.getInt("id");return result;
     }
-
-    private void detail(JSONObject account) {
-        int id = account.optInt("id");
-        reset("Account details", "Back to accounts", this::load);
-        line(account.optString("display_name"));
-        line(account.optString("email"));
-        line(account.optString("college"));
-        line("Account ID: " + id);
-        line(account.optString("role") + " · " + (account.optBoolean("active") ? "Active" : "Inactive"));
-        if ("staff".equals(account.optString("role"))) {
-            List<CheckBox> checks = permissionChoices(account.optJSONArray("permissions"));
-            Button save = button("Save permissions", null);
-            save.setOnClickListener(view -> {
-                try { post("/" + id + "/permissions", new JSONObject().put("permissions", selected(checks)), save); }
-                catch (JSONException invalid) { status.result("Review the permission choices.", true); }
-            });
-        } else {
-            button("Set category to Student", () -> category(id, "student"));
-            button("Set category to Faculty", () -> category(id, "faculty"));
-        }
-        boolean next = !account.optBoolean("active");
-        button(next ? "Activate account" : "Deactivate account", () -> {
-            String action = next ? "Activate" : "Deactivate";
-            new AlertDialog.Builder(getContext()).setTitle(action + " " + account.optString("email") + "?")
-                    .setNegativeButton("Cancel", null).setPositiveButton("Confirm", (dialog, which) -> {
-                        try { post("/" + id + "/state", new JSONObject().put("active", next).put("confirmed", true), null); }
-                        catch (JSONException invalid) { status.result("Unable to prepare this account change.", true); }
-                    }).show();
+    private void create(){
+        reset("Create Staff Account","Back to accounts",this::load);
+        List<CheckBox> choices=permissionChoices(new JSONArray());
+        CreateStaffAccountView design=new CreateStaffAccountView(getContext(),new CreateStaffAccountView.Callbacks(){
+            public void onBack(){back();}
+            public void onAccountCreated(String name,String college,String email){
+                if(name.trim().isEmpty()||college.trim().isEmpty()||email.trim().isEmpty()){status.result("Complete the highlighted account details.",true);return;}
+                try{post("",new JSONObject().put("display_name",name.trim()).put("email",email.trim()).put("college",college.trim()).put("permissions",selected(choices)),null);}catch(JSONException invalid){status.result("Check the account details.",true);}
+            }
         });
-        button("Issue temporary credential for approved recovery", () -> recovery(id, account.optString("email")));
-        button("Account audit history", () -> history(id));
+        design.bindLive();design.setPermissionOptions(choices);body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()),0);guardEdits();
+    }
+    private void detail(JSONObject account){
+        if(account==null){load();return;}
+        int id=account.optInt("id");reset("Account Details","Back to accounts",this::load);
+        try{
+            AccountDetailsView design=new AccountDetailsView(getContext(),null);
+            design.bindLive(model(account),new AccountDetailsView.LiveActions(){
+                public void back(){LiveAccountsView.this.back();}
+                public void permissions(JSONArray permissions){try{post("/"+id+"/permissions",new JSONObject().put("permissions",permissions),null);}catch(JSONException invalid){status.result("Check permissions.",true);}}
+                public void category(String value){LiveAccountsView.this.category(id,value);}
+                public void state(boolean active){new AlertDialog.Builder(getContext()).setTitle((active?"Activate":"Deactivate")+" "+account.optString("email")+"?").setNegativeButton("Cancel",null).setPositiveButton("Confirm",(dialog,which)->{try{post("/"+id+"/state",new JSONObject().put("active",active).put("confirmed",true),null);}catch(JSONException invalid){status.result("Check the account change.",true);}}).show();}
+                public void recovery(){LiveAccountsView.this.recovery(id,account.optString("email"));}
+                public void history(){LiveAccountsView.this.history(id);}
+            });body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));guardEdits();
+        }catch(JSONException invalid){status.result("CRM returned invalid account details.",true);}
     }
 
     private void category(int id, String role) {
@@ -131,19 +136,14 @@ public final class LiveAccountsView extends LinearLayout {
         PendingStatus current = status;
         current.working("Loading account history…");
         actions.request("/" + id + "/history", null, (data, error) -> {
-            if (!isAttachedToWindow() || current != status) return;
+            if (current != status) return;
             if (error != null) { current.result(error, true); return; }
             try {
                 JSONArray events = new JSONArray(data);
                 current.clear();
-                if (events.length() == 0) line("No account changes recorded.");
-                for (int i = 0; i < events.length(); i++) {
-                    JSONObject event = events.getJSONObject(i);
-                    line(event.optString("action") + " · Staff " + event.optString("actor_id") + " · " + event.optString("recorded_at"));
-                    line("Previous: " + event.optString("before_value"));
-                    line("Saved: " + event.optString("after_value"));
-                    line(event.optString("reason"));
-                }
+                List<ph.edu.umak.crm.app.staff.StaffData.AccountAuditLogItem> logs=new ArrayList<>();
+                for(int i=0;i<events.length();i++){JSONObject event=events.getJSONObject(i);logs.add(new ph.edu.umak.crm.app.staff.StaffData.AccountAuditLogItem(event.optString("action"),event.optString("before_value"),event.optString("after_value"),event.optString("reason"),"Staff "+event.optString("actor_id"),event.optString("recorded_at")));}
+                AccountAuditHistoryView design=new AccountAuditHistoryView(getContext(),()->load());design.bindLive("Account",String.valueOf(id),logs);body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));
             } catch (JSONException invalid) { current.result("CRM returned invalid account history.", true); }
         });
     }
@@ -151,12 +151,12 @@ public final class LiveAccountsView extends LinearLayout {
     private void post(String path, JSONObject payload, Button button) {
         if (saving) return;
         saving = true;
-        if (button != null) button.setEnabled(false);
+        Runnable restore=ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(body);
         PendingStatus current = status;
         current.working("Saving account changes…");
         actions.request(path, payload, (data, error) -> {
-            saving = false;
-            if (!isAttachedToWindow() || current != status) return;
+            saving = false;restore.run();
+            if (current != status) return;
             if (button != null) button.setEnabled(true);
             if (error != null) { current.result(error, true); return; }
             try {
@@ -180,7 +180,7 @@ public final class LiveAccountsView extends LinearLayout {
             choice.setTag(permission);
             if (permissions != null) for (int i = 0; i < permissions.length(); i++)
                 if (permission.equals(permissions.optString(i))) choice.setChecked(true);
-            addView(choice);
+            body.addView(choice);
             choices.add(choice);
         }
         return choices;
@@ -196,20 +196,11 @@ public final class LiveAccountsView extends LinearLayout {
         if (!valid) status.result("Complete the highlighted account details.", true);
         return valid;
     }
-    private void reset(String title, String back, Runnable action) {
-        removeAllViews(); button(back, action); line(title);
-        status = new PendingStatus(getContext()); addView(status);
-    }
-    private TextView line(String content) {
-        TextView text = new TextView(getContext()); text.setText(content); text.setTextColor(UiTheme.NAVY);
-        addView(text); return text;
-    }
-    private EditText input(String label, String value) {
-        line(label); EditText field = new EditText(getContext()); field.setText(value); field.setContentDescription(label);
-        addView(field); return field;
-    }
-    private Button button(String label, Runnable action) {
-        Button button = UiButton.outline(getContext(), label, UiTheme.BORDER, UiTheme.NAVY, action); addView(button); return button;
-    }
+    public boolean isSaving(){return saving;}
+    public boolean handleBack(){back();return true;}
+    private void reset(String title,String back,Runnable action){removeAllViews();backAction=action;editorBaseline=null;var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(getContext(),title,back,this::back);addView(page);status=page.status;body=page.section("");}
+    private TextView line(String content){return ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(body,content,true);}
+    private EditText input(String title,String value){line(title);EditText field=new EditText(getContext());field.setText(value);field.setContentDescription(title);ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(field,false);body.addView(field);return field;}
+    private Button button(String label,Runnable action){Button button=UiButton.outline(getContext(),label,UiTheme.BORDER,UiTheme.NAVY,action);body.addView(button);return button;}
     private static String value(EditText field) { return field.getText().toString().trim(); }
 }

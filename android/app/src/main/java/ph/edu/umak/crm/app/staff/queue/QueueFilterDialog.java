@@ -39,6 +39,13 @@ public final class QueueFilterDialog {
 
     public static void show(Context context, String currentService, String currentStatus,
                             String currentFrom, String currentTo, FilterCallback callback) {
+        show(context, currentService, currentStatus, currentFrom, currentTo,
+                java.util.List.of("Ethics Clearance", "Research Consultation", "Research Registration",
+                        "CRM Clearance Processing", "Statistical Report Generation", "UNIVERSITY Journal Endorsement"), callback);
+    }
+
+    public static void show(Context context, String currentService, String currentStatus,
+                            String currentFrom, String currentTo, List<String> availableServices, FilterCallback callback) {
         Typeface bold = UiTheme.boldFont(context);
         Typeface regular = UiTheme.bodyFont(context);
 
@@ -71,12 +78,7 @@ public final class QueueFilterDialog {
         Spinner serviceSpinner = new Spinner(context);
         List<String> services = new ArrayList<>();
         services.add("All Services");
-        services.add("Ethics Clearance");
-        services.add("Research Consultation");
-        services.add("Research Registration");
-        services.add("CRM Clearance Processing");
-        services.add("Statistical Report Generation");
-        services.add("UNIVERSITY Journal Endorsement");
+        for (String service : availableServices) if (!services.contains(service)) services.add(service);
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, services);
         serviceSpinner.setAdapter(adapter);
@@ -168,7 +170,9 @@ public final class QueueFilterDialog {
         fromCol.addView(fromLbl);
 
         EditText fromInput = new EditText(context);
-        fromInput.setText(currentFrom != null ? currentFrom : "2026-10-01");
+        fromInput.setText(currentFrom != null ? currentFrom : "");
+        fromInput.setHint("YYYY-MM-DD");
+        fromInput.setContentDescription("Submitted from date");
         fromInput.setTextColor(UiTheme.NAVY);
         fromInput.setTypeface(regular);
         ScreenTypography.apply(fromInput, 14);
@@ -195,7 +199,9 @@ public final class QueueFilterDialog {
         toCol.addView(toLbl);
 
         EditText toInput = new EditText(context);
-        toInput.setText(currentTo != null ? currentTo : "2026-10-31");
+        toInput.setText(currentTo != null ? currentTo : "");
+        toInput.setHint("YYYY-MM-DD");
+        toInput.setContentDescription("Submitted to date");
         toInput.setTextColor(UiTheme.NAVY);
         toInput.setTypeface(regular);
         ScreenTypography.apply(toInput, 14);
@@ -213,10 +219,22 @@ public final class QueueFilterDialog {
 
         // Action Buttons
         Button applyBtn = UiButton.primary(context, "Apply Filters", () -> {
+            String from = fromInput.getText().toString().trim(), to = toInput.getText().toString().trim();
+            try {
+                if (!from.isEmpty()) java.time.LocalDate.parse(from);
+                if (!to.isEmpty()) java.time.LocalDate.parse(to);
+            } catch (java.time.DateTimeException invalid) {
+                fromInput.setError("Use dates in YYYY-MM-DD format.");
+                return;
+            }
+            if (!from.isEmpty() && !to.isEmpty() && from.compareTo(to) > 0) {
+                toInput.setError("End date must be on or after the start date.");
+                return;
+            }
             dialog.dismiss();
             if (callback != null) {
                 String selSvc = serviceSpinner.getSelectedItem() != null ? serviceSpinner.getSelectedItem().toString() : "All Services";
-                callback.onApply(selSvc, selectedStatus[0], fromInput.getText().toString(), toInput.getText().toString());
+                callback.onApply(selSvc, selectedStatus[0], from, to);
             }
         });
         layout.addView(applyBtn);

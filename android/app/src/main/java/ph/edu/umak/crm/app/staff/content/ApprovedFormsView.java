@@ -21,6 +21,7 @@ public final class ApprovedFormsView {
         void onBackToManage();
         void onReplaceVersion();
         void onWithdraw();
+        default void onDownload() {}
     }
 
     private final Context context;
@@ -29,9 +30,12 @@ public final class ApprovedFormsView {
     private final StaffData.ApprovedFormItem formData;
 
     public ApprovedFormsView(Context context, Listener listener) {
+        this(context,listener,StaffData.getApprovedForms());
+    }
+    public ApprovedFormsView(Context context,Listener listener,StaffData.ApprovedFormItem data) {
         this.context = context;
         this.listener = listener;
-        this.formData = StaffData.getApprovedForms();
+        this.formData = data;
 
         Typeface regular = UiTheme.bodyFont(context);
         Typeface bold = UiTheme.boldFont(context);
@@ -117,7 +121,7 @@ public final class ApprovedFormsView {
         addHorizontalSpacing(context, badgeRow, 8);
 
         TextView currentBadge = new TextView(context);
-        currentBadge.setText("Current");
+        currentBadge.setText(formData.live?formData.state:"Current");
         currentBadge.setTypeface(bold);
         ScreenTypography.apply(currentBadge, 11);
         currentBadge.setPadding(px, py, px, py);
@@ -155,13 +159,14 @@ public final class ApprovedFormsView {
             if (listener != null) listener.onReplaceVersion();
         });
         actRow.addView(replaceBtn);
+        if(formData.live)curCard.addView(UiButton.outline(context,"Download form",UiTheme.BORDER,UiTheme.NAVY,()->listener.onDownload()));
 
         addHorizontalSpacing(context, actRow, 10);
 
         Button withdrawBtn = UiButton.outline(context, "Withdraw", UiTheme.BORDER, UiTheme.ERROR_RED, () -> {
             if (listener != null) listener.onWithdraw();
         });
-        actRow.addView(withdrawBtn);
+        if(!formData.live||"published".equals(formData.state))actRow.addView(withdrawBtn);
 
         curCard.addView(actRow);
         layout.addView(curCard);

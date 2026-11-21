@@ -28,6 +28,7 @@ public class ResearchReportView {
     public interface Callbacks {
         void onBackToFilters();
         void onOpenRecord(String recordId);
+        default boolean onExport() { return false; }
     }
 
     private final Activity activity;
@@ -50,23 +51,12 @@ public class ResearchReportView {
     }
 
     public View getContentLayout() {
-        if (scrollView != null && scrollView.getParent() instanceof ViewGroup) {
-            ((ViewGroup) scrollView.getParent()).removeView(scrollView);
-        }
-
-        scrollView = new ScrollView(activity);
-        scrollView.setFillViewport(true);
-        scrollView.setBackgroundColor(UiTheme.PAPER);
-
         rootLayout = new LinearLayout(activity);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
-
-        scrollView.addView(PageTitle.wrap(rootLayout, "Research Report", null, false));
         buildLayout();
-
-        return scrollView;
+        return PageTitle.wrap(rootLayout, "Research Report", null, false);
     }
 
     private void buildLayout() {
@@ -114,6 +104,7 @@ public class ResearchReportView {
         ReportFilterChips.addRow(filtersCard, model.collegeFilter, model.registrantCategoryFilter);
         ReportFilterChips.addRow(filtersCard, model.stageFilter, model.linkedServicesFilter);
         ReportFilterChips.addRow(filtersCard, model.academicPeriodFilter, model.outcomeFilter);
+        if(model.extraFilters!=null)for(String filter:model.extraFilters)ReportFilterChips.addRow(filtersCard,filter);
 
         if (model.generatedTimestamp != null) {
             TextView ts = new TextView(activity);
@@ -218,6 +209,10 @@ public class ResearchReportView {
         title.setTypeface(Typeface.DEFAULT_BOLD);
         defCard.addView(title);
 
+        if (model.definitions != null) {
+            for (String definition : model.definitions) defCard.addView(createDefinitionItem("Counting rules", definition));
+            return;
+        }
         defCard.addView(createDefinitionItem("Distinct studies", "Each research record is counted once."));
         defCard.addView(createDefinitionItem("Completed · Presented · Published", "Independent outcome counts. One study can count in more than one."));
         defCard.addView(createDefinitionItem("Distinct linked researchers", "Each linked researcher or adviser is counted once across all studies."));
@@ -373,6 +368,7 @@ public class ResearchReportView {
         // Export Button
         Button exportBtn = new Button(activity);
         exportBtn.setText("Export");
+        exportBtn.setMinHeight(dp(48));
         exportBtn.setTextColor(UiTheme.WHITE);
         exportBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         exportBtn.setTypeface(Typeface.DEFAULT_BOLD);
@@ -383,15 +379,16 @@ public class ResearchReportView {
         exportBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), expBg, null));
 
         exportBtn.setOnClickListener(v -> {
-            showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
+            if (callbacks == null || !callbacks.onExport()) showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
         });
         LinearLayout.LayoutParams expParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnCol.addView(exportBtn, expParams);
 
         // Back to Filters Button
         Button backBtn = new Button(activity);
         backBtn.setText("Back to Filters");
+        backBtn.setMinHeight(dp(48));
         backBtn.setTextColor(UiTheme.NAVY);
         backBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         backBtn.setTypeface(Typeface.DEFAULT);
@@ -406,7 +403,7 @@ public class ResearchReportView {
             if (callbacks != null) callbacks.onBackToFilters();
         });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         backParams.topMargin = dp(8);
         btnCol.addView(backBtn, backParams);
     }

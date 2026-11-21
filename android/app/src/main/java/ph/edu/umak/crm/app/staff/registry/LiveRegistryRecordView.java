@@ -28,55 +28,66 @@ public final class LiveRegistryRecordView extends LinearLayout {
         void upload(MainActivity.SelectedAttachment file, int study, String previous, String token, BiConsumer<String, String> result);
         void download(String path, String name, String mime, Runnable failure);
         void back();
+        default void openRequest(String id) {}
+        default void openProgress(int id) {}
+        default boolean canProgress() { return true; }
     }
     private final Actions actions;
     private PendingStatus status;
     private boolean saving;
+    private LinearLayout body;
+    private Runnable backAction;
+    private String editorBaseline;
+    private void guardEdits(){editorBaseline=ph.edu.umak.crm.app.staff.common.StaffDesignPage.fingerprint(body);}
+    private void back(){
+        if(saving||backAction==null)return;
+        if(editorBaseline!=null&&!editorBaseline.equals(ph.edu.umak.crm.app.staff.common.StaffDesignPage.fingerprint(body)))
+            ph.edu.umak.crm.app.staff.common.StaffDesignPage.confirmDiscard(getContext(),()->{editorBaseline=null;backAction.run();});
+        else backAction.run();
+    }
+    private int currentRecordId;
+    private boolean creating;
+    public void showRecord(int id){if(currentRecordId!=id||getChildCount()==0)load(id);}
     public LiveRegistryRecordView(Context context, Actions actions) {
         super(context); this.actions = actions; setOrientation(VERTICAL);
         int padding = UiTheme.dp(context, 16); setPadding(padding, padding, padding, padding);
     }
 
     public void load(int id) {
+        currentRecordId=id;creating=false;
         reset("Research registry record", actions::back);
         PendingStatus current = status; current.working("Loading record…");
         actions.request("/" + id, null, (data, error) -> {
-            if (!isAttachedToWindow() || status != current) return;
+            if (status != current) return;
             if (error != null) { current.result(error, true); return; }
-            try { current.clear(); show(new JSONObject(data)); }
-            catch (JSONException invalid) { current.result("CRM returned invalid research details.", true); }
+            try {
+                JSONObject record=new JSONObject(data);
+                actions.request("/"+id+"/documents",null,(files,fileError)->{
+                    if(status!=current)return;
+                    try{if(fileError==null)record.put("documents",new JSONArray(files));current.clear();show(record);if(fileError!=null)current.result("Document list could not be loaded. Open Manage under Documents to retry.",true);}
+                    catch(JSONException invalid){current.result("CRM returned invalid research details.",true);}
+                });
+            }catch(JSONException invalid){current.result("CRM returned invalid research details.",true);}
         });
     }
 
     private void show(JSONObject record) throws JSONException {
-        int id = record.getInt("id");
-        line(record.getString("research_id") + " · " + record.getString("title"), true);
-        line("College: " + known(record, "college"), false);
-        line("Academic period: " + known(record, "academic_period"), false);
-        line("Adviser: " + known(record, "adviser"), false);
-        line("Recorded registrant category: " + record.optString("registrant_category"), false);
-        line("Historical entry: " + record.optBoolean("historical"), false);
-        if (record.optBoolean("historical")) {
-            line("Source reference: " + known(record, "source_reference"), false);
-            line("Original registration date: " + known(record, "original_registration_date"), false);
-        }
-        line("Encoded on: " + record.optString("encoded_at"), false);
-        JSONArray team = record.getJSONArray("members");
-        line("Research team", true);
-        for (int i = 0; i < team.length(); i++) line(team.getJSONObject(i).getString("name"), false);
-        button("Correct record", () -> edit(record));
-        button("Documents and versions", () -> documents(id));
-        button("Correction history", () -> history(record));
-        line("Linked service requests", true);
-        JSONArray requests = record.getJSONArray("linked_requests");
-        if (requests.length() == 0) line("No linked service requests.", false);
-        for (int i = 0; i < requests.length(); i++) {
-            JSONObject request = requests.getJSONObject(i);
-            line("REQ-" + request.getInt("id") + " · " + request.getString("service") + " · " + request.getString("status"), false);
-        }
+        int id=record.getInt("id");
+        var model=LiveRegistryData.record(record);
+        if(record.optJSONArray("documents")!=null)LiveRegistryData.documents(model,record.getJSONArray("documents"));
+        ResearchRecordDetailView design=new ResearchRecordDetailView((android.app.Activity)getContext(),new ResearchRecordDetailView.Callbacks() {
+            public void onBackToRegistry(){actions.back();}
+            public void onEditRecord(StaffRegistryData.RegistryRecordItem item){edit(record);}
+            public void onCorrectionHistory(StaffRegistryData.RegistryRecordItem item){history(record);}
+            public void onManageDocuments(StaffRegistryData.RegistryRecordItem item){documents(id);}
+            public void onOpenLinkedRequest(String request){actions.openRequest(request);}
+            public void onMilestonesAndOutcomes(StaffRegistryData.RegistryRecordItem item){actions.openProgress(id);}
+            public boolean canProgress(){return actions.canProgress();}
+        });
+        design.setRecord(model);body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));
     }
 
-    public void create() { edit(null); }
+    public void create() { if(creating&&getChildCount()>0)return;edit(null);creating=true;currentRecordId=0; }
 
     private void edit(JSONObject record) {
         reset(record == null ? "Add research entry" : "Correct research record", record == null ? actions::back : () -> load(record.optInt("id")));
@@ -86,18 +97,18 @@ public final class LiveRegistryRecordView extends LinearLayout {
         EditText adviser = input("Adviser", record == null ? "" : knownInput(record, "adviser"));
         EditText abstractText = input("Abstract", record == null ? "" : record.optString("abstract"));
         CheckBox historical = new CheckBox(getContext()); historical.setText("Historical entry");
-        historical.setChecked(record != null && record.optBoolean("historical")); addView(historical);
+        historical.setChecked(record != null && record.optBoolean("historical")); body.addView(historical);
         EditText source = input("Source reference", record == null ? "" : knownInput(record, "source_reference"));
         EditText originalDate = input("Original registration date (leave blank if unknown)", record == null ? "" : knownInput(record, "original_registration_date"));
         EditText reason = input("Correction or entry reason", "");
-        CheckBox duplicate = new CheckBox(getContext()); duplicate.setText("Create a separate record despite a confirmed possible duplicate"); addView(duplicate);
+        CheckBox duplicate = new CheckBox(getContext()); duplicate.setText("Create a separate record despite a confirmed possible duplicate"); body.addView(duplicate);
         EditText duplicateReason = input("Reason for creating a separate record", "");
         List<JSONObject> members = new ArrayList<>();
         JSONArray existing = record == null ? new JSONArray() : record.optJSONArray("members");
         if (existing != null) for (int i = 0; i < existing.length(); i++) members.add(existing.optJSONObject(i));
-        LinearLayout team = new LinearLayout(getContext()); team.setOrientation(VERTICAL); addView(team);
+        LinearLayout team = new LinearLayout(getContext()); team.setOrientation(VERTICAL); body.addView(team);
         Spinner registrant = new Spinner(getContext()); registrant.setContentDescription("Registrant");
-        if (record == null) { line("Registrant", true); addView(registrant); }
+        if (record == null) { line("Registrant", true); body.addView(registrant); }
         Runnable refresh = () -> {
             team.removeAllViews();
             ArrayList<String> names = new ArrayList<>();
@@ -149,13 +160,13 @@ public final class LiveRegistryRecordView extends LinearLayout {
                         .put("reason", value(reason)).put("duplicate_confirmed", duplicate.isChecked())
                         .put("duplicate_reason", value(duplicateReason)).put("submission_token", token);
                 if (record != null) body.put("expected_version", record.optInt("version"));
-                saving = true; save.setEnabled(false); PendingStatus current = status; current.working("Saving registry record…");
+                saving = true; Runnable restore=ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(this.body); PendingStatus current = status; current.working("Saving registry record…");
                 actions.request(record == null ? "" : "/" + record.optInt("id") + "/corrections", body, (data, error) -> {
-                    saving = false;
-                    if (!isAttachedToWindow() || current != status) return;
+                    saving = false;restore.run();
+                    if (current != status) return;
                     if (error != null) {
                         current.result(error, true);
-                        if (error.contains("Reload before saving")) button("Reload record", () -> load(record.optInt("id")));
+                        if (error.contains("Reload before saving")) {save.setEnabled(false);button("Reload record", () -> load(record.optInt("id")));}
                         else save.setEnabled(true);
                         return;
                     }
@@ -164,6 +175,7 @@ public final class LiveRegistryRecordView extends LinearLayout {
                 });
             } catch (JSONException invalid) { status.result("Review the registry information.", true); }
         });
+        guardEdits();
     }
 
     private void refreshTeam(LinearLayout team, List<JSONObject> members, Spinner registrant, int owner) {
@@ -181,24 +193,23 @@ public final class LiveRegistryRecordView extends LinearLayout {
     }
 
     private void documents(int id) {
-        reset("Documents and versions", () -> load(id));
-        button("Attach research document", () -> upload(id, null));
-        PendingStatus current = status; current.working("Loading document versions…");
-        actions.request("/" + id + "/documents", null, (data, error) -> {
-            if (!isAttachedToWindow() || status != current) return;
-            if (error != null) { current.result(error, true); return; }
+        reset("Documents", () -> load(id));
+        PendingStatus current=status;current.working("Loading document versions…");
+        actions.request("/"+id+"/documents",null,(data,error)->{
+            if(status!=current)return;
+            if(error!=null){current.result(error,true);button("Retry",()->documents(id));return;}
             try {
-                JSONArray files = new JSONArray(data); current.clear();
-                if (files.length() == 0) line("No research documents attached.", false);
-                for (int i = 0; i < files.length(); i++) {
-                    JSONObject file = files.getJSONObject(i);
-                    String fileId = file.getString("id");
-                    button(file.getString("filename") + " · Version " + file.getInt("version"), () -> actions.download(
-                            "/" + id + "/documents/" + fileId, file.optString("filename"), file.optString("mime"),
-                            () -> status.result("Unable to open the document. Try again.", true)));
-                    button("Upload next version", () -> upload(id, fileId));
-                }
-            } catch (JSONException invalid) { current.result("CRM returned invalid document versions.", true); }
+                var model=new StaffRegistryData.RegistryRecordItem("REG-"+id,"Research documents","","","","","","","","",null,null,null,null,null);
+                LiveRegistryData.documents(model,new JSONArray(data));
+                RegistryDocumentsView design=new RegistryDocumentsView((android.app.Activity)getContext(),new RegistryDocumentsView.Callbacks(){
+                    public void onBackToRecord(){load(id);}
+                    public boolean isLive(){return true;}
+                    public void onChooseAttachment(Runnable checking,BiConsumer<MainActivity.SelectedAttachment,String> result){actions.choose(checking,result);}
+                    public void onUpload(String previous){upload(id,previous);}
+                    public void onOpenDocument(StaffRegistryData.DocumentVersion file){actions.download("/"+id+"/documents/"+file.fileId,file.fileName,file.mime,()->status.result("Unable to open the document. Try again.",true));}
+                });
+                design.setRecord(model);current.clear();body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));
+            }catch(JSONException invalid){current.result("CRM returned invalid document versions.",true);}
         });
     }
 
@@ -214,31 +225,32 @@ public final class LiveRegistryRecordView extends LinearLayout {
         saving = true; PendingStatus current = status; current.working("Uploading research document…");
         actions.upload(file, study, previous, token, (data, error) -> {
             saving = false;
-            if (!isAttachedToWindow() || status != current) return;
+            if (status != current) return;
             if (error == null) documents(study);
             else { current.result(error, true); button("Retry upload", () -> performUpload(file, study, previous, token)); }
         });
     }
     private void history(JSONObject record) {
-        reset("Registry correction history", () -> load(record.optInt("id")));
-        JSONArray events = record.optJSONArray("history");
-        if (events == null || events.length() == 0) line("No corrections recorded.", false);
-        else for (int i = 0; i < events.length(); i++) {
-            JSONObject event = events.optJSONObject(i);
-            line("Staff " + event.optString("actor_id") + " · " + event.optString("recorded_at"), true);
-            line(event.optString("reason"), false); line("Previous: " + event.optString("before_value"), false);
-            line("Saved: " + event.optString("after_value"), false);
-        }
+        reset("Correction History",()->load(record.optInt("id")));
+        try {
+            RegistryCorrectionHistoryView design=new RegistryCorrectionHistoryView((android.app.Activity)getContext(),()->load(record.optInt("id")));
+            design.setRecord(LiveRegistryData.record(record));body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));
+        }catch(JSONException invalid){status.result("CRM returned invalid correction history.",true);}
     }
-    private void reset(String title, Runnable back) {
-        removeAllViews(); button("Back", back); line(title, true); status = new PendingStatus(getContext()); addView(status);
+    public boolean isSaving(){return saving;}
+    public boolean handleBack(){back();return true;}
+    private void reset(String title,Runnable back){
+        removeAllViews();backAction=back;editorBaseline=null;
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(getContext(),title,"Back",this::back);
+        addView(page);status=page.status;body=page.section("");
     }
-    private void line(String content, boolean heading) { RegisteredProgressView.line(this, content, heading); }
-    private EditText input(String title, String initial) {
-        line(title, false); EditText field = new EditText(getContext()); field.setText(initial); field.setContentDescription(title); addView(field); return field;
+    private void line(String content,boolean heading){ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(body,content,heading);}
+    private EditText input(String title,String initial){
+        line(title,false);EditText field=new EditText(getContext());field.setText(initial);field.setContentDescription(title);
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(field,title.equals("Abstract"));body.addView(field);return field;
     }
     private Button button(String title, Runnable action) {
-        Button button = UiButton.outline(getContext(), title, UiTheme.BORDER, UiTheme.NAVY, action); addView(button); return button;
+        Button button = UiButton.outline(getContext(), title, UiTheme.BORDER, UiTheme.NAVY, action); body.addView(button); return button;
     }
     private static String value(EditText field) { return field.getText().toString().trim(); }
     private static String knownInput(JSONObject record, String key) { return record.isNull(key) ? "" : record.optString(key); }
