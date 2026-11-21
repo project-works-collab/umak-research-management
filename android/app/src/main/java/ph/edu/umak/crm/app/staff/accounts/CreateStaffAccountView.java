@@ -57,9 +57,14 @@ public class CreateStaffAccountView {
         applyState(currentState);
     }
 
-    public void bindLive(){
-        currentState="live";applyState("5.9_default");nameInput.setText("");collegeInput.setText("");emailInput.setText("");
-        nameInput.setContentDescription("Name");collegeInput.setContentDescription("College or unit");emailInput.setContentDescription("Institutional email");
+    public void bindLive() {
+        currentState = "live";
+        applyState("5.9_default");
+        nameInput.setText("");
+        emailInput.setText("");
+        nameInput.setContentDescription("Name");
+        collegeText.setContentDescription("College or unit");
+        emailInput.setContentDescription("Institutional email");
     }
     public void setPermissionOptions(java.util.List<android.widget.CheckBox> choices){
         LinearLayout permissions=new LinearLayout(context);permissions.setOrientation(LinearLayout.VERTICAL);

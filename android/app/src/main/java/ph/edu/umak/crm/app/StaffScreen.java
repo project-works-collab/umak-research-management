@@ -507,13 +507,6 @@ final class StaffScreen extends LinearLayout {
                 }
 
                 @Override
-                public void onBackToQueueCompleted() {
-                    ensureReviewQueueView();
-                    reviewQueueView.setSelectedTab("Completed");
-                    openRequestsSubPage("queue");
-                }
-
-                @Override
                 public void onSessionDraftKept() {
                     openRequestsSubPage("queue");
                     snackbar.show("Draft kept for this session.");
