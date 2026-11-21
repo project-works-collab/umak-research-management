@@ -68,22 +68,45 @@ public final class CatalogHttpsTest {
                     click(activity, "Manage");
                     click(activity, "Service Catalog");
                 });
-                waitFor(scenario, "New service");
+                waitFor(scenario, "New Service");
                 String code = "SVC-ANDROID-" + Long.toString(System.nanoTime(), 36).toUpperCase(java.util.Locale.ROOT);
                 scenario.onActivity(activity -> {
-                    click(activity, "New service");
+                    click(activity, "New Service");
                     View screen = activity.getWindow().getDecorView();
                     EditText serviceCode = findEditor(screen, "Service code");
                     assertNotNull(serviceCode);
                     serviceCode.setText(code);
-                    click(activity, "Save draft");
+                    click(activity, "Save as Draft");
                 });
-                waitFor(scenario, "Untitled service · " + code + " · Version 1 · draft");
+                waitFor(scenario, "Draft saved to CRM.");
             });
         } finally {
             vault.clear();
             if (originalSession != null) vault.save(originalSession);
         }
+    }
+
+    @Test public void contentManagerPublishesDesignedServiceWizard() throws Exception {
+        String code="SVC-WIZARD-"+Long.toString(System.nanoTime(),36).toUpperCase(java.util.Locale.ROOT);
+        withIdentity("demo.content@example.test",scenario->{
+            scenario.onActivity(activity->{click(activity,"Manage");click(activity,"Service Catalog");});
+            waitFor(scenario,"New Service");
+            scenario.onActivity(activity->{
+                click(activity,"New Service");View root=activity.getWindow().getDecorView();
+                String[][] fields={{"Service code",code},{"Service name","Live wizard service"},{"Brief description","Android wizard integration"},{"Purpose","Review real research"},{"Who can apply","Registered students"},{"Responsible contact","CRM Office"},{"Contact email","crm@example.test"},{"Instructions, one step per line","Submit your protocol"}};
+                for(String[] field:fields){EditText control=findEditor(root,field[0]);assertNotNull(field[0],control);control.setText(field[1]);}
+                ((android.widget.CheckBox)find(root,"Student")).setChecked(true);click(activity,"Continue");
+            });
+            waitFor(scenario,"Continue to Access & Publishing");
+            captureLiveScreen("part5-live-resources");
+            scenario.onActivity(activity->{click(activity,"Continue to Access & Publishing");click(activity,"Publish Service");click(activity,"Confirm");});
+            waitFor(scenario,"Service published.");
+            captureLiveScreen("part5-live-catalog");
+            String origin=InstrumentationRegistry.getArguments().getString("catalogOrigin");
+            org.json.JSONArray catalog=new org.json.JSONArray(CrmApi.get(origin,"/api/v1/public/services",null));
+            boolean found=false;for(int i=0;i<catalog.length();i++)if(code.equals(catalog.getJSONObject(i).getString("code")))found=true;
+            assertTrue("The wizard published a real service revision",found);
+        });
     }
 
     @Test
@@ -204,7 +227,8 @@ public final class CatalogHttpsTest {
                     findEditor(root, "Next action").setText("Prepare final manuscript");
                     click(activity, "Save stage update");
                 });
-                waitFor(scenario, "Current stage: In progress");
+                waitFor(scenario, "Current overall stage: In progress");
+                captureLiveScreen("part8-live-progress");
                 waitFor(scenario, "Configure research workflow");
                 scenario.onActivity(activity -> {
                     click(activity, "Configure research workflow");
@@ -223,7 +247,7 @@ public final class CatalogHttpsTest {
                 scenario.onActivity(activity -> {
                     click(activity, "Edit milestones");
                     click(activity, "Proposal submission and defense · Pending");
-                    View root = activity.getWindow().getDecorView();
+                    View root = activeRoot(activity);
                     assertTrue(selectSpinnerOption(root, "Completed"));
                     click(activity, "Save milestone");
                 });
@@ -232,7 +256,7 @@ public final class CatalogHttpsTest {
                 scenario.onActivity(activity -> {
                     click(activity, "Edit milestones");
                     click(activity, "Ethics and consent clearance · Pending");
-                    View root = activity.getWindow().getDecorView();
+                    View root = activeRoot(activity);
                     findEditor(root, "Evidence reference").setText("DEMO-ETHICS-ANDROID");
                     assertTrue(selectSpinnerOption(root, "Verified"));
                     click(activity, "Save milestone");
@@ -257,6 +281,11 @@ public final class CatalogHttpsTest {
             vault.clear();
             if (originalSession != null) vault.save(originalSession);
         }
+    }
+
+    private static View activeRoot(MainActivity activity){
+        if(android.os.Build.VERSION.SDK_INT>=29){var windows=android.view.inspector.WindowInspector.getGlobalWindowViews();for(int i=windows.size()-1;i>=0;i--)if(windows.get(i).isShown())return windows.get(i);}
+        return activity.getWindow().getDecorView();
     }
 
     private static boolean selectSpinnerOption(View root, String option) {
@@ -297,10 +326,27 @@ public final class CatalogHttpsTest {
             waitFor(scenario, "Generate report");
             scenario.onActivity(activity -> click(activity, "Generate report"));
             waitFor(scenario, "Underlying records");
+            captureLiveScreen("part9-live-research-report");
             scenario.onActivity(activity -> {
-                assertNotNull(find(activity.getWindow().getDecorView(), "Export report"));
+                assertNotNull(find(activity.getWindow().getDecorView(), "Export"));
                 assertNull(find(activity.getWindow().getDecorView(), "User Accounts"));
+                click(activity,"Back to Filters");click(activity,"Service utilization report");click(activity,"Generate report");
             });
+            waitFor(scenario,"Underlying requests");captureLiveScreen("part9-live-service-report");
+        });
+    }
+
+    @Test public void registryStaffCreatesAndCorrectsRealDesignedRecord() throws Exception {
+        String title="Staff encoded "+Long.toString(System.nanoTime(),36);
+        withIdentity("demo.registry@example.test",scenario->{
+            scenario.onActivity(activity->{click(activity,"Registry");click(activity,"Registered research");});
+            waitFor(scenario,"Add Research Entry");
+            scenario.onActivity(activity->{click(activity,"Add Research Entry");View root=activity.getWindow().getDecorView();findEditor(root,"Research title").setText(title);findEditor(root,"College or institute").setText("Demo College");findEditor(root,"Adviser").setText("Verified adviser");findEditor(root,"Academic period (AY 2026-2027)").setText("AY 2026-2027");findEditor(root,"Correction or entry reason").setText("Staff verified intake");click(activity,"Add existing researcher");});
+            scenario.onActivity(activity->{findEditor(activeRoot(activity),"Institutional email").setText("demo.student@example.test");click(activity,"Find");});
+            waitFor(scenario,"Demo Student · Remove");
+            scenario.onActivity(activity->click(activity,"Create record"));waitFor(scenario,title);
+            scenario.onActivity(activity->{click(activity,"Edit Record");View root=activity.getWindow().getDecorView();findEditor(root,"Research title").setText(title+" corrected");findEditor(root,"Correction or entry reason").setText("Corrected title against signed source");click(activity,"Save correction");});
+            waitFor(scenario,title+" corrected");captureLiveScreen("part7-live-corrected-record");
         });
     }
 
@@ -308,14 +354,12 @@ public final class CatalogHttpsTest {
     public void registryStaffLoadsStoredResearchRecord() throws Exception {
         withIdentity("demo.registry@example.test", scenario -> {
             scenario.onActivity(activity -> { click(activity, "Registry"); click(activity, "Registered research"); });
-            waitForSuffix(scenario, " · Demo Research A");
-            scenario.onActivity(activity -> {
-                View record = findSuffix(activity.getWindow().getDecorView(), " · Demo Research A");
-                assertNotNull(record); assertTrue(record.performClick());
-            });
-            waitFor(scenario, "Correct record");
-            scenario.onActivity(activity -> click(activity, "Documents and versions"));
-            waitFor(scenario, "Attach research document");
+            waitFor(scenario,"Demo Research A");
+            scenario.onActivity(activity -> click(activity,"Demo Research A"));
+            waitFor(scenario,"Edit Record");
+            captureLiveScreen("part7-live-record");
+            scenario.onActivity(activity -> click(activity,"Manage"));
+            waitFor(scenario,"Attach file");
         });
     }
 
@@ -323,9 +367,10 @@ public final class CatalogHttpsTest {
     public void administratorLoadsActualAccountDirectory() throws Exception {
         withIdentity("demo.admin@example.test", scenario -> {
             scenario.onActivity(activity -> { click(activity, "Manage"); click(activity, "User Accounts"); });
-            waitFor(scenario, "Create staff account");
-            scenario.onActivity(activity -> click(activity, "Demo Student · student · Active"));
+            waitFor(scenario, "Create Staff Account");
+            scenario.onActivity(activity -> click(activity, "Demo Student"));
             waitFor(scenario, "demo.student@example.test");
+            captureLiveScreen("part5-live-account");
         });
     }
 
@@ -351,25 +396,76 @@ public final class CatalogHttpsTest {
                         .put("submission_token", java.util.UUID.randomUUID().toString()), token).getInt("id");
             } finally { CrmApi.post(origin, "/api/v1/auth/logout", new org.json.JSONObject(), token); }
             scenario.onActivity(activity -> click(activity, "Requests"));
-            waitFor(scenario, "Service request review queue");
-            String prefix = "REQ-" + requestId + " · ";
-            boolean[] found = {false};
-            for (int attempt = 0; attempt < 35 && !found[0]; attempt++) {
-                scenario.onActivity(activity -> {
-                    View row = findPrefix(activity.getWindow().getDecorView(), prefix);
-                    if (row != null) { found[0] = true; assertTrue(row.performClick()); }
-                });
-                if (!found[0]) SystemClock.sleep(300);
-            }
-            assertTrue("New request appears in the normal staff queue", found[0]);
-            waitFor(scenario, "Save review");
+            waitFor(scenario, "Review Queue");
+            waitFor(scenario, "Review queue updated.");
+            captureLiveScreen("part6-live-queue");
             scenario.onActivity(activity -> {
-                findEditor(activity.getWindow().getDecorView(), "Researcher-visible feedback").setText("Review started from Android");
-                click(activity, "Save review");
+                View root = activity.getWindow().getDecorView();
+                // The designed queue keeps separate status tabs; the new request is Submitted.
+                View submitted = findPrefix(root, "Submitted (");
+                assertNotNull(submitted);
+                submitted.performClick();
+                click(activity, "REQ-" + requestId);
             });
-            waitFor(scenario, serviceName + " · In review");
-            waitFor(scenario, "Review started from Android");
+            waitFor(scenario, "Save Review");
+            scenario.onActivity(activity -> {
+                assertNotNull(find(activity.getWindow().getDecorView(), "Request Workspace"));
+                findEditor(activity.getWindow().getDecorView(), "Researcher-visible feedback").setText("Review started from Android");
+                click(activity, "Save Review");
+            });
+            waitFor(scenario, "Review saved.");
+            waitFor(scenario, "Feedback: Review started from Android");
+            captureLiveScreen("part6-live-workspace");
+            scenario.onActivity(activity -> {
+                assertNotNull(find(activity.getWindow().getDecorView(), "Current status: In review"));
+                View completed = find(activity.getWindow().getDecorView(), "Completed");
+                assertNotNull(completed);
+                completed.performClick();
+                assertTrue(((android.widget.RadioButton) completed).isChecked());
+                click(activity, "Save Review");
+            });
+            waitFor(scenario, "Review saved. The request is completed.");
+            waitFor(scenario, "Save Correction");
+            scenario.onActivity(activity -> {
+                View root = activity.getWindow().getDecorView();
+                findEditor(root, "Reason for correcting this completed request").setText("Correct the final response wording");
+                findEditor(root, "Researcher-visible feedback").setText("Final response corrected from Android");
+                click(activity, "Save Correction");
+            });
+            waitFor(scenario, "Review saved. The request is completed.");
+            scenario.onActivity(activity -> {
+                assertNotNull(findPrefix(activity.getWindow().getDecorView(), "Feedback: Final response corrected from Android"));
+            });
+            JSONObjectSessionCheck.verifyLatestReview(origin, context, requestId);
+            captureLiveScreen("part6-live-completed-correction");
+            scenario.onActivity(activity -> {
+                activity.onBackPressed();
+                assertNotNull(find(activity.getWindow().getDecorView(), "Review Queue"));
+            });
         });
+    }
+
+    private static void captureLiveScreen(String name) throws Exception {
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        SystemClock.sleep(250);
+        try (java.io.InputStream stream = new android.os.ParcelFileDescriptor.AutoCloseInputStream(
+                InstrumentationRegistry.getInstrumentation().getUiAutomation()
+                        .executeShellCommand("screencap -p /data/local/tmp/" + name + ".png"))) {
+            byte[] buffer = new byte[1024];
+            while (stream.read(buffer) != -1) { /* Wait for screenshot completion. */ }
+        }
+    }
+
+    private static final class JSONObjectSessionCheck {
+        static void verifyLatestReview(String origin, android.content.Context context, int requestId) throws Exception {
+            org.json.JSONObject session = new org.json.JSONObject(new SessionVault(context).read());
+            org.json.JSONObject detail = new org.json.JSONObject(CrmApi.get(origin,
+                    "/api/v1/staff/service-requests/" + requestId, session.getString("token")));
+            org.json.JSONObject latest = detail.getJSONArray("reviews").getJSONObject(0);
+            org.junit.Assert.assertEquals("Completed", detail.getString("status"));
+            org.junit.Assert.assertEquals("Final response corrected from Android", latest.getString("feedback"));
+            org.junit.Assert.assertEquals("Correct the final response wording", latest.getString("correction_reason"));
+        }
     }
 
     private static View findPrefix(View view, String prefix) {
@@ -546,7 +642,8 @@ public final class CatalogHttpsTest {
     }
 
     private static void click(MainActivity activity, String label) {
-        View view = find(activity.getWindow().getDecorView(), label);
+        View view = find(activeRoot(activity), label);
+        if(view==null)view=find(activity.getWindow().getDecorView(),label);
         assertNotNull(label, view);
         while (!view.isClickable() && view.getParent() instanceof View parent) view = parent;
         assertTrue(label, view.performClick());

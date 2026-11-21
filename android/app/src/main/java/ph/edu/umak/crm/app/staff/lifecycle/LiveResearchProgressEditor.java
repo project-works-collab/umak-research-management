@@ -25,6 +25,16 @@ public final class LiveResearchProgressEditor extends LinearLayout {
     private final Actions actions;
     private PendingStatus feedback;
     private boolean saving;
+    private LinearLayout body;
+    private Runnable backAction;
+    private String editorBaseline;
+    private void guardEdits(){editorBaseline=ph.edu.umak.crm.app.staff.common.StaffDesignPage.fingerprint(body);}
+    private void back(){
+        if(saving||backAction==null)return;
+        if(editorBaseline!=null&&!editorBaseline.equals(ph.edu.umak.crm.app.staff.common.StaffDesignPage.fingerprint(body)))
+            ph.edu.umak.crm.app.staff.common.StaffDesignPage.confirmDiscard(getContext(),()->{editorBaseline=null;backAction.run();});
+        else backAction.run();
+    }
 
     public LiveResearchProgressEditor(Context context, Actions actions) {
         super(context);
@@ -34,17 +44,19 @@ public final class LiveResearchProgressEditor extends LinearLayout {
         setPadding(padding, padding, padding, padding);
     }
 
-    public void load() {
-        reset("Research progress", "Back to Registry", actions::back);
-        request("", payload -> {
-            JSONArray studies = new JSONArray(payload);
-            if (studies.length() == 0) line("No registered research yet.");
-            for (int i = 0; i < studies.length(); i++) {
-                JSONObject study = studies.getJSONObject(i);
-                int id = study.getInt("id");
-                button("REG-" + id + " · " + study.getString("title"), () -> detail(id));
+    public void ensureLoaded(){if(getChildCount()==0)load();}
+    public void load(){reset("Research progress","Back to Registry",actions::back);loadPage(null);}
+    private void loadPage(Integer before){
+        String path=before==null?"":"?before="+before;
+        request(path,payload->{
+            JSONArray studies=new JSONArray(payload);
+            if(studies.length()==0&&before==null)line("No registered research yet.");
+            for(int i=0;i<studies.length();i++){
+                JSONObject study=studies.getJSONObject(i);int id=study.getInt("id");
+                button("REG-"+id+" · "+study.getString("title"),()->detail(id));
             }
-        }, this::load);
+            if(studies.length()==100){int last=studies.getJSONObject(99).getInt("id");Button more=button("Load more research",null);more.setOnClickListener(view->{body.removeView(more);loadPage(last);});}
+        },()->loadPage(before));
     }
 
     private void detail(int id) {
@@ -56,22 +68,34 @@ public final class LiveResearchProgressEditor extends LinearLayout {
         int id = record.getInt("id");
         int version = record.getInt("version");
         String current = record.getString("stage");
-        line(record.getString("title"));
-        RegisteredProgressView.append(this, record, true);
-        loadPlanning(id, version, record);
-        button("Update overall stage", () -> editStage(id, version, current, record));
-        button("Edit milestones", () -> milestones(id, version, record.optJSONArray("milestones")));
-        button("Record presentation", () -> editOutcome(id, version, false, record.optJSONObject("presentation")));
-        button("Record publication", () -> editOutcome(id, version, true, record.optJSONObject("publication")));
-        if ("Completed".equals(current)) {
-            button("Correct completion", () -> editCompletion(id, version, record.optJSONObject("completion")));
-        }
+        MilestonesAndOutcomesView design=new MilestonesAndOutcomesView((android.app.Activity)getContext(),null);
+        design.bindLive(record,new MilestonesAndOutcomesView.LiveActions(){
+            public void milestones(){LiveResearchProgressEditor.this.milestones(id,version,record.optJSONArray("milestones"));}
+            public void stage(){editStage(id,version,current,record);}
+            public void milestone(int index){editMilestone(id,version,record.optJSONArray("milestones"),record.optJSONArray("milestones").optJSONObject(index));}
+            public void presentation(){editOutcome(id,version,false,record.optJSONObject("presentation"));}
+            public void publication(){editOutcome(id,version,true,record.optJSONObject("publication"));}
+            public void completion(){editCompletion(id,version,record.optJSONObject("completion"));}
+            public void history(){try{showHistory(record);}catch(JSONException invalid){feedback.result("CRM returned invalid stage history.",true);}}
+            public void close(){load();}
+        });
+        body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));
+        loadPlanning(id,version,record);
+    }
+
+    public void openRecord(int id){detail(id);}
+    public boolean isSaving(){return saving;}
+    public boolean handleBack(){back();return true;}
+    private void showHistory(JSONObject record)throws JSONException {
+        int id=record.getInt("id");reset("Stage History","Back to milestones",()->detail(id));
+        StageHistoryView design=new StageHistoryView((android.app.Activity)getContext(),()->detail(id));
+        design.setState(LiveLifecycleData.state(record));body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(design.getContentLayout()));
     }
 
     private void loadPlanning(int id, int version, JSONObject record) {
         LinearLayout planning = new LinearLayout(getContext());
         planning.setOrientation(VERTICAL);
-        addView(planning);
+        body.addView(planning);
         PendingStatus status = new PendingStatus(getContext());
         planning.addView(status);
         status.working("Calculating workflow readiness…");
@@ -175,20 +199,21 @@ public final class LiveResearchProgressEditor extends LinearLayout {
                 feedback.result("Check the workflow details and try again.", true);
             }
         });
+        guardEdits();
     }
 
     private void saveWorkflow(int id, JSONObject payload, Button save) {
         saving = true;
-        save.setEnabled(false);
+        Runnable restore=ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(this.body);
         PendingStatus current = feedback;
         current.working("Validating prerequisites and saving workflow…");
         actions.request("/" + id + "/workflow", payload, (data, error) -> {
-            saving = false;
-            if (!isAttachedToWindow() || feedback != current) return;
+            saving = false;restore.run();
+            if (feedback != current) return;
             if (error == null) detail(id);
             else {
                 current.result(error, true);
-                if (error.contains("Reload before saving")) button("Reload research progress", () -> detail(id));
+                if (error.contains("Reload before saving")) {save.setEnabled(false);button("Reload research progress", () -> detail(id));}
                 else save.setEnabled(true);
             }
         });
@@ -236,21 +261,13 @@ public final class LiveResearchProgressEditor extends LinearLayout {
         }
     }
 
-    private void editMilestone(int id, int version, JSONArray milestones, JSONObject item) {
-        reset(item.optString("title"), "Back to milestones", () -> milestones(id, version, milestones));
-        String[] statuses = {"Pending", "In progress", "Completed", "Not applicable"};
-        Spinner status = options("Milestone status", statuses);
-        status.setSelection(Math.max(0, java.util.Arrays.asList(statuses).indexOf(item.optString("status"))));
-        EditText effective = input("Milestone date (YYYY-MM-DD)", dateValue(item, "effective_date"));
-        EditText evidence = input("Evidence reference", item.optString("evidence"));
-        Spinner evidenceState = options("Evidence review state", new String[]{"No evidence recorded", "Received", "Verified"});
-        evidenceState.setSelection(item.isNull("evidence_state") ? 0
-                : "verified".equals(item.optString("evidence_state")) ? 2 : 1);
-        saveButton(id, "Save milestone", () -> event("milestone", version)
-                .put("milestone_code", item.optString("code")).put("status", status.getSelectedItem().toString())
-                .put("effective_date", date(effective)).put("evidence", value(evidence))
-                .put("evidence_state", evidenceState.getSelectedItemPosition() == 0 ? JSONObject.NULL
-                        : evidenceState.getSelectedItemPosition() == 2 ? "verified" : "received"));
+    private void editMilestone(int id,int version,JSONArray milestones,JSONObject item){
+        MilestoneEditorDialog.showLive((android.app.Activity)getContext(),item,(fields,result)->{
+            if(saving)return;
+            try{fields.put("kind","milestone").put("expected_version",version);saving=true;
+                actions.request("/"+id+"/events",fields,(data,error)->{saving=false;result.accept(data,error);});
+            }catch(JSONException invalid){result.accept(null,"Check the milestone details.");}
+        },()->detail(id),()->detail(id));
     }
 
     private void editOutcome(int id, int version, boolean publication, JSONObject previous) {
@@ -266,15 +283,15 @@ public final class LiveResearchProgressEditor extends LinearLayout {
                 .put("effective_date", date(effective)).put(key, value(information)).put("reason", value(reason)));
     }
 
-    private void editCompletion(int id, int version, JSONObject previous) {
-        reset("Correct completion", "Back to research progress", () -> detail(id));
-        CheckBox reopen = check("Return to In progress");
-        EditText completed = input("Corrected completion date (YYYY-MM-DD)", dateValue(previous, "date"));
-        EditText details = input("Completion details", previous == null ? "" : previous.optString("details"));
-        EditText reason = input("Correction reason", "");
-        saveButton(id, "Save completion correction", () -> event("completion_correction", version)
-                .put("reopen", reopen.isChecked()).put("completion_date", date(completed))
-                .put("completion_details", value(details)).put("reason", value(reason)));
+    private void editCompletion(int id,int version,JSONObject previous){
+        reset("Completion correction","Back to research progress",()->detail(id));
+        JSONObject record=new JSONObject();try{record.put("id",id).put("title","REG-"+id).put("completion",previous==null?JSONObject.NULL:previous);}catch(JSONException impossible){throw new IllegalStateException(impossible);}
+        body.addView(ph.edu.umak.crm.app.staff.common.StaffDesignPage.inline(CompletionCorrectionView.createLive((android.app.Activity)getContext(),record,(fields,result)->{
+            if(saving)return;
+            try{fields.put("kind","completion_correction").put("expected_version",version);saving=true;
+                actions.request("/"+id+"/events",fields,(data,error)->{saving=false;result.accept(data,error);});
+            }catch(JSONException invalid){result.accept(null,"Check the completion details.");}
+        },()->detail(id),()->detail(id))));guardEdits();
     }
 
     private interface Response { void parse(String data) throws JSONException; }
@@ -284,7 +301,7 @@ public final class LiveResearchProgressEditor extends LinearLayout {
         PendingStatus current = feedback;
         current.working("Loading saved progress…");
         actions.request(path, null, (data, error) -> {
-            if (!isAttachedToWindow() || feedback != current) return;
+            if (feedback != current) return;
             if (error != null) {
                 current.result(error, true);
                 button("Retry", retry);
@@ -306,16 +323,16 @@ public final class LiveResearchProgressEditor extends LinearLayout {
             try {
                 JSONObject body = payload.make();
                 saving = true;
-                save.setEnabled(false);
+                Runnable restore=ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(this.body);
                 PendingStatus current = feedback;
                 current.working("Saving research progress…");
                 actions.request("/" + id + "/events", body, (data, error) -> {
-                    saving = false;
-                    if (!isAttachedToWindow() || feedback != current) return;
+                    saving = false;restore.run();
+                    if (feedback != current) return;
                     if (error == null) detail(id);
                     else {
                         current.result(error, true);
-                        if (error.contains("Reload before saving")) button("Reload research progress", () -> detail(id));
+                        if (error.contains("Reload before saving")) {save.setEnabled(false);button("Reload research progress", () -> detail(id));}
                         else save.setEnabled(true);
                     }
                 });
@@ -323,48 +340,19 @@ public final class LiveResearchProgressEditor extends LinearLayout {
                 feedback.result("Check the progress details and try again.", true);
             }
         });
+        guardEdits();
     }
 
-    private void reset(String title, String back, Runnable onBack) {
-        removeAllViews();
-        button(back, onBack);
-        RegisteredProgressView.line(this, title, true);
-        feedback = new PendingStatus(getContext());
-        addView(feedback);
+    private void reset(String title,String back,Runnable onBack){
+        removeAllViews();backAction=onBack;editorBaseline=null;
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(getContext(),title,back,this::back);
+        addView(page);feedback=page.status;body=page.section("");
     }
-
-    private void line(String content) { RegisteredProgressView.line(this, content, false); }
-
-    private Button button(String title, Runnable action) {
-        Button button = UiButton.outline(getContext(), title, UiTheme.BORDER, UiTheme.NAVY, action);
-        addView(button);
-        return button;
-    }
-
-    private EditText input(String title, String initial) {
-        line(title);
-        EditText input = new EditText(getContext());
-        input.setContentDescription(title);
-        input.setText(initial);
-        addView(input);
-        return input;
-    }
-
-    private Spinner options(String title, String[] values) {
-        line(title);
-        Spinner spinner = new Spinner(getContext());
-        spinner.setContentDescription(title);
-        spinner.setAdapter(new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, values));
-        addView(spinner);
-        return spinner;
-    }
-
-    private CheckBox check(String title) {
-        CheckBox check = new CheckBox(getContext());
-        check.setText(title);
-        addView(check);
-        return check;
-    }
+    private void line(String text){ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(body,text,true);}
+    private Button button(String title,Runnable action){Button button=UiButton.outline(getContext(),title,UiTheme.BORDER,UiTheme.NAVY,action);body.addView(button);return button;}
+    private EditText input(String title,String initial){line(title);EditText field=new EditText(getContext());field.setText(initial);field.setContentDescription(title);ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(field,false);body.addView(field);return field;}
+    private Spinner options(String title,String[] values){line(title);Spinner spinner=new Spinner(getContext());spinner.setContentDescription(title);spinner.setAdapter(new ArrayAdapter<>(getContext(),android.R.layout.simple_spinner_dropdown_item,values));spinner.setMinimumHeight(UiTheme.dp(getContext(),48));body.addView(spinner);return spinner;}
+    private CheckBox check(String title){CheckBox box=new CheckBox(getContext());box.setText(title);body.addView(box);return box;}
 
     private static JSONObject event(String type, int version) throws JSONException {
         return new JSONObject().put("kind", type).put("expected_version", version);

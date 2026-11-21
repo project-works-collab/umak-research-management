@@ -29,6 +29,7 @@ public class PublicationHistoryView {
         void onNavigateToAccountAudit();
     }
 
+    private java.util.List<StaffData.PublicationHistoryItem> liveItems;
     private final Context context;
     private final Callbacks callbacks;
     private final ScrollView rootScrollView;
@@ -53,6 +54,7 @@ public class PublicationHistoryView {
         buildView();
     }
 
+    public void bindLive(java.util.List<StaffData.PublicationHistoryItem> items){liveItems=items;buildView();}
     public View getContentLayout() {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
@@ -89,10 +91,10 @@ public class PublicationHistoryView {
                 callbacks.onNavigateToAccountAudit();
             }
         });
-        contentLayout.addView(auditLink);
+        if(liveItems==null)contentLayout.addView(auditLink);
 
         // Publication history cards
-        List<StaffData.PublicationHistoryItem> list = StaffData.getPublicationHistory();
+        List<StaffData.PublicationHistoryItem> list = liveItems==null?StaffData.getPublicationHistory():liveItems;
         for (StaffData.PublicationHistoryItem item : list) {
             contentLayout.addView(createHistoryCard(item));
             View spacer = new View(context);

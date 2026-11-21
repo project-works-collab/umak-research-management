@@ -25,6 +25,9 @@ public class RegistryDocumentsView {
 
     public interface Callbacks {
         void onBackToRecord();
+        default boolean isLive() { return false; }
+        default void onUpload(String previous) {}
+        default void onOpenDocument(StaffRegistryData.DocumentVersion document) {}
         void onChooseAttachment(Runnable onChecking, java.util.function.BiConsumer<ph.edu.umak.crm.app.MainActivity.SelectedAttachment, String> result);
     }
 
@@ -124,6 +127,7 @@ public class RegistryDocumentsView {
         attachCard.addView(attachmentFeedback);
         attachBtn.setOnClickListener(v -> {
             if (callbacks == null) return;
+            if (callbacks.isLive()) { callbacks.onUpload(null); return; }
             callbacks.onChooseAttachment(() -> {
                 attachBtn.setEnabled(false);
                 attachBtn.setText("Checking file…");
@@ -144,7 +148,7 @@ public class RegistryDocumentsView {
         attachCard.addView(formatNote);
 
         TextView instructionNote = new TextView(activity);
-        instructionNote.setText("Online version uploads aren’t available for this registry record.");
+        instructionNote.setText(callbacks != null && callbacks.isLive() ? "New files and versions are saved to this research record." : "Online version uploads aren’t available for this registry record.");
         instructionNote.setTextColor(UiTheme.INK);
         instructionNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams instParams = new LinearLayout.LayoutParams(
@@ -208,6 +212,10 @@ public class RegistryDocumentsView {
             docRow.addView(badge);
 
             versionCard.addView(docRow);
+            if (callbacks != null && callbacks.isLive()) {
+                versionCard.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Open " + doc.fileName,UiTheme.BORDER,UiTheme.NAVY,() -> callbacks.onOpenDocument(doc)));
+                if(doc.isCurrent)versionCard.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Upload next version",UiTheme.BORDER,UiTheme.NAVY,() -> callbacks.onUpload(doc.fileId)));
+            }
 
             if (i < record.documents.size() - 1) {
                 View divider = new View(activity);

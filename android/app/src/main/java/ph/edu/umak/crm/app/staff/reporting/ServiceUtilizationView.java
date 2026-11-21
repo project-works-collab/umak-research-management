@@ -28,6 +28,7 @@ public class ServiceUtilizationView {
     public interface Callbacks {
         void onBackToFilters();
         void onOpenRequest(StaffReportingData.RequestSummary request);
+        default boolean onExport() { return false; }
     }
 
     private final Activity activity;
@@ -50,23 +51,12 @@ public class ServiceUtilizationView {
     }
 
     public View getContentLayout() {
-        if (scrollView != null && scrollView.getParent() instanceof ViewGroup) {
-            ((ViewGroup) scrollView.getParent()).removeView(scrollView);
-        }
-
-        scrollView = new ScrollView(activity);
-        scrollView.setFillViewport(true);
-        scrollView.setBackgroundColor(UiTheme.PAPER);
-
         rootLayout = new LinearLayout(activity);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
-
-        scrollView.addView(PageTitle.wrap(rootLayout, "Service Utilization", null, false));
         buildLayout();
-
-        return scrollView;
+        return PageTitle.wrap(rootLayout, "Service Utilization", null, false);
     }
 
     private void buildLayout() {
@@ -270,7 +260,7 @@ public class ServiceUtilizationView {
         defCard.addView(title);
 
         TextView note = new TextView(activity);
-        note.setText("Pending shown as — until definition confirmed");
+        note.setText(model.definitions == null ? "Pending shown as — until definition confirmed" : String.join("\n\n", model.definitions));
         note.setTextColor(UiTheme.MUTED);
         note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams nParams = new LinearLayout.LayoutParams(
@@ -404,6 +394,7 @@ public class ServiceUtilizationView {
         // Export Button
         Button exportBtn = new Button(activity);
         exportBtn.setText("Export");
+        exportBtn.setMinHeight(dp(48));
         exportBtn.setTextColor(UiTheme.WHITE);
         exportBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         exportBtn.setTypeface(Typeface.DEFAULT_BOLD);
@@ -414,15 +405,16 @@ public class ServiceUtilizationView {
         exportBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), expBg, null));
 
         exportBtn.setOnClickListener(v -> {
-            showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
+            if (callbacks == null || !callbacks.onExport()) showExport(ExportReportDialog.ExportState.FORMAT_PICKER);
         });
         LinearLayout.LayoutParams expParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnCol.addView(exportBtn, expParams);
 
         // Back to Filters Button
         Button backBtn = new Button(activity);
         backBtn.setText("Back to Filters");
+        backBtn.setMinHeight(dp(48));
         backBtn.setTextColor(UiTheme.NAVY);
         backBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         backBtn.setTypeface(Typeface.DEFAULT);
@@ -437,7 +429,7 @@ public class ServiceUtilizationView {
             if (callbacks != null) callbacks.onBackToFilters();
         });
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         backParams.topMargin = dp(8);
         btnCol.addView(backBtn, backParams);
     }

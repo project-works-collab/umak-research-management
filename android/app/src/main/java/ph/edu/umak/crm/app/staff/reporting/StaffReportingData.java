@@ -60,6 +60,8 @@ public final class StaffReportingData {
         public final int published;
 
         public final List<RecordSummary> underlyingRecords;
+        public List<String> definitions;
+        public List<String> extraFilters;
 
         public ResearchReportModel(
                 String collegeFilter,
@@ -106,6 +108,8 @@ public final class StaffReportingData {
 
         public final List<ServiceCountItem> requestsPerService;
         public final List<RequestSummary> underlyingRequests;
+        public List<String> definitions;
+        public List<String> extraFilters;
 
         public ServiceUtilizationModel(
                 String requesterCollegeFilter,

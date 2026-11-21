@@ -105,6 +105,14 @@ public final class ManageHubView {
         ));
     }
 
+    public void setVisibleActions(java.util.Set<String> names) {
+        for(int i=0;i<layout.getChildCount();i++) {
+            View child=layout.getChildAt(i);
+            if(child instanceof LinearLayout card && card.getChildCount()>0 && card.getChildAt(0) instanceof TextView title)
+                child.setVisibility(names.contains(title.getText().toString())?View.VISIBLE:View.GONE);
+        }
+    }
+
     private View createActionCard(String title, String description, Runnable onClick) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);

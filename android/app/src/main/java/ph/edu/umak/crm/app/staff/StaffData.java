@@ -8,6 +8,7 @@ import java.util.Map;
 public final class StaffData {
 
     public static class ServiceCatalogItem {
+        public int revisionId;
         public final String id;
         public final String title;
         public final String version;
@@ -26,6 +27,8 @@ public final class StaffData {
     }
 
     public static class ApprovedFormItem {
+        public String state="published";
+        public boolean live;
         public final String serviceId;
         public final String serviceName;
         public final String formTitle;
@@ -60,6 +63,7 @@ public final class StaffData {
     }
 
     public static class StaffAccountItem {
+        public int serverId;
         public final String initials;
         public final String name;
         public final String role; // "CRM Staff", "Researcher"

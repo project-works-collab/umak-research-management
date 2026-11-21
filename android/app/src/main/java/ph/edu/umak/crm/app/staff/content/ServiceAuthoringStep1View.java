@@ -45,6 +45,8 @@ public final class ServiceAuthoringStep1View {
     private final EditText externalInstructionInput;
 
     private boolean isExternal = false;
+    private boolean liveBound;
+    private EditText liveEligibility,liveTurnaround,liveInstructions,liveRequirements;
 
     public ServiceAuthoringStep1View(Context context, Listener listener) {
         this.context = context;
@@ -213,7 +215,7 @@ public final class ServiceAuthoringStep1View {
         // External instructions card container (visible only if external)
         externalInstructionCard = new LinearLayout(context);
         externalInstructionCard.setOrientation(LinearLayout.VERTICAL);
-        externalInstructionCard.setVisibility(isExternal ? View.VISIBLE : View.GONE);
+        externalInstructionCard.setVisibility(isExternal && !liveBound ? View.VISIBLE : View.GONE);
 
         TextView extLabel = new TextView(context);
         extLabel.setText("External submission instructions *");
@@ -337,8 +339,53 @@ public final class ServiceAuthoringStep1View {
         layout.addView(draftBtn);
     }
 
+    public void bindLive(org.json.JSONObject source) {
+        liveBound=true;
+        org.json.JSONObject fields=source==null?new org.json.JSONObject():source.optJSONObject("details");
+        if(fields==null)fields=new org.json.JSONObject();
+        nameInput.setText(fields.optString("name",""));categoryInput.setText(source==null?"":source.optString("code",""));
+        categoryInput.setEnabled(source==null);categoryInput.setContentDescription("Service code");
+        LinearLayout details=(LinearLayout)categoryInput.getParent();
+        int index=details.indexOfChild(categoryInput);
+        for(int i=index-1;i>=0;i--)if(details.getChildAt(i) instanceof TextView label){label.setText("Service code");break;}
+        descInput.setText(fields.optString("description",""));purposeInput.setText(fields.optString("purpose",""));
+        unitInput.setText(fields.optString("contact_name",""));emailInput.setText(fields.optString("contact_email",""));
+        studentCb.setChecked(fields.optString("applicants","").contains("Student"));facultyCb.setChecked(fields.optString("applicants","").contains("Faculty"));
+        nameInput.setContentDescription("Service name");descInput.setContentDescription("Brief description");purposeInput.setContentDescription("Purpose");unitInput.setContentDescription("Responsible contact");emailInput.setContentDescription("Contact email");
+        liveEligibility=addFormField(details,"Who can apply",fields.optString("eligibility",""),true);liveEligibility.setContentDescription("Who can apply");
+        liveTurnaround=addFormField(details,"Turnaround (optional)",fields.optString("turnaround",""),false);liveTurnaround.setContentDescription("Turnaround (optional)");
+        isExternal="external".equals(fields.optString("channel"));externalRadio.setChecked(isExternal);inAppRadio.setChecked(!isExternal);updateChannelVisibility();
+        LinearLayout channel=(LinearLayout)externalInstructionCard.getParent();int start=channel.indexOfChild(externalInstructionCard)+1;
+        channel.removeViews(start,channel.getChildCount()-start);
+        liveInstructions=addFormField(channel,"Instructions, one step per line",join(fields.optJSONArray("instructions")),true);liveInstructions.setContentDescription("Instructions, one step per line");
+        java.util.StringJoiner requirements=new java.util.StringJoiner("\n");org.json.JSONArray rows=fields.optJSONArray("requirements");
+        if(rows!=null)for(int i=0;i<rows.length();i++){var row=rows.optJSONObject(i);if(row!=null)requirements.add((row.optBoolean("required")?"":"Optional: ")+row.optString("title"));}
+        liveRequirements=addFormField(channel,"Requirements, one per line. Prefix optional items with Optional:",requirements.toString(),true);liveRequirements.setContentDescription("Requirements, one per line. Prefix optional items with Optional:");
+    }
+    public String liveCode(){return categoryInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);}
+    public org.json.JSONObject liveDetails() throws org.json.JSONException {
+        org.json.JSONObject fields=new org.json.JSONObject().put("channel",isExternal?"external":"in_app");
+        String[] keys={"name","description","purpose","eligibility","contact_name","contact_email","turnaround"};
+        EditText[] controls={nameInput,descInput,purposeInput,liveEligibility,unitInput,emailInput,liveTurnaround};
+        for(int i=0;i<keys.length;i++){String value=controls[i].getText().toString().trim();if(!value.isEmpty())fields.put(keys[i],value);}
+        org.json.JSONArray categories=new org.json.JSONArray();if(studentCb.isChecked())categories.put("Student");if(facultyCb.isChecked())categories.put("Faculty");
+        if(categories.length()>0)fields.put("applicants",categories);
+        org.json.JSONArray instructions=new org.json.JSONArray();for(String line:liveInstructions.getText().toString().split("\n"))if(!line.isBlank())instructions.put(line.trim());if(instructions.length()>0)fields.put("instructions",instructions);
+        org.json.JSONArray requirements=new org.json.JSONArray();for(String line:liveRequirements.getText().toString().split("\n"))if(!line.isBlank()){
+            String title=line.trim();boolean optional=title.regionMatches(true,0,"Optional:",0,9);if(optional)title=title.substring(9).trim();
+            requirements.put(new org.json.JSONObject().put("title",title).put("required",!optional));
+        }
+        return fields.put("requirements",requirements);
+    }
+    public void showLiveErrors(org.json.JSONObject errors){
+        String[] keys={"name","description","purpose","eligibility","contact_name","contact_email","turnaround","instructions","requirements"};
+        EditText[] controls={nameInput,descInput,purposeInput,liveEligibility,unitInput,emailInput,liveTurnaround,liveInstructions,liveRequirements};
+        for(int i=0;i<keys.length;i++)for(var names=errors.keys();names.hasNext();)if(names.next().startsWith(keys[i]))controls[i].setError("Complete or correct this field.");
+    }
+    private static String join(org.json.JSONArray items){java.util.StringJoiner lines=new java.util.StringJoiner("\n");if(items!=null)for(int i=0;i<items.length();i++)lines.add(items.optString(i));return lines.toString();}
+
     private void updateChannelVisibility() {
-        externalInstructionCard.setVisibility(isExternal ? View.VISIBLE : View.GONE);
+        externalInstructionCard.setVisibility(isExternal && !liveBound ? View.VISIBLE : View.GONE);
     }
 
     private EditText addFormField(LinearLayout parent, String label, String value, boolean multiline) {

@@ -31,6 +31,31 @@ public final class CompletionCorrectionView {
 
     private CompletionCorrectionView() {}
 
+    public interface LiveSave { void save(org.json.JSONObject fields,java.util.function.BiConsumer<String,String> result); }
+    public static View createLive(Activity activity,org.json.JSONObject record,LiveSave save,Runnable saved,Runnable reload){
+        var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(activity,"Completion correction",null,null);
+        var summary=page.section(record.optString("title")+" · REG-"+record.optInt("id"));
+        var completion=record.optJSONObject("completion");
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(summary,"Recorded completion: "+(completion==null?"Not recorded":completion.optString("date","")),false);
+        var card=page.section("Correct completion record");
+        android.widget.CheckBox reopen=new android.widget.CheckBox(activity);reopen.setText("Return to In progress");card.addView(reopen);
+        EditText date=new EditText(activity);date.setContentDescription("Corrected completion date (YYYY-MM-DD)");date.setHint("YYYY-MM-DD");date.setText(completion==null?"":completion.optString("date",""));ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(date,false);card.addView(date);
+        EditText details=new EditText(activity);details.setContentDescription("Completion details");details.setHint("Completion details");details.setText(completion==null?"":completion.optString("details",""));ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(details,true);card.addView(details);
+        EditText reason=new EditText(activity);reason.setContentDescription("Correction reason");reason.setHint("Reason for correction *");ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(reason,true);card.addView(reason);
+        Button submit=ph.edu.umak.crm.app.common.components.UiButton.primary(activity,"Save completion correction",null);card.addView(submit);
+        submit.setOnClickListener(view->{
+            if(reason.getText().toString().trim().isEmpty()){reason.setError("Enter the correction reason.");return;}
+            try{
+                String day=date.getText().toString().trim();if(!day.isEmpty())java.time.LocalDate.parse(day);
+                if(!reopen.isChecked()&&day.isEmpty()){date.setError("Enter the corrected completion date.");return;}
+                org.json.JSONObject fields=new org.json.JSONObject().put("reopen",reopen.isChecked()).put("completion_date",day.isEmpty()?org.json.JSONObject.NULL:day)
+                    .put("completion_details",details.getText().toString().trim()).put("reason",reason.getText().toString().trim());
+                Runnable restore=ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(page);page.status.working("Saving completion correction…");
+                save.save(fields,(data,error)->{restore.run();if(error==null)saved.run();else{page.status.result(error,true);if(error.toLowerCase(java.util.Locale.ROOT).contains("reload")){submit.setEnabled(false);card.addView(ph.edu.umak.crm.app.common.components.UiButton.outline(activity,"Reload research progress",UiTheme.BORDER,UiTheme.NAVY,reload));}else submit.setEnabled(true);}});
+            }catch(org.json.JSONException|java.time.DateTimeException invalid){page.status.result("Check the completion date and reason.",true);}
+        });return page;
+    }
+
     private static int dp(Activity activity, int value) {
         return (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,

@@ -64,6 +64,18 @@ public class CreateStaffAccountView {
         applyState(currentState);
     }
 
+    public void bindLive(){
+        currentState="live";applyState("5.9_default");nameInput.setText("");collegeInput.setText("");emailInput.setText("");
+        nameInput.setContentDescription("Name");collegeInput.setContentDescription("College or unit");emailInput.setContentDescription("Institutional email");
+    }
+    public void setPermissionOptions(java.util.List<android.widget.CheckBox> choices){
+        LinearLayout permissions=new LinearLayout(context);permissions.setOrientation(LinearLayout.VERTICAL);
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.line(permissions,"Permissions",true);
+        for(var choice:choices){ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(choice);permissions.addView(choice);}
+        int index=contentLayout.getChildCount();
+        for(int i=0;i<contentLayout.getChildCount();i++)if(contentLayout.getChildAt(i) instanceof Button button&&"Create Account".contentEquals(button.getText())){index=i;break;}
+        contentLayout.addView(permissions,index);
+    }
     public View getContentLayout() {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);

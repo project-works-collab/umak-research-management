@@ -31,6 +31,8 @@ public class AccountAuditHistoryView {
     private final ScrollView rootScrollView;
     private final LinearLayout contentLayout;
 
+    private java.util.List<StaffData.AccountAuditLogItem> liveLogs;
+    public void bindLive(String name,String identifier,java.util.List<StaffData.AccountAuditLogItem> logs){liveLogs=logs;setAccount(name,identifier);}
     private String userDisplayName = "LeBron R. James";
     private String userIdentifier = "A1234";
 
@@ -84,7 +86,7 @@ public class AccountAuditHistoryView {
         }
 
         // Logs
-        List<StaffData.AccountAuditLogItem> logs = StaffData.getAccountAuditLogs();
+        List<StaffData.AccountAuditLogItem> logs = liveLogs==null?StaffData.getAccountAuditLogs():liveLogs;
         for (StaffData.AccountAuditLogItem log : logs) {
             contentLayout.addView(createLogCard(log));
             View spacer = new View(context);
