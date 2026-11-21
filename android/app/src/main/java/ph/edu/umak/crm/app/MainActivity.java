@@ -450,8 +450,20 @@ public class MainActivity extends Activity {
         view.requestApplyInsets();
     }
 
+    private Runnable lastPreviewMenu = null;
+
     void showPreviewMenu() {
-        if(staffScreen!=null && staffScreen.hasPendingWrite())return;
+        if (staffScreen != null && staffScreen.hasPendingWrite()) return;
+        if (lastPreviewMenu != null) {
+            lastPreviewMenu.run();
+        } else {
+            showPreviewMainMenu();
+        }
+    }
+
+    void showPreviewMainMenu() {
+        if (staffScreen != null && staffScreen.hasPendingWrite()) return;
+        lastPreviewMenu = null;
         java.util.List<String> options = new java.util.ArrayList<>();
         options.add("Part 1: Access & Account Previews");
         options.add("Part 2: Service Directory Previews");
@@ -519,7 +531,28 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    private AlertDialog.Builder createWireframeDialogBuilder(String title, String[] items, android.content.DialogInterface.OnClickListener listener) {
+        return new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setItems(items, listener)
+                .setNeutralButton("Back", (dialog, which) -> {
+                    lastPreviewMenu = null;
+                    showPreviewMainMenu();
+                })
+                .setNegativeButton("Close", null)
+                .setOnKeyListener((dialog, keyCode, event) -> {
+                    if (keyCode == android.view.KeyEvent.KEYCODE_BACK && event.getAction() == android.view.KeyEvent.ACTION_UP) {
+                        dialog.dismiss();
+                        lastPreviewMenu = null;
+                        showPreviewMainMenu();
+                        return true;
+                    }
+                    return false;
+                });
+    }
+
     private void showPart1WireframeSelector() {
+        lastPreviewMenu = this::showPart1WireframeSelector;
         final String[] items = new String[]{
                 "1.1 Sign In (Default)",
                 "1.2a Sign In (Blank Username Error)",
@@ -542,92 +575,88 @@ public class MainActivity extends Activity {
                 "1.8c Change Temp Password (Same as Temp Password Error)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 1 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    switch (which) {
-                        case 0:
-                            showSignIn();
-                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.1");
-                            break;
-                        case 1:
-                            showSignIn();
-                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2a");
-                            break;
-                        case 2:
-                            showSignIn();
-                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2b");
-                            break;
-                        case 3:
-                            showSignIn();
-                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2c");
-                            break;
-                        case 4:
-                            showSignIn();
-                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2d");
-                            break;
-                        case 5:
-                            showSignIn();
-                            if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.3");
-                            break;
-                        case 6:
-                            showCreateAccount();
-                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4");
-                            break;
-                        case 7:
-                            showCreateAccount();
-                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-required");
-                            break;
-                        case 8:
-                            showCreateAccount();
-                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-duplicate");
-                            break;
-                        case 9:
-                            showCreateAccount();
-                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-short-pass");
-                            break;
-                        case 10:
-                            showCreateAccount();
-                            if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-mismatch");
-                            break;
-                        case 11:
-                            showEmailVerification(emailAddress);
-                            if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5");
-                            break;
-                        case 12:
-                            showEmailVerification(emailAddress);
-                            if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5-error");
-                            break;
-                        case 13:
-                            showEmailVerification(emailAddress);
-                            if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5-success");
-                            break;
-                        case 14:
-                            EmailVerificationDialog.show(this,
-                                    () -> showEmailVerification(emailAddress),
-                                    () -> resendVerificationCode(emailAddress));
-                            break;
-                        case 15:
-                            SignInGateDialog.show(this,
-                                    this::showSignIn,
-                                    this::showCreateAccount);
-                            break;
-                        case 16:
-                            showActivation();
-                            if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8a");
-                            break;
-                        case 17:
-                            showActivation();
-                            if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8b");
-                            break;
-                        case 18:
-                            showActivation();
-                            if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8c");
-                            break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 1 State to Preview", items, (dialog, which) -> {
+            switch (which) {
+                case 0:
+                    showSignIn();
+                    if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.1");
+                    break;
+                case 1:
+                    showSignIn();
+                    if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2a");
+                    break;
+                case 2:
+                    showSignIn();
+                    if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2b");
+                    break;
+                case 3:
+                    showSignIn();
+                    if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2c");
+                    break;
+                case 4:
+                    showSignIn();
+                    if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.2d");
+                    break;
+                case 5:
+                    showSignIn();
+                    if (access.getCurrentSignIn() != null) access.getCurrentSignIn().configurePreviewState("1.3");
+                    break;
+                case 6:
+                    showCreateAccount();
+                    if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4");
+                    break;
+                case 7:
+                    showCreateAccount();
+                    if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-required");
+                    break;
+                case 8:
+                    showCreateAccount();
+                    if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-duplicate");
+                    break;
+                case 9:
+                    showCreateAccount();
+                    if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-short-pass");
+                    break;
+                case 10:
+                    showCreateAccount();
+                    if (access.getCurrentCreateAccount() != null) access.getCurrentCreateAccount().configurePreviewState("1.4-mismatch");
+                    break;
+                case 11:
+                    showEmailVerification(emailAddress);
+                    if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5");
+                    break;
+                case 12:
+                    showEmailVerification(emailAddress);
+                    if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5-error");
+                    break;
+                case 13:
+                    showEmailVerification(emailAddress);
+                    if (access.getCurrentEmailVerify() != null) access.getCurrentEmailVerify().configurePreviewState("1.5-success");
+                    break;
+                case 14:
+                    EmailVerificationDialog.show(this,
+                            () -> showEmailVerification(emailAddress),
+                            () -> resendVerificationCode(emailAddress));
+                    break;
+                case 15:
+                    SignInGateDialog.show(this,
+                            this::showSignIn,
+                            this::showCreateAccount);
+                    break;
+                case 16:
+                    showActivation();
+                    if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8a");
+                    break;
+                case 17:
+                    showActivation();
+                    if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8b");
+                    break;
+                case 18:
+                    showActivation();
+                    if (access.getCurrentActivation() != null) access.getCurrentActivation().configurePreviewState("1.8c");
+                    break;
+            }
+        }).show();
     }
 
     private void ensureResearcherScreen() {
@@ -639,6 +668,7 @@ public class MainActivity extends Activity {
     }
 
     private void showPart2WireframeSelector() {
+        lastPreviewMenu = this::showPart2WireframeSelector;
         final String[] items = new String[]{
                 "2.1 Services (Default - All 8 Services)",
                 "2.1 Services (Results - Search 'Ethics')",
@@ -651,45 +681,42 @@ public class MainActivity extends Activity {
                 "2.5 App Navigation Guidance"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 2 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureResearcherScreen();
-                    switch (which) {
-                        case 0:
-                            researcherScreen.previewServiceDirectory("2.1");
-                            break;
-                        case 1:
-                            researcherScreen.previewServiceDirectory("2.1-ethics");
-                            break;
-                        case 2:
-                            researcherScreen.previewServiceDirectory("2.1-empty");
-                            break;
-                        case 3:
-                            researcherScreen.previewServiceDetail("2.2a");
-                            break;
-                        case 4:
-                            researcherScreen.previewServiceDetail("2.2b");
-                            break;
-                        case 5:
-                            researcherScreen.previewServiceDetail("2.2c");
-                            break;
-                        case 6:
-                            researcherScreen.previewExternalSubmission();
-                            break;
-                        case 7:
-                            researcherScreen.previewFormFailureModal();
-                            break;
-                        case 8:
-                            researcherScreen.previewAppNavigation();
-                            break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 2 State to Preview", items, (dialog, which) -> {
+            ensureResearcherScreen();
+            switch (which) {
+                case 0:
+                    researcherScreen.previewServiceDirectory("2.1");
+                    break;
+                case 1:
+                    researcherScreen.previewServiceDirectory("2.1-ethics");
+                    break;
+                case 2:
+                    researcherScreen.previewServiceDirectory("2.1-empty");
+                    break;
+                case 3:
+                    researcherScreen.previewServiceDetail("2.2a");
+                    break;
+                case 4:
+                    researcherScreen.previewServiceDetail("2.2b");
+                    break;
+                case 5:
+                    researcherScreen.previewServiceDetail("2.2c");
+                    break;
+                case 6:
+                    researcherScreen.previewExternalSubmission();
+                    break;
+                case 7:
+                    researcherScreen.previewFormFailureModal();
+                    break;
+                case 8:
+                    researcherScreen.previewAppNavigation();
+                    break;
+            }
+        }).show();
     }
 
     private void showPart3WireframeSelector() {
+        lastPreviewMenu = this::showPart3WireframeSelector;
         final String[] items = new String[]{
                 "3.1 Submit Service Request (Default)",
                 "3.1 Submit Service Request (Linked Study Open)",
@@ -718,93 +745,90 @@ public class MainActivity extends Activity {
                 "3.9 Notifications (Empty - No Notifications)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 3 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureResearcherScreen();
-                    switch (which) {
-                        case 0:
-                            researcherScreen.previewSubmitRequest("3.1");
-                            break;
-                        case 1:
-                            researcherScreen.previewSubmitRequest("3.1-linked");
-                            break;
-                        case 2:
-                            researcherScreen.previewSubmitRequest("3.2a");
-                            break;
-                        case 3:
-                            researcherScreen.previewSubmitRequest("3.2b");
-                            break;
-                        case 4:
-                            researcherScreen.previewSubmitRequest("3.2c");
-                            break;
-                        case 5:
-                            researcherScreen.previewSubmitRequest("3.3a");
-                            break;
-                        case 6:
-                            researcherScreen.previewSubmitRequest("3.3b");
-                            break;
-                        case 7:
-                            researcherScreen.previewSubmitRequest("3.3c");
-                            break;
-                        case 8:
-                            researcherScreen.previewSubmitRequest("3.3d");
-                            break;
-                        case 9:
-                            researcherScreen.previewSubmitRequest("3.4");
-                            break;
-                        case 10:
-                            researcherScreen.previewSubmitRequest("3.4b");
-                            break;
-                        case 11:
-                            researcherScreen.previewRequestReceipt(false);
-                            break;
-                        case 12:
-                            researcherScreen.previewMyRequests("3.6a_default");
-                            break;
-                        case 13:
-                            researcherScreen.previewRequestFilterDialog();
-                            break;
-                        case 14:
-                            researcherScreen.previewMyRequests("3.6b_filtered");
-                            break;
-                        case 15:
-                            researcherScreen.previewMyRequests("3.6c_empty_account");
-                            break;
-                        case 16:
-                            researcherScreen.previewMyRequests("3.6d_empty_search");
-                            break;
-                        case 17:
-                            researcherScreen.previewRequestDetail("Submitted");
-                            break;
-                        case 18:
-                            researcherScreen.previewRequestDetail("In review");
-                            break;
-                        case 19:
-                            researcherScreen.previewRequestDetail("For correction");
-                            break;
-                        case 20:
-                            researcherScreen.previewRequestDetail("Completed");
-                            break;
-                        case 21:
-                            researcherScreen.previewCorrectRequest();
-                            break;
-                        case 22:
-                            researcherScreen.previewRequestReceipt(true);
-                            break;
-                        case 23:
-                            researcherScreen.previewNotifications("3.9_default");
-                            break;
-                        case 24:
-                            researcherScreen.previewNotifications("3.9_empty");
-                            break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 3 State to Preview", items, (dialog, which) -> {
+            ensureResearcherScreen();
+            switch (which) {
+                case 0:
+                    researcherScreen.previewSubmitRequest("3.1");
+                    break;
+                case 1:
+                    researcherScreen.previewSubmitRequest("3.1-linked");
+                    break;
+                case 2:
+                    researcherScreen.previewSubmitRequest("3.2a");
+                    break;
+                case 3:
+                    researcherScreen.previewSubmitRequest("3.2b");
+                    break;
+                case 4:
+                    researcherScreen.previewSubmitRequest("3.2c");
+                    break;
+                case 5:
+                    researcherScreen.previewSubmitRequest("3.3a");
+                    break;
+                case 6:
+                    researcherScreen.previewSubmitRequest("3.3b");
+                    break;
+                case 7:
+                    researcherScreen.previewSubmitRequest("3.3c");
+                    break;
+                case 8:
+                    researcherScreen.previewSubmitRequest("3.3d");
+                    break;
+                case 9:
+                    researcherScreen.previewSubmitRequest("3.4");
+                    break;
+                case 10:
+                    researcherScreen.previewSubmitRequest("3.4b");
+                    break;
+                case 11:
+                    researcherScreen.previewRequestReceipt(false);
+                    break;
+                case 12:
+                    researcherScreen.previewMyRequests("3.6a_default");
+                    break;
+                case 13:
+                    researcherScreen.previewRequestFilterDialog();
+                    break;
+                case 14:
+                    researcherScreen.previewMyRequests("3.6b_filtered");
+                    break;
+                case 15:
+                    researcherScreen.previewMyRequests("3.6c_empty_account");
+                    break;
+                case 16:
+                    researcherScreen.previewMyRequests("3.6d_empty_search");
+                    break;
+                case 17:
+                    researcherScreen.previewRequestDetail("Submitted");
+                    break;
+                case 18:
+                    researcherScreen.previewRequestDetail("In review");
+                    break;
+                case 19:
+                    researcherScreen.previewRequestDetail("For correction");
+                    break;
+                case 20:
+                    researcherScreen.previewRequestDetail("Completed");
+                    break;
+                case 21:
+                    researcherScreen.previewCorrectRequest();
+                    break;
+                case 22:
+                    researcherScreen.previewRequestReceipt(true);
+                    break;
+                case 23:
+                    researcherScreen.previewNotifications("3.9_default");
+                    break;
+                case 24:
+                    researcherScreen.previewNotifications("3.9_empty");
+                    break;
+            }
+        }).show();
     }
 
     private void showPart4WireframeSelector() {
+        lastPreviewMenu = this::showPart4WireframeSelector;
         final String[] items = new String[]{
                 "4.1 Edit Profile (Default)",
                 "4.1 Edit Profile (Error - Name Blank)",
@@ -825,66 +849,62 @@ public class MainActivity extends Activity {
                 "4.6d Research Progress (Empty State)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 4 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureResearcherScreen();
-                    switch (which) {
-                        case 0:
-                            researcherScreen.previewEditProfile("4.1_default");
-                            break;
-                        case 1:
-                            researcherScreen.previewEditProfile("4.1_error_name");
-                            break;
-                        case 2:
-                            researcherScreen.previewEditProfile("4.1_error_college");
-                            break;
-                        case 3:
-                            researcherScreen.previewProfile("4.1_success");
-                            break;
-                        case 4:
-                            researcherScreen.previewRegistrationStep1("4.2a_prefilled");
-                            break;
-                        case 5:
-                            researcherScreen.previewRegistrationStep1("4.2b_error_title");
-                            break;
-                        case 6:
-                            researcherScreen.previewRegistrationStep1("4.2c_error_academic_period");
-                            break;
-                        case 7:
-                            researcherScreen.previewRegistrationStep1("4.2d_error_college");
-                            break;
-                        case 8:
-                            researcherScreen.previewRegistrationStep1("4.2e_error_adviser");
-                            break;
-                        case 9:
-                            researcherScreen.previewRegistrationStep1("4.2f_faculty");
-                            break;
-                        case 10:
-                            researcherScreen.previewAddCoAuthorDialog();
-                            break;
-                        case 11:
-                            researcherScreen.previewRegistrationConfirmation();
-                            break;
-                        case 12:
-                            researcherScreen.previewProfile("4.5_default");
-                            break;
-                        case 13:
-                            researcherScreen.previewResearchProgress("4.6a");
-                            break;
-                        case 14:
-                            researcherScreen.previewResearchProgress("4.6b");
-                            break;
-                        case 15:
-                            researcherScreen.previewResearchProgress("4.6c");
-                            break;
-                        case 16:
-                            researcherScreen.previewResearchProgress("4.6d");
-                            break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 4 State to Preview", items, (dialog, which) -> {
+            ensureResearcherScreen();
+            switch (which) {
+                case 0:
+                    researcherScreen.previewEditProfile("4.1_default");
+                    break;
+                case 1:
+                    researcherScreen.previewEditProfile("4.1_error_name");
+                    break;
+                case 2:
+                    researcherScreen.previewEditProfile("4.1_error_college");
+                    break;
+                case 3:
+                    researcherScreen.previewProfile("4.1_success");
+                    break;
+                case 4:
+                    researcherScreen.previewRegistrationStep1("4.2a_prefilled");
+                    break;
+                case 5:
+                    researcherScreen.previewRegistrationStep1("4.2b_error_title");
+                    break;
+                case 6:
+                    researcherScreen.previewRegistrationStep1("4.2c_error_academic_period");
+                    break;
+                case 7:
+                    researcherScreen.previewRegistrationStep1("4.2d_error_college");
+                    break;
+                case 8:
+                    researcherScreen.previewRegistrationStep1("4.2e_error_adviser");
+                    break;
+                case 9:
+                    researcherScreen.previewRegistrationStep1("4.2f_faculty");
+                    break;
+                case 10:
+                    researcherScreen.previewAddCoAuthorDialog();
+                    break;
+                case 11:
+                    researcherScreen.previewRegistrationConfirmation();
+                    break;
+                case 12:
+                    researcherScreen.previewProfile("4.5_default");
+                    break;
+                case 13:
+                    researcherScreen.previewResearchProgress("4.6a");
+                    break;
+                case 14:
+                    researcherScreen.previewResearchProgress("4.6b");
+                    break;
+                case 15:
+                    researcherScreen.previewResearchProgress("4.6c");
+                    break;
+                case 16:
+                    researcherScreen.previewResearchProgress("4.6d");
+                    break;
+            }
+        }).show();
     }
 
     private void ensureStaffScreen() {
@@ -901,6 +921,7 @@ public class MainActivity extends Activity {
     }
 
     private void showPart5WireframeSelector() {
+        lastPreviewMenu = this::showPart5WireframeSelector;
         final String[] items = new String[]{
                 "5.1 Manage Hub (Default)",
                 "5.2 Service Catalog (Default)",
@@ -926,40 +947,37 @@ public class MainActivity extends Activity {
                 "5.13 Account Audit History (LeBron R. James)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 5 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureStaffScreen();
-                    switch (which) {
-                        case 0: staffScreen.showPreview5_1_ManageHub(); break;
-                        case 1: staffScreen.showPreview5_2_ServiceCatalog(); break;
-                        case 2: staffScreen.showPreview5_3_AuthoringStep1InApp(); break;
-                        case 3: staffScreen.showPreview5_3_AuthoringStep1External(); break;
-                        case 4: staffScreen.showPreview5_4_ApprovedForms(); break;
-                        case 5: staffScreen.showPreview5_5_AuthoringStep3Error(); break;
-                        case 6: staffScreen.showPreview5_5_AuthoringStep3Draft(); break;
-                        case 7: staffScreen.showPreview5_6a_WithdrawServiceDialog(); break;
-                        case 8: staffScreen.showPreview5_6b_ReplaceFormVersionDialog(); break;
-                        case 9: staffScreen.showPreview5_7_PublicationHistory(); break;
-                        case 10: staffScreen.showPreview5_8_UserAccounts(); break;
-                        case 11: staffScreen.showPreview5_9_CreateStaffDefault(); break;
-                        case 12: staffScreen.showPreview5_9_CreateStaffMissingError(); break;
-                        case 13: staffScreen.showPreview5_9_CreateStaffDuplicateError(); break;
-                        case 14: staffScreen.showPreview5_10a_AccountDetailsStaff(); break;
-                        case 15: staffScreen.showPreview5_10b_AccountDetailsResearcher(); break;
-                        case 16: staffScreen.showPreview5_11a_DeactivateDialog(); break;
-                        case 17: staffScreen.showPreview5_11b_ActivateDialog(); break;
-                        case 18: staffScreen.showPreview5_11c_OwnAccountErrorDialog(); break;
-                        case 19: staffScreen.showPreview5_11d_LastAdminErrorDialog(); break;
-                        case 20: staffScreen.showPreview5_12_TemporaryCredentialIssuedDialog(); break;
-                        case 21: staffScreen.showPreview5_13_AccountAuditHistory(); break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 5 State to Preview", items, (dialog, which) -> {
+            ensureStaffScreen();
+            switch (which) {
+                case 0: staffScreen.showPreview5_1_ManageHub(); break;
+                case 1: staffScreen.showPreview5_2_ServiceCatalog(); break;
+                case 2: staffScreen.showPreview5_3_AuthoringStep1InApp(); break;
+                case 3: staffScreen.showPreview5_3_AuthoringStep1External(); break;
+                case 4: staffScreen.showPreview5_4_ApprovedForms(); break;
+                case 5: staffScreen.showPreview5_5_AuthoringStep3Error(); break;
+                case 6: staffScreen.showPreview5_5_AuthoringStep3Draft(); break;
+                case 7: staffScreen.showPreview5_6a_WithdrawServiceDialog(); break;
+                case 8: staffScreen.showPreview5_6b_ReplaceFormVersionDialog(); break;
+                case 9: staffScreen.showPreview5_7_PublicationHistory(); break;
+                case 10: staffScreen.showPreview5_8_UserAccounts(); break;
+                case 11: staffScreen.showPreview5_9_CreateStaffDefault(); break;
+                case 12: staffScreen.showPreview5_9_CreateStaffMissingError(); break;
+                case 13: staffScreen.showPreview5_9_CreateStaffDuplicateError(); break;
+                case 14: staffScreen.showPreview5_10a_AccountDetailsStaff(); break;
+                case 15: staffScreen.showPreview5_10b_AccountDetailsResearcher(); break;
+                case 16: staffScreen.showPreview5_11a_DeactivateDialog(); break;
+                case 17: staffScreen.showPreview5_11b_ActivateDialog(); break;
+                case 18: staffScreen.showPreview5_11c_OwnAccountErrorDialog(); break;
+                case 19: staffScreen.showPreview5_11d_LastAdminErrorDialog(); break;
+                case 20: staffScreen.showPreview5_12_TemporaryCredentialIssuedDialog(); break;
+                case 21: staffScreen.showPreview5_13_AccountAuditHistory(); break;
+            }
+        }).show();
     }
 
     private void showPart6WireframeSelector() {
+        lastPreviewMenu = this::showPart6WireframeSelector;
         final String[] items = new String[]{
                 "6.1 Review Queue (In review tab)",
                 "6.1 Review Queue (Completed tab)",
@@ -974,29 +992,26 @@ public class MainActivity extends Activity {
                 "6.6 Request Workspace (Review Saved Confirmation)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 6 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureStaffScreen();
-                    switch (which) {
-                        case 0: staffScreen.showPreview6_1_InReviewTab(); break;
-                        case 1: staffScreen.showPreview6_1_CompletedTab(); break;
-                        case 2: staffScreen.showPreview6_2_FilterSheet(); break;
-                        case 3: staffScreen.showPreview6_2_NoMatchingRequests(); break;
-                        case 4: staffScreen.showPreview6_3a_RequestWorkspaceRequesterAndChecklist(); break;
-                        case 5: staffScreen.showPreview6_3b_RequestWorkspaceDecision(); break;
-                        case 6: staffScreen.showPreview6_4a_ErrorMissingItemsAndNextAction(); break;
-                        case 7: staffScreen.showPreview6_4b_ErrorStatusChangeNotAllowed(); break;
-                        case 8: staffScreen.showPreview6_4c_StaleDataConflict(); break;
-                        case 9: staffScreen.showPreview6_5_CompletedRequestCorrection(); break;
-                        case 10: staffScreen.showPreview6_6_ReviewSaved(); break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 6 State to Preview", items, (dialog, which) -> {
+            ensureStaffScreen();
+            switch (which) {
+                case 0: staffScreen.showPreview6_1_InReviewTab(); break;
+                case 1: staffScreen.showPreview6_1_CompletedTab(); break;
+                case 2: staffScreen.showPreview6_2_FilterSheet(); break;
+                case 3: staffScreen.showPreview6_2_NoMatchingRequests(); break;
+                case 4: staffScreen.showPreview6_3a_RequestWorkspaceRequesterAndChecklist(); break;
+                case 5: staffScreen.showPreview6_3b_RequestWorkspaceDecision(); break;
+                case 6: staffScreen.showPreview6_4a_ErrorMissingItemsAndNextAction(); break;
+                case 7: staffScreen.showPreview6_4b_ErrorStatusChangeNotAllowed(); break;
+                case 8: staffScreen.showPreview6_4c_StaleDataConflict(); break;
+                case 9: staffScreen.showPreview6_5_CompletedRequestCorrection(); break;
+                case 10: staffScreen.showPreview6_6_ReviewSaved(); break;
+            }
+        }).show();
     }
 
     private void showPart7WireframeSelector() {
+        lastPreviewMenu = this::showPart7WireframeSelector;
         final String[] items = new String[]{
                 "7.1a Research Registry (All records default)",
                 "7.1b Research Registry (Filters applied: CCIS, AY 2026-2027)",
@@ -1012,30 +1027,27 @@ public class MainActivity extends Activity {
                 "7.7 Correction History (Title, Co-authors, Academic period audit)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 7 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureStaffScreen();
-                    switch (which) {
-                        case 0: staffScreen.showPreview7_1a_Results(); break;
-                        case 1: staffScreen.showPreview7_1b_FiltersApplied(); break;
-                        case 2: staffScreen.showPreview7_1c_EmptyState(); break;
-                        case 3: staffScreen.showPreview7_2_RecordDetail(); break;
-                        case 4: staffScreen.showPreview7_3_TeamPicker(); break;
-                        case 5: staffScreen.showPreview7_3_ErrorAlreadyMember(); break;
-                        case 6: staffScreen.showPreview7_3_ErrorNoSuchAccount(); break;
-                        case 7: staffScreen.showPreview7_4_PossibleDuplicate(); break;
-                        case 8: staffScreen.showPreview7_4_ErrorReasonMissing(); break;
-                        case 9: staffScreen.showPreview7_5_StaleDataConflict(); break;
-                        case 10: staffScreen.showPreview7_6_DocumentsVersionList(); break;
-                        case 11: staffScreen.showPreview7_7_CorrectionHistory(); break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 7 State to Preview", items, (dialog, which) -> {
+            ensureStaffScreen();
+            switch (which) {
+                case 0: staffScreen.showPreview7_1a_Results(); break;
+                case 1: staffScreen.showPreview7_1b_FiltersApplied(); break;
+                case 2: staffScreen.showPreview7_1c_EmptyState(); break;
+                case 3: staffScreen.showPreview7_2_RecordDetail(); break;
+                case 4: staffScreen.showPreview7_3_TeamPicker(); break;
+                case 5: staffScreen.showPreview7_3_ErrorAlreadyMember(); break;
+                case 6: staffScreen.showPreview7_3_ErrorNoSuchAccount(); break;
+                case 7: staffScreen.showPreview7_4_PossibleDuplicate(); break;
+                case 8: staffScreen.showPreview7_4_ErrorReasonMissing(); break;
+                case 9: staffScreen.showPreview7_5_StaleDataConflict(); break;
+                case 10: staffScreen.showPreview7_6_DocumentsVersionList(); break;
+                case 11: staffScreen.showPreview7_7_CorrectionHistory(); break;
+            }
+        }).show();
     }
 
     private void showPart8WireframeSelector() {
+        lastPreviewMenu = this::showPart8WireframeSelector;
         final String[] items = new String[]{
                 "8.1 Milestone and Outcomes (Default with No next action checkbox)",
                 "8.1a Error: stage change not allowed",
@@ -1052,31 +1064,28 @@ public class MainActivity extends Activity {
                 "8.5b Outcome recorded confirmation (Completion only)"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 8 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureStaffScreen();
-                    switch (which) {
-                        case 0: staffScreen.showPreview8_1_Default(); break;
-                        case 1: staffScreen.showPreview8_1a_ErrorStageNotAllowed(); break;
-                        case 2: staffScreen.showPreview8_1b_ErrorEffectiveDate(); break;
-                        case 3: staffScreen.showPreview8_1c_ErrorSupportingDetails(); break;
-                        case 4: staffScreen.showPreview8_1d_ErrorNextAction(); break;
-                        case 5: staffScreen.showPreview8_1e_ErrorCompletionDate(); break;
-                        case 6: staffScreen.showPreview8_1f_ErrorPresentation(); break;
-                        case 7: staffScreen.showPreview8_1g_ErrorPublication(); break;
-                        case 8: staffScreen.showPreview8_2_MilestoneEditor(); break;
-                        case 9: staffScreen.showPreview8_3_StageHistory(); break;
-                        case 10: staffScreen.showPreview8_4_CompletionCorrection(); break;
-                        case 11: staffScreen.showPreview8_5a_StageUpdated(); break;
-                        case 12: staffScreen.showPreview8_5b_OutcomeRecorded(); break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 8 State to Preview", items, (dialog, which) -> {
+            ensureStaffScreen();
+            switch (which) {
+                case 0: staffScreen.showPreview8_1_Default(); break;
+                case 1: staffScreen.showPreview8_1a_ErrorStageNotAllowed(); break;
+                case 2: staffScreen.showPreview8_1b_ErrorEffectiveDate(); break;
+                case 3: staffScreen.showPreview8_1c_ErrorSupportingDetails(); break;
+                case 4: staffScreen.showPreview8_1d_ErrorNextAction(); break;
+                case 5: staffScreen.showPreview8_1e_ErrorCompletionDate(); break;
+                case 6: staffScreen.showPreview8_1f_ErrorPresentation(); break;
+                case 7: staffScreen.showPreview8_1g_ErrorPublication(); break;
+                case 8: staffScreen.showPreview8_2_MilestoneEditor(); break;
+                case 9: staffScreen.showPreview8_3_StageHistory(); break;
+                case 10: staffScreen.showPreview8_4_CompletionCorrection(); break;
+                case 11: staffScreen.showPreview8_5a_StageUpdated(); break;
+                case 12: staffScreen.showPreview8_5b_OutcomeRecorded(); break;
+            }
+        }).show();
     }
 
     private void showPart9WireframeSelector() {
+        lastPreviewMenu = this::showPart9WireframeSelector;
         final String[] items = new String[]{
                 "9.1 Research Report · Result",
                 "9.2 Service Utilization · Result",
@@ -1088,23 +1097,19 @@ public class MainActivity extends Activity {
                 "9.5 Access denied · No Reporting permission"
         };
 
-        new AlertDialog.Builder(this)
-                .setTitle("Select Part 9 State to Preview")
-                .setItems(items, (dialog, which) -> {
-                    ensureStaffScreen();
-                    switch (which) {
-                        case 0: staffScreen.showPreview9_1_ResearchReportResult(); break;
-                        case 1: staffScreen.showPreview9_2_ServiceUtilizationResult(); break;
-                        case 2: staffScreen.showPreview9_3_ResearchReportEmpty(); break;
-                        case 3: staffScreen.showPreview9_4a_ExportFormatPicker(); break;
-                        case 4: staffScreen.showPreview9_4b_ExportPending(); break;
-                        case 5: staffScreen.showPreview9_4c_ExportSuccess(); break;
-                        case 6: staffScreen.showPreview9_4d_ExportFailure(); break;
-                        case 7: staffScreen.showPreview9_5_AccessDenied(); break;
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        createWireframeDialogBuilder("Select Part 9 State to Preview", items, (dialog, which) -> {
+            ensureStaffScreen();
+            switch (which) {
+                case 0: staffScreen.showPreview9_1_ResearchReportResult(); break;
+                case 1: staffScreen.showPreview9_2_ServiceUtilizationResult(); break;
+                case 2: staffScreen.showPreview9_3_ResearchReportEmpty(); break;
+                case 3: staffScreen.showPreview9_4a_ExportFormatPicker(); break;
+                case 4: staffScreen.showPreview9_4b_ExportPending(); break;
+                case 5: staffScreen.showPreview9_4c_ExportSuccess(); break;
+                case 6: staffScreen.showPreview9_4d_ExportFailure(); break;
+                case 7: staffScreen.showPreview9_5_AccessDenied(); break;
+            }
+        }).show();
     }
 
     void showAccessHelp() {
