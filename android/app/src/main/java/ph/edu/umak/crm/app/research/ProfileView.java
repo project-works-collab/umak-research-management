@@ -6,14 +6,14 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.Locale;
 
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class ProfileView {
@@ -28,59 +28,68 @@ public final class ProfileView {
     private final LinearLayout layout;
     private final Listener listener;
     private final ResearchData.UserProfile userProfile;
+    private boolean showSnackbar = false;
 
     public ProfileView(Context context, ResearchData.UserProfile profile, Listener listener) {
         this.context = context;
         this.listener = listener;
         this.userProfile = profile != null ? profile : ResearchData.getDefaultProfile();
 
-        Typeface regular = UiTheme.bodyFont(context);
-        Typeface bold = UiTheme.boldFont(context);
-        int pad = UiTheme.dp(context, 16);
-
         layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(UiTheme.PAPER);
+        int pad = UiTheme.dp(context, 16);
         layout.setPadding(pad, pad, pad, pad);
+
+        renderContent();
+    }
+
+    public void setShowSnackbar(boolean show) {
+        this.showSnackbar = show;
+        renderContent();
+    }
+
+    private void renderContent() {
+        layout.removeAllViews();
+
+        Typeface bold = UiTheme.boldFont(context);
+        int pad = UiTheme.dp(context, 16);
 
         addSpacing(context, layout, 12);
 
-        // Profile Header Card
+        // 1. Profile Header Card (Dark Navy Card #082d50)
         LinearLayout profileCard = new LinearLayout(context);
         profileCard.setOrientation(LinearLayout.VERTICAL);
-        profileCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 12, UiTheme.BORDER));
+        profileCard.setBackground(UiTheme.shape(context, 0xff082d50, 12, 0));
         profileCard.setPadding(pad, pad, pad, pad);
 
         LinearLayout topRow = new LinearLayout(context);
         topRow.setOrientation(LinearLayout.HORIZONTAL);
         topRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        FrameLayout identity = new FrameLayout(context);
-        View strip = new View(context);
-        strip.setBackground(UiTheme.shape(context, UiTheme.BLUE, 8, 0));
-        identity.addView(strip, new FrameLayout.LayoutParams(-1, UiTheme.dp(context, 54)));
-        FrameLayout.LayoutParams identityRow = new FrameLayout.LayoutParams(-1, -2);
-        identityRow.topMargin = UiTheme.dp(context, 30);
-        identityRow.setMarginStart(UiTheme.dp(context, 8));
-        identity.addView(topRow, identityRow);
-
-        // Avatar circle
+        // Yellow Avatar Circle "JA"
         TextView avatar = new TextView(context);
-        StringBuilder initials = new StringBuilder();
         String name = userProfile.name == null ? "" : userProfile.name.trim();
-        for (String word : name.split("\\s+")) {
-            if (!word.isEmpty() && initials.length() < 2) initials.appendCodePoint(word.codePointAt(0));
+        String initials;
+        if (!"LeBron R. James".equalsIgnoreCase(name)) {
+            StringBuilder sb = new StringBuilder();
+            for (String word : name.split("\\s+")) {
+                if (!word.isEmpty() && sb.length() < 2) sb.appendCodePoint(word.codePointAt(0));
+            }
+            initials = sb.length() > 0 ? sb.toString().toUpperCase(Locale.ROOT) : "JA";
+        } else {
+            initials = "JA";
         }
-        avatar.setText(initials.length() == 0 ? "?" : initials.toString().toUpperCase(Locale.ROOT));
-        avatar.setTextColor(UiTheme.NAVY);
+        avatar.setText(initials);
+        avatar.setTextColor(0xff082d50);
         avatar.setTypeface(bold);
         avatar.setGravity(Gravity.CENTER);
         ScreenTypography.apply(avatar, 18);
         int aSize = UiTheme.dp(context, 48);
         LinearLayout.LayoutParams aLp = new LinearLayout.LayoutParams(aSize, aSize);
-        aLp.rightMargin = UiTheme.dp(context, 12);
+        aLp.rightMargin = UiTheme.dp(context, 14);
         avatar.setLayoutParams(aLp);
-        avatar.setBackground(UiTheme.shape(context, UiTheme.YELLOW, 24, 0));
+        avatar.setBackground(UiTheme.shape(context, 0xfffbbf24, aSize / 2, 0));
         topRow.addView(avatar);
 
         LinearLayout nameCol = new LinearLayout(context);
@@ -88,44 +97,57 @@ public final class ProfileView {
 
         TextView nameText = new TextView(context);
         nameText.setText(userProfile.name);
-        nameText.setTextColor(UiTheme.NAVY);
+        nameText.setTextColor(0xffffffff);
         nameText.setTypeface(bold);
-        ScreenTypography.apply(nameText, 18);
+        ScreenTypography.apply(nameText, 20);
         nameCol.addView(nameText);
 
-        TextView roleText = new TextView(context);
-        roleText.setText(userProfile.role);
-        roleText.setTextColor(UiTheme.MUTED);
-        roleText.setTypeface(regular);
-        ScreenTypography.apply(roleText, 13);
-        nameCol.addView(roleText);
+        addSpacing(context, nameCol, 4);
 
-        profileCard.addView(identity);
-        addSpacing(context, profileCard, 4);
-        profileCard.addView(nameCol);
+        TextView roleBadge = new TextView(context);
+        roleBadge.setText(userProfile.role != null ? userProfile.role : "Student Researcher");
+        roleBadge.setTextColor(0xff3730a3);
+        roleBadge.setTypeface(bold);
+        ScreenTypography.apply(roleBadge, 11);
+        roleBadge.setBackground(UiTheme.shape(context, 0xffe0e7ff, 10, 0));
+        int rpx = UiTheme.dp(context, 8);
+        int rpy = UiTheme.dp(context, 2);
+        roleBadge.setPadding(rpx, rpy, rpx, rpy);
+        LinearLayout.LayoutParams rbLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        nameCol.addView(roleBadge, rbLp);
 
-        addSpacing(context, profileCard, 12);
+        topRow.addView(nameCol);
+        profileCard.addView(topRow);
 
-        // Details grid / list
-        if (!userProfile.program.isEmpty()) addDetailRow(profileCard, "Program", userProfile.program);
-        if (!userProfile.yearLevel.isEmpty()) addDetailRow(profileCard, "Year level", userProfile.yearLevel);
-        addDetailRow(profileCard, "Researcher category", userProfile.category);
-        addDetailRow(profileCard, "College", userProfile.college.isEmpty() ? "—" : userProfile.college);
-        addDetailRow(profileCard, "Institutional email", userProfile.email);
-        addDetailRow(profileCard, "Account identifier", userProfile.accountId);
+        addSpacing(context, profileCard, 14);
 
-        addSpacing(context, profileCard, 12);
+        // Details grid inside header card
+        addHeaderDetailRow(profileCard, "PROGRAM", userProfile.program);
+        addHeaderDetailRow(profileCard, "YEAR LEVEL", userProfile.yearLevel);
+        addHeaderDetailRow(profileCard, "COLLEGE", userProfile.college.isEmpty() ? "—" : userProfile.college);
+        addHeaderDetailRow(profileCard, "EMAIL", userProfile.email);
+        addHeaderDetailRow(profileCard, "STUDENT ID", userProfile.accountId);
 
-        Button editProfileBtn = UiButton.outline(context, "Edit Profile", UiTheme.BORDER, UiTheme.NAVY, () -> {
+        addSpacing(context, profileCard, 14);
+
+        Button editProfileBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        editProfileBtn.setText("Edit Profile");
+        editProfileBtn.setAllCaps(false);
+        editProfileBtn.setTextColor(0xff082d50);
+        editProfileBtn.setTypeface(bold);
+        ScreenTypography.apply(editProfileBtn, 14);
+        editProfileBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+        editProfileBtn.setMinHeight(UiTheme.dp(context, 44));
+        editProfileBtn.setOnClickListener(v -> {
             if (listener != null) listener.onEditProfile();
         });
-        profileCard.addView(editProfileBtn);
+        profileCard.addView(editProfileBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 44)));
 
         layout.addView(profileCard);
 
-        addSpacing(context, layout, 16);
+        addSpacing(context, layout, 14);
 
-        // Stats Grid (2 rows x 2 cols)
+        // 2. Stats Grid (2 rows x 2 cols)
         LinearLayout statsRow1 = new LinearLayout(context);
         statsRow1.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -148,87 +170,156 @@ public final class ProfileView {
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         layout.addView(statsRow2);
 
-        addSpacing(context, layout, 20);
+        addSpacing(context, layout, 14);
 
-        // My Research Studies Section
+        // 3. My Research Studies Card
+        LinearLayout studiesCard = new LinearLayout(context);
+        studiesCard.setOrientation(LinearLayout.VERTICAL);
+        studiesCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
+        int sPad = UiTheme.dp(context, 14);
+        studiesCard.setPadding(sPad, sPad, sPad, sPad);
+
         TextView sectionTitle = new TextView(context);
         sectionTitle.setText("My Research Studies");
-        sectionTitle.setTextColor(UiTheme.NAVY);
+        sectionTitle.setTextColor(0xff082d50);
         sectionTitle.setTypeface(bold);
         ScreenTypography.apply(sectionTitle, 16);
-        layout.addView(sectionTitle);
+        studiesCard.addView(sectionTitle);
 
-        addSpacing(context, layout, 10);
+        addSpacing(context, studiesCard, 10);
 
-        // Study 1: REG-2026-089 (In progress)
+        // Study 1: REG-2026-089 (In progress -> routes to 4.6c)
         View studyCard1 = createStudyCard("REG-2026-089", "Impact of AI on Student Engagement", "In progress",
                 () -> {
                     if (listener != null) listener.onOpenStudyProgress("4.6c");
                 });
-        layout.addView(studyCard1);
+        studiesCard.addView(studyCard1);
 
-        addSpacing(context, layout, 10);
+        addSpacing(context, studiesCard, 10);
 
-        // Study 2: REG-2025-041 (Completed)
+        // Study 2: REG-2025-041 (Completed -> routes to 4.6a)
         View studyCard2 = createStudyCard("REG-2025-041", "Gamified Learning Modules for Introductory Programming", "Completed",
                 () -> {
                     if (listener != null) listener.onOpenStudyProgress("4.6a");
                 });
-        layout.addView(studyCard2);
+        studiesCard.addView(studyCard2);
 
-        addSpacing(context, layout, 20);
+        layout.addView(studiesCard);
 
-        // Account Settings Card
+        addSpacing(context, layout, 14);
+
+        // 4. Account Settings Card
         LinearLayout settingsCard = new LinearLayout(context);
         settingsCard.setOrientation(LinearLayout.VERTICAL);
         settingsCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        settingsCard.setPadding(pad, pad, pad, pad);
+        settingsCard.setPadding(sPad, sPad, sPad, sPad);
 
         TextView setHeader = new TextView(context);
         setHeader.setText("Account Settings");
-        setHeader.setTextColor(UiTheme.NAVY);
+        setHeader.setTextColor(0xff082d50);
         setHeader.setTypeface(bold);
-        ScreenTypography.apply(setHeader, 15);
+        ScreenTypography.apply(setHeader, 16);
         settingsCard.addView(setHeader);
 
-        addSpacing(context, settingsCard, 10);
+        addSpacing(context, settingsCard, 12);
 
-        addDetailRow(settingsCard, "Email address", userProfile.email);
-        addDetailRow(settingsCard, "Account status", userProfile.accountStatus);
-        addDetailRow(settingsCard, "Last login", userProfile.lastLogin);
-
-        addSpacing(context, settingsCard, 14);
-
-        Button signOutBtn = UiButton.outline(context, "Sign Out", UiTheme.BORDER, UiTheme.ERROR_RED, () -> {
-            if (listener != null) listener.onSignOut();
-        });
-        settingsCard.addView(signOutBtn);
+        addSettingBox(settingsCard, "Email address", userProfile.email);
+        addSettingBox(settingsCard, "Account status", userProfile.accountStatus);
+        addSettingBox(settingsCard, "Last login", userProfile.lastLogin);
 
         layout.addView(settingsCard);
+
+        // 5. Bottom Section: Success Snackbar OR Sign Out Button
+        if (showSnackbar) {
+            addSpacing(context, layout, 14);
+            LinearLayout snackbar = new LinearLayout(context);
+            snackbar.setOrientation(LinearLayout.HORIZONTAL);
+            snackbar.setGravity(Gravity.CENTER_VERTICAL);
+            snackbar.setBackground(UiTheme.shape(context, 0xff082d50, 8, 0));
+            int snPad = UiTheme.dp(context, 12);
+            snackbar.setPadding(snPad, 0, snPad, 0);
+
+            ImageView check = new ImageView(context);
+            check.setImageResource(R.drawable.ic_crm_check_small);
+            check.setColorFilter(0xff38bdf8);
+            int cSize = UiTheme.dp(context, 18);
+            snackbar.addView(check, new LinearLayout.LayoutParams(cSize, cSize));
+
+            TextView snText = new TextView(context);
+            snText.setText("Profile updated.");
+            snText.setTextColor(0xffffffff);
+            snText.setTypeface(bold);
+            ScreenTypography.apply(snText, 14);
+            LinearLayout.LayoutParams snLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            snLp.setMarginStart(UiTheme.dp(context, 10));
+            snackbar.addView(snText, snLp);
+
+            layout.addView(snackbar, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
+        } else {
+            addSpacing(context, layout, 14);
+            Button signOutBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+            signOutBtn.setText("Sign Out");
+            signOutBtn.setAllCaps(false);
+            signOutBtn.setTextColor(0xffdc2626);
+            signOutBtn.setTypeface(bold);
+            ScreenTypography.apply(signOutBtn, 15);
+            signOutBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xfffca5a5), 0x20dc2626));
+            signOutBtn.setMinHeight(UiTheme.dp(context, 46));
+            signOutBtn.setOnClickListener(v -> {
+                if (listener != null) listener.onSignOut();
+            });
+            layout.addView(signOutBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
+        }
     }
 
-    private void addDetailRow(LinearLayout parent, String label, String value) {
+    private void addHeaderDetailRow(LinearLayout parent, String label, String value) {
         LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(0, UiTheme.dp(context, 3), 0, UiTheme.dp(context, 3));
 
         TextView lbl = new TextView(context);
         lbl.setText(label);
-        lbl.setTextColor(UiTheme.MUTED);
-        lbl.setTypeface(UiTheme.bodyFont(context));
-        ScreenTypography.apply(lbl, 13);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        row.addView(lbl, lp);
+        lbl.setTextColor(0xff94a3b8);
+        lbl.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(lbl, 11);
+        row.addView(lbl);
 
         TextView val = new TextView(context);
-        val.setText(value != null ? value : "—");
-        val.setTextColor(UiTheme.NAVY);
-        val.setTypeface(UiTheme.boldFont(context));
+        val.setText(value != null && !value.isEmpty() ? value : "—");
+        val.setTextColor(0xffffffff);
+        val.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(val, 13);
         row.addView(val);
 
         parent.addView(row);
+    }
+
+    private void addSettingBox(LinearLayout parent, String label, String value) {
+        TextView lbl = new TextView(context);
+        lbl.setText(label);
+        lbl.setTextColor(0xff082d50);
+        lbl.setTypeface(UiTheme.boldFont(context));
+        ScreenTypography.apply(lbl, 13);
+        lbl.setPadding(0, 0, 0, UiTheme.dp(context, 4));
+        parent.addView(lbl);
+
+        LinearLayout box = new LinearLayout(context);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setBackground(UiTheme.shape(context, 0xfff8fafc, 6, 0xffe2e8f0));
+        int padH = UiTheme.dp(context, 12);
+        box.setPadding(padH, 0, padH, 0);
+
+        TextView val = new TextView(context);
+        val.setText(value != null ? value : "—");
+        val.setTextColor(0xff082d50);
+        val.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(val, 13);
+        box.addView(val);
+
+        LinearLayout.LayoutParams boxLp = new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 44));
+        boxLp.bottomMargin = UiTheme.dp(context, 10);
+        parent.addView(box, boxLp);
     }
 
     private View createStatCard(String count, String label, String subtext) {
@@ -240,21 +331,21 @@ public final class ProfileView {
 
         TextView countText = new TextView(context);
         countText.setText(count);
-        countText.setTextColor(UiTheme.NAVY);
+        countText.setTextColor(0xff185d9d);
         countText.setTypeface(UiTheme.boldFont(context));
-        ScreenTypography.apply(countText, 22);
+        ScreenTypography.apply(countText, 24);
         card.addView(countText);
 
         TextView lblText = new TextView(context);
         lblText.setText(label);
-        lblText.setTextColor(UiTheme.NAVY);
+        lblText.setTextColor(0xff082d50);
         lblText.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(lblText, 13);
         card.addView(lblText);
 
         TextView subText = new TextView(context);
         subText.setText(subtext);
-        subText.setTextColor(UiTheme.MUTED);
+        subText.setTextColor(0xff586b83);
         subText.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(subText, 11);
         card.addView(subText);
@@ -265,13 +356,13 @@ public final class ProfileView {
     private View createStudyCard(String id, String title, String stage, Runnable onClick) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        int pad = UiTheme.dp(context, 14);
+        card.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        int pad = UiTheme.dp(context, 12);
         card.setPadding(pad, pad, pad, pad);
 
         TextView idText = new TextView(context);
         idText.setText(id);
-        idText.setTextColor(UiTheme.MUTED);
+        idText.setTextColor(0xff185d9d);
         idText.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(idText, 12);
         card.addView(idText);
@@ -280,30 +371,40 @@ public final class ProfileView {
 
         TextView titleText = new TextView(context);
         titleText.setText(title);
-        titleText.setTextColor(UiTheme.NAVY);
+        titleText.setTextColor(0xff082d50);
         titleText.setTypeface(UiTheme.boldFont(context));
-        ScreenTypography.apply(titleText, 14);
+        ScreenTypography.apply(titleText, 15);
         card.addView(titleText);
 
         addSpacing(context, card, 6);
 
+        LinearLayout stageRow = new LinearLayout(context);
+        stageRow.setOrientation(LinearLayout.HORIZONTAL);
+        stageRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView stageLbl = new TextView(context);
+        stageLbl.setText("Stage  ");
+        stageLbl.setTextColor(0xff586b83);
+        stageLbl.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(stageLbl, 12);
+        stageRow.addView(stageLbl);
+
         TextView stageBadge = new TextView(context);
-        stageBadge.setText("Stage " + stage);
+        stageBadge.setText(stage);
         stageBadge.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(stageBadge, 11);
         int px = UiTheme.dp(context, 8);
         int py = UiTheme.dp(context, 3);
         stageBadge.setPadding(px, py, px, py);
         if ("Completed".equalsIgnoreCase(stage)) {
-            stageBadge.setBackground(UiTheme.shape(context, UiTheme.STATUS_COMPLETED_BG, 4, 0));
-            stageBadge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
+            stageBadge.setBackground(UiTheme.shape(context, 0xffdcfce7, 4, 0));
+            stageBadge.setTextColor(0xff16a34a);
         } else {
-            stageBadge.setBackground(UiTheme.shape(context, UiTheme.STATUS_IN_REVIEW_BG, 4, 0));
-            stageBadge.setTextColor(UiTheme.STATUS_IN_REVIEW_TEXT);
+            stageBadge.setBackground(UiTheme.shape(context, 0xffe5edf7, 4, 0));
+            stageBadge.setTextColor(0xff185d9d);
         }
-        LinearLayout.LayoutParams bLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        stageBadge.setLayoutParams(bLp);
-        card.addView(stageBadge);
+        stageRow.addView(stageBadge);
+        card.addView(stageRow);
 
         card.setOnClickListener(v -> {
             if (onClick != null) onClick.run();

@@ -1,19 +1,20 @@
 package ph.edu.umak.crm.app.staff.registry;
 
 import android.app.Activity;
-import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
+import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.PendingStatus;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
@@ -47,11 +48,13 @@ public class RegistryDocumentsView {
         }
     }
 
+    private LinearLayout pageWrapper;
+
     public ViewGroup getContentLayout() {
-        if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
-            ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
+        if (pageWrapper != null && pageWrapper.getParent() instanceof ViewGroup) {
+            ((ViewGroup) pageWrapper.getParent()).removeView(pageWrapper);
         }
-        return PageTitle.wrap(rootLayout, "Documents", record.id + " · " + record.title, false);
+        return pageWrapper;
     }
 
     private int dp(int value) {
@@ -63,90 +66,138 @@ public class RegistryDocumentsView {
     }
 
     private void buildUi() {
+        pageWrapper = new LinearLayout(activity);
+        pageWrapper.setOrientation(LinearLayout.VERTICAL);
+
+        Typeface bold = UiTheme.boldFont(activity);
+        Typeface regular = UiTheme.bodyFont(activity);
+
+        // Dark Navy Header Band (#082d50)
+        LinearLayout band = new LinearLayout(activity);
+        band.setOrientation(LinearLayout.VERTICAL);
+        band.setBackgroundColor(0xff082d50);
+        int pad = dp(16);
+        band.setPadding(pad, pad, pad, pad);
+
+        // 1. Heading: "Documents"
+        TextView heading = new TextView(activity);
+        heading.setText("Documents");
+        heading.setTextColor(0xffffffff);
+        heading.setTypeface(UiTheme.headingFont(activity));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        band.addView(heading);
+
+        // Subtitle: "REG-2026-089 · Impact of AI on Student Engagement"
+        TextView subTitle = new TextView(activity);
+        subTitle.setText((record != null ? record.id : "REG-2026-089") + " · " + (record != null ? record.title : "Research study"));
+        subTitle.setTextColor(0xffe2e8f0);
+        subTitle.setTypeface(regular);
+        ScreenTypography.apply(subTitle, 13);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subParams.topMargin = dp(4);
+        band.addView(subTitle, subParams);
+
+        pageWrapper.addView(band);
+
         rootLayout = new LinearLayout(activity);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
+        pageWrapper.addView(rootLayout);
 
-        // 1. Header
-
-
-        // 2. Privacy Banner
+        // 2. Privacy / Security Notice Card
         LinearLayout privacyCard = new LinearLayout(activity);
         privacyCard.setOrientation(LinearLayout.HORIZONTAL);
         privacyCard.setGravity(Gravity.CENTER_VERTICAL);
         privacyCard.setPadding(dp(12), dp(10), dp(12), dp(10));
-        GradientDrawable privBg = new GradientDrawable();
-        privBg.setColor(UiTheme.BADGE_BLUE_BG);
-        privBg.setCornerRadius(dp(8));
-        privBg.setStroke(dp(1), UiTheme.BORDER);
-        privacyCard.setBackground(privBg);
+        privacyCard.setBackground(UiTheme.shape(activity, 0xfff8fafc, 8, 0xffe2e8f0));
         LinearLayout.LayoutParams privParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        privParams.bottomMargin = dp(16);
+        privParams.bottomMargin = dp(14);
         privacyCard.setLayoutParams(privParams);
 
         TextView privText = new TextView(activity);
-        privText.setText("Visible to linked researchers and authorized staff only.");
-        privText.setTextColor(UiTheme.NAVY);
-        privText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        privText.setTypeface(Typeface.DEFAULT_BOLD);
+        privText.setText("🔒 Visible to linked researchers and authorized staff only.");
+        privText.setTextColor(0xff586b83);
+        privText.setTypeface(regular);
+        ScreenTypography.apply(privText, 12);
         privacyCard.addView(privText);
         rootLayout.addView(privacyCard);
 
-        // 3. Section: Attach a new version
+        // 3. Section: Attach a new version Card
         LinearLayout attachCard = createBaseCard();
 
         TextView attachSectionTitle = new TextView(activity);
         attachSectionTitle.setText("Attach a new version");
-        attachSectionTitle.setTextColor(UiTheme.NAVY);
-        attachSectionTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        attachSectionTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        attachSectionTitle.setTextColor(0xff082d50);
+        attachSectionTitle.setTypeface(bold);
+        ScreenTypography.apply(attachSectionTitle, 15);
         attachCard.addView(attachSectionTitle);
 
-        Button attachBtn = new Button(activity);
-        attachBtn.setText("Attach file");
-        attachBtn.setTextColor(UiTheme.WHITE);
-        attachBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        attachBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        attachBtn.setAllCaps(false);
-        GradientDrawable attachBtnBg = new GradientDrawable();
-        attachBtnBg.setColor(UiTheme.NAVY);
-        attachBtnBg.setCornerRadius(dp(8));
-        attachBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), attachBtnBg, null));
-        LinearLayout.LayoutParams attachBtnParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(42));
-        attachBtnParams.topMargin = dp(10);
-        attachBtnParams.bottomMargin = dp(8);
-        attachCard.addView(attachBtn, attachBtnParams);
+        // Dashed upload box / dropzone
+        LinearLayout dropzone = new LinearLayout(activity);
+        dropzone.setOrientation(LinearLayout.VERTICAL);
+        dropzone.setGravity(Gravity.CENTER);
+        dropzone.setPadding(dp(16), dp(20), dp(16), dp(20));
+        dropzone.setBackground(UiTheme.shape(activity, 0xfff8fafc, 8, UiTheme.BORDER));
+        LinearLayout.LayoutParams dropParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dropParams.topMargin = dp(10);
+        dropParams.bottomMargin = dp(6);
+        dropzone.setLayoutParams(dropParams);
+
+        TextView uploadIcon = new TextView(activity);
+        uploadIcon.setText("⇪");
+        uploadIcon.setTextColor(0xff185d9d);
+        uploadIcon.setTypeface(bold);
+        ScreenTypography.apply(uploadIcon, 22);
+        uploadIcon.setGravity(Gravity.CENTER);
+        dropzone.addView(uploadIcon);
+
+        TextView attachBtnText = new TextView(activity);
+        attachBtnText.setText("Attach file");
+        attachBtnText.setTextColor(0xff185d9d);
+        attachBtnText.setTypeface(bold);
+        ScreenTypography.apply(attachBtnText, 14);
+        attachBtnText.setGravity(Gravity.CENTER);
+        dropzone.addView(attachBtnText);
+
+        TextView formatNote = new TextView(activity);
+        formatNote.setText("PDF or DOCX, up to 10 MB each");
+        formatNote.setTextColor(0xff64748b);
+        formatNote.setTypeface(regular);
+        ScreenTypography.apply(formatNote, 12);
+        formatNote.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams fnParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        fnParams.topMargin = dp(2);
+        dropzone.addView(formatNote, fnParams);
+
+        attachCard.addView(dropzone);
 
         PendingStatus attachmentFeedback = new PendingStatus(activity);
         attachCard.addView(attachmentFeedback);
-        attachBtn.setOnClickListener(v -> {
+
+        dropzone.setOnClickListener(v -> {
             if (callbacks == null) return;
             callbacks.onChooseAttachment(() -> {
-                attachBtn.setEnabled(false);
-                attachBtn.setText("Checking file…");
+                attachBtnText.setText("Checking file…");
                 attachmentFeedback.working("Checking the selected file…");
             }, (file, error) -> {
                 if (!attachmentFeedback.isAttachedToWindow()) return;
-                attachBtn.setEnabled(true);
-                attachBtn.setText("Attach file");
+                attachBtnText.setText("Attach file");
                 attachmentFeedback.result(error != null ? error
                         : "Selected " + file.name() + ". This registry record does not support uploads to CRM.", error != null);
             });
         });
 
-        TextView formatNote = new TextView(activity);
-        formatNote.setText("PDF or DOCX, up to 10 MB each");
-        formatNote.setTextColor(UiTheme.MUTED);
-        formatNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        attachCard.addView(formatNote);
-
         TextView instructionNote = new TextView(activity);
-        instructionNote.setText("Online version uploads aren’t available for this registry record.");
-        instructionNote.setTextColor(UiTheme.INK);
-        instructionNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        instructionNote.setText("Uploading keeps the research ID. The new file becomes the current version.");
+        instructionNote.setTextColor(0xff64748b);
+        instructionNote.setTypeface(regular);
+        ScreenTypography.apply(instructionNote, 12);
         LinearLayout.LayoutParams instParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         instParams.topMargin = dp(6);
@@ -154,14 +205,14 @@ public class RegistryDocumentsView {
 
         rootLayout.addView(attachCard);
 
-        // 4. Section: Version list
+        // 4. Section: Version list Card
         LinearLayout versionCard = createBaseCard();
 
         TextView versionSectionTitle = new TextView(activity);
         versionSectionTitle.setText("Version list");
-        versionSectionTitle.setTextColor(UiTheme.NAVY);
-        versionSectionTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        versionSectionTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        versionSectionTitle.setTextColor(0xff082d50);
+        versionSectionTitle.setTypeface(bold);
+        ScreenTypography.apply(versionSectionTitle, 15);
         versionSectionTitle.setPadding(0, 0, 0, dp(12));
         versionCard.addView(versionSectionTitle);
 
@@ -172,37 +223,45 @@ public class RegistryDocumentsView {
             docRow.setGravity(Gravity.CENTER_VERTICAL);
             docRow.setPadding(0, dp(8), 0, dp(8));
 
+            ImageView docIcon = new ImageView(activity);
+            docIcon.setImageResource(R.drawable.ic_crm_doc);
+            docIcon.setColorFilter(0xff185d9d);
+            LinearLayout.LayoutParams dParams = new LinearLayout.LayoutParams(dp(18), dp(18));
+            dParams.rightMargin = dp(10);
+            docRow.addView(docIcon, dParams);
+
             LinearLayout infoCol = new LinearLayout(activity);
             infoCol.setOrientation(LinearLayout.VERTICAL);
 
             TextView nameText = new TextView(activity);
             nameText.setText(doc.fileName);
-            nameText.setTextColor(UiTheme.NAVY);
-            nameText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-            nameText.setTypeface(Typeface.DEFAULT_BOLD);
+            nameText.setTextColor(0xff082d50);
+            nameText.setTypeface(bold);
+            ScreenTypography.apply(nameText, 14);
             infoCol.addView(nameText);
 
             TextView metaText = new TextView(activity);
             metaText.setText(doc.fileSize + " · " + doc.date + " · " + doc.uploader);
-            metaText.setTextColor(UiTheme.MUTED);
-            metaText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            metaText.setTextColor(0xff64748b);
+            metaText.setTypeface(regular);
+            ScreenTypography.apply(metaText, 12);
             infoCol.addView(metaText);
 
             docRow.addView(infoCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
             TextView badge = new TextView(activity);
             badge.setText(doc.isCurrent ? "Current" : "Earlier version");
-            badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-            badge.setTypeface(Typeface.DEFAULT_BOLD);
+            ScreenTypography.apply(badge, 11);
+            badge.setTypeface(bold);
             badge.setPadding(dp(8), dp(3), dp(8), dp(3));
             GradientDrawable badgeBg = new GradientDrawable();
-            badgeBg.setCornerRadius(dp(10));
+            badgeBg.setCornerRadius(dp(4));
             if (doc.isCurrent) {
-                badgeBg.setColor(UiTheme.STATUS_COMPLETED_BG);
-                badge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
+                badgeBg.setColor(Color.parseColor("#DCFCE7"));
+                badge.setTextColor(Color.parseColor("#16A34A"));
             } else {
-                badgeBg.setColor(UiTheme.TAG_BG);
-                badge.setTextColor(UiTheme.TAG_TEXT);
+                badgeBg.setColor(Color.parseColor("#F1F5F9"));
+                badge.setTextColor(Color.parseColor("#64748B"));
             }
             badge.setBackground(badgeBg);
             docRow.addView(badge);
@@ -223,19 +282,15 @@ public class RegistryDocumentsView {
         rootLayout.addView(versionCard);
 
         // 5. Back to Record Button
-        Button backBtn = new Button(activity);
+        Button backBtn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
         backBtn.setText("Back to Record");
-        backBtn.setTextColor(UiTheme.NAVY);
-        backBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        backBtn.setTypeface(Typeface.DEFAULT_BOLD);
         backBtn.setAllCaps(false);
-        GradientDrawable backBg = new GradientDrawable();
-        backBg.setColor(UiTheme.WHITE);
-        backBg.setCornerRadius(dp(8));
-        backBg.setStroke(dp(1), UiTheme.BORDER);
-        backBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22131c4b), backBg, null));
+        backBtn.setTextColor(0xff082d50);
+        backBtn.setTypeface(bold);
+        ScreenTypography.apply(backBtn, 15);
+        backBtn.setBackground(UiTheme.ripple(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER), 0x20082d50));
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
         backParams.topMargin = dp(16);
         rootLayout.addView(backBtn, backParams);
 
@@ -250,13 +305,7 @@ public class RegistryDocumentsView {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.WHITE);
-        bg.setCornerRadius(dp(10));
-        bg.setStroke(dp(1), UiTheme.BORDER);
-        card.setBackground(bg);
-
+        card.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.bottomMargin = dp(12);

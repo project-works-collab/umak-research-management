@@ -1,21 +1,20 @@
 package ph.edu.umak.crm.app.staff.registry;
 
 import android.app.Activity;
-import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -24,7 +23,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
+import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -43,21 +43,21 @@ public class AddResearchEntryView {
     private final Callbacks callbacks;
 
     private boolean isEditMode = false;
+    private boolean isStaleConflict = false;
     private boolean showDuplicateWarning = false;
     private boolean duplicateReasonError = false;
     private String teamErrorType = "none"; // "none", "already_member", "no_such_account"
 
+    private FrameLayout rootContainer;
     private LinearLayout rootLayout;
     private EditText titleInput;
     private Spinner collegeSpinner;
-    private EditText academicYearInput;
+    private Spinner academicYearSpinner;
     private EditText adviserInput;
     private Spinner categorySpinner;
 
     private LinearLayout teamListContainer;
-    private AutoCompleteTextView teamSearchInput;
-    private TextView teamErrorBanner;
-    private LinearLayout alreadyMemberItemView;
+    private EditText teamSearchInput;
 
     private CheckBox duplicateConfirmCheckBox;
     private EditText duplicateReasonInput;
@@ -72,28 +72,41 @@ public class AddResearchEntryView {
             "College of Health Sciences"
     };
 
+    private static final String[] ACADEMIC_YEARS = {
+            "AY 2026-2027",
+            "AY 2025-2026",
+            "AY 2024-2025",
+            "AY 2023-2024"
+    };
+
     private static final String[] CATEGORIES = {
             "Student",
             "Faculty"
     };
 
-    private static final String[] CANDIDATE_RESEARCHERS = {
-            "Peter Parker (Faculty · CCIS)",
-            "Juan D. Inlwan (Student · CCIS)",
-            "Maria Santos (Faculty · CCIS)",
-            "Mark Villanueva (Researcher)",
-            "Alan Turing (Faculty · CET)"
+    private static final String[] ENTRY_TYPES = {
+            "Current registration",
+            "Archival backfile",
+            "Transferred project"
     };
 
     public AddResearchEntryView(Activity activity, Callbacks callbacks) {
         this.activity = activity;
         this.callbacks = callbacks;
+        rootContainer = new FrameLayout(activity);
+        rootLayout = new LinearLayout(activity);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setBackgroundColor(UiTheme.PAPER);
+        rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
+        rootContainer.addView(rootLayout);
+
         resetToDefaultAdd();
         buildUi();
     }
 
     public void setEditRecord(StaffRegistryData.RegistryRecordItem record) {
         this.isEditMode = true;
+        this.isStaleConflict = false;
         this.editingRecord = record;
         this.showDuplicateWarning = false;
         this.duplicateReasonError = false;
@@ -108,6 +121,7 @@ public class AddResearchEntryView {
 
     public void resetToDefaultAdd() {
         this.isEditMode = false;
+        this.isStaleConflict = false;
         this.editingRecord = null;
         this.showDuplicateWarning = false;
         this.duplicateReasonError = false;
@@ -119,10 +133,11 @@ public class AddResearchEntryView {
     }
 
     public ViewGroup getContentLayout() {
-        if (rootLayout != null && rootLayout.getParent() instanceof ViewGroup) {
-            ((ViewGroup) rootLayout.getParent()).removeView(rootLayout);
+        if (rootContainer != null && rootContainer.getParent() instanceof ViewGroup) {
+            ((ViewGroup) rootContainer.getParent()).removeView(rootContainer);
         }
-        return PageTitle.wrap(rootLayout, isEditMode ? "Record Editor" : "Add Research Entry", null, false);
+        buildUi();
+        return rootContainer;
     }
 
     private int dp(int value) {
@@ -134,78 +149,94 @@ public class AddResearchEntryView {
     }
 
     private void buildUi() {
-        rootLayout = new LinearLayout(activity);
-        rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setBackgroundColor(UiTheme.PAPER);
-        rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
+        rootContainer.removeAllViews();
+        rootLayout.removeAllViews();
 
-        // 1. Header
+        Typeface bold = UiTheme.boldFont(activity);
 
+        // Dark Navy Header Band (#082d50)
+        LinearLayout band = new LinearLayout(activity);
+        band.setOrientation(LinearLayout.VERTICAL);
+        band.setBackgroundColor(0xff082d50);
+        int pad = dp(16);
+        band.setPadding(pad, pad, pad, pad);
+
+        // 1. Heading: "Add Research Entry" / "Record Editor"
+        TextView heading = new TextView(activity);
+        heading.setText(isEditMode ? "Record Editor" : "Add Research Entry");
+        heading.setTextColor(0xffffffff);
+        heading.setTypeface(UiTheme.headingFont(activity));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        band.addView(heading);
 
         if (isEditMode && editingRecord != null) {
             TextView subTitle = new TextView(activity);
             subTitle.setText(editingRecord.title);
-            subTitle.setTextColor(UiTheme.NAVY);
-            subTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            subTitle.setTypeface(Typeface.DEFAULT_BOLD);
-            rootLayout.addView(subTitle);
+            subTitle.setTextColor(0xffe2e8f0);
+            subTitle.setTypeface(bold);
+            ScreenTypography.apply(subTitle, 15);
+            LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            subParams.topMargin = dp(4);
+            band.addView(subTitle, subParams);
 
             TextView meta = new TextView(activity);
             meta.setText(editingRecord.id + " · Last edit: " + editingRecord.lastEditDate);
-            meta.setTextColor(UiTheme.MUTED);
-            meta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            meta.setTextColor(0xff94a3b8);
+            meta.setTypeface(UiTheme.bodyFont(activity));
+            ScreenTypography.apply(meta, 12);
             LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            metaParams.bottomMargin = dp(16);
-            rootLayout.addView(meta, metaParams);
+            metaParams.topMargin = dp(2);
+            band.addView(meta, metaParams);
         }
 
-        // 3. Wireframe 7.4: Possible Duplicate Warning Card
+        LinearLayout pageWrapper = new LinearLayout(activity);
+        pageWrapper.setOrientation(LinearLayout.VERTICAL);
+        pageWrapper.addView(band);
+        pageWrapper.addView(rootLayout);
+        rootContainer.addView(pageWrapper);
+
+        // 2. Wireframe 7.4: Possible Duplicate Warning Card (if triggered)
         if (showDuplicateWarning) {
             rootLayout.addView(createDuplicateWarningCard());
         }
 
-        // 4. Research Details Card
+        // 3. Research Details Card
         rootLayout.addView(createResearchDetailsCard());
 
-        // 5. Team Members Card (7.3)
+        // 4. Team Members Card (7.3)
         rootLayout.addView(createTeamMembersCard());
 
-        // 6. Historical Entry Card
+        // 5. Historical Entry Card
         rootLayout.addView(createHistoricalEntryCard());
 
-        // 7. Actions (Save & Cancel)
-        Button saveBtn = new Button(activity);
+        // 6. Action Buttons: Save & Cancel
+        Button saveBtn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
         saveBtn.setText("Save");
-        saveBtn.setTextColor(UiTheme.WHITE);
-        saveBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        saveBtn.setTypeface(Typeface.DEFAULT_BOLD);
         saveBtn.setAllCaps(false);
-        GradientDrawable saveBg = new GradientDrawable();
-        saveBg.setColor(UiTheme.NAVY);
-        saveBg.setCornerRadius(dp(8));
-        saveBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), saveBg, null));
+        saveBtn.setTextColor(0xffffffff);
+        saveBtn.setTypeface(bold);
+        ScreenTypography.apply(saveBtn, 15);
+        saveBtn.setBackground(UiTheme.ripple(UiTheme.shape(activity, 0xff131c4b, 8, 0), 0x20ffffff));
         LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
         saveParams.topMargin = dp(16);
-        saveParams.bottomMargin = dp(12);
+        saveParams.bottomMargin = dp(10);
         rootLayout.addView(saveBtn, saveParams);
 
         saveBtn.setOnClickListener(v -> handleSave());
 
-        Button cancelBtn = new Button(activity);
+        Button cancelBtn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
         cancelBtn.setText("Cancel");
-        cancelBtn.setTextColor(UiTheme.NAVY);
-        cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        cancelBtn.setTypeface(Typeface.DEFAULT_BOLD);
         cancelBtn.setAllCaps(false);
-        GradientDrawable cancelBg = new GradientDrawable();
-        cancelBg.setColor(UiTheme.WHITE);
-        cancelBg.setCornerRadius(dp(8));
-        cancelBg.setStroke(dp(1), UiTheme.BORDER);
-        cancelBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22131c4b), cancelBg, null));
+        cancelBtn.setTextColor(0xff082d50);
+        cancelBtn.setTypeface(bold);
+        ScreenTypography.apply(cancelBtn, 15);
+        cancelBtn.setBackground(UiTheme.ripple(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER), 0x20082d50));
         LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(48));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
         rootLayout.addView(cancelBtn, cancelParams);
 
         cancelBtn.setOnClickListener(v -> {
@@ -213,18 +244,113 @@ public class AddResearchEntryView {
                 callbacks.onCancel();
             }
         });
+
+        rootContainer.addView(rootLayout);
+
+        // 7. Wireframe 7.5: Stale Data Conflict Modal Overlay
+        if (isStaleConflict) {
+            View scrim = new View(activity);
+            scrim.setBackgroundColor(0x99000000);
+            scrim.setClickable(true);
+            rootContainer.addView(scrim, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+            View modal = createStaleModalCard();
+            FrameLayout.LayoutParams mLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            mLp.gravity = Gravity.CENTER;
+            mLp.leftMargin = dp(24);
+            mLp.rightMargin = dp(24);
+            rootContainer.addView(modal, mLp);
+        }
+    }
+
+    private View createStaleModalCard() {
+        Typeface bold = UiTheme.boldFont(activity);
+        Typeface regular = UiTheme.bodyFont(activity);
+
+        LinearLayout card = new LinearLayout(activity);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(dp(24), dp(28), dp(24), dp(24));
+        card.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 16, 0));
+
+        // Amber Circle with Warning Icon
+        TextView icon = new TextView(activity);
+        icon.setText("⚠");
+        icon.setTextColor(0xffd97706);
+        icon.setTypeface(bold);
+        ScreenTypography.apply(icon, 22);
+        icon.setGravity(Gravity.CENTER);
+        int iSize = dp(48);
+        LinearLayout.LayoutParams iLp = new LinearLayout.LayoutParams(iSize, iSize);
+        icon.setLayoutParams(iLp);
+
+        GradientDrawable iBg = new GradientDrawable();
+        iBg.setShape(GradientDrawable.OVAL);
+        iBg.setColor(Color.parseColor("#FEF3C7"));
+        icon.setBackground(iBg);
+        card.addView(icon);
+
+        View sp1 = new View(activity);
+        sp1.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(16)));
+        card.addView(sp1);
+
+        // Title
+        TextView title = new TextView(activity);
+        title.setText("This research record was updated. Reload before saving.");
+        title.setTextColor(0xff082d50);
+        title.setTypeface(bold);
+        title.setGravity(Gravity.CENTER);
+        ScreenTypography.apply(title, 18);
+        card.addView(title);
+
+        View sp2 = new View(activity);
+        sp2.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(8)));
+        card.addView(sp2);
+
+        // Body message
+        TextView body = new TextView(activity);
+        body.setText("Your changes have not been saved. Reload the latest version, then review it before making changes.");
+        body.setTextColor(0xff586b83);
+        body.setTypeface(regular);
+        body.setGravity(Gravity.CENTER);
+        ScreenTypography.apply(body, 13);
+        card.addView(body);
+
+        View sp3 = new View(activity);
+        sp3.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
+        card.addView(sp3);
+
+        // Reload button
+        Button reloadBtn = new Button(activity, null, android.R.attr.borderlessButtonStyle);
+        reloadBtn.setText("⟳ Reload");
+        reloadBtn.setAllCaps(false);
+        reloadBtn.setTextColor(0xffffffff);
+        reloadBtn.setTypeface(bold);
+        ScreenTypography.apply(reloadBtn, 15);
+        reloadBtn.setBackground(UiTheme.ripple(UiTheme.shape(activity, 0xff131c4b, 8, 0), 0x20ffffff));
+        reloadBtn.setMinHeight(dp(46));
+        reloadBtn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+        reloadBtn.setOnClickListener(v -> {
+            isStaleConflict = false;
+            if (callbacks != null) {
+                callbacks.onCancel(); // Reload -> 7.2 Research Record Detail
+            }
+        });
+        card.addView(reloadBtn);
+
+        return card;
     }
 
     private View createDuplicateWarningCard() {
+        Typeface bold = UiTheme.boldFont(activity);
+        Typeface regular = UiTheme.bodyFont(activity);
+
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.AMBER_BG);
-        bg.setCornerRadius(dp(10));
-        bg.setStroke(dp(1), UiTheme.AMBER_BORDER);
-        card.setBackground(bg);
+        card.setBackground(UiTheme.shape(activity, 0xfffff7ed, 8, 0xfffed7aa));
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -232,21 +358,17 @@ public class AddResearchEntryView {
         card.setLayoutParams(params);
 
         TextView title = new TextView(activity);
-        title.setText("Possible duplicate research record.");
-        title.setTextColor(UiTheme.AMBER_TEXT);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setText("⚠ Possible duplicate research record.");
+        title.setTextColor(0xffc2410c);
+        title.setTypeface(bold);
+        ScreenTypography.apply(title, 15);
         card.addView(title);
 
         // Existing match card
         LinearLayout matchCard = new LinearLayout(activity);
         matchCard.setOrientation(LinearLayout.VERTICAL);
         matchCard.setPadding(dp(12), dp(10), dp(12), dp(10));
-        GradientDrawable matchBg = new GradientDrawable();
-        matchBg.setColor(UiTheme.WHITE);
-        matchBg.setCornerRadius(dp(8));
-        matchBg.setStroke(dp(1), UiTheme.BORDER);
-        matchCard.setBackground(matchBg);
+        matchCard.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
         LinearLayout.LayoutParams matchParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         matchParams.topMargin = dp(8);
@@ -255,57 +377,67 @@ public class AddResearchEntryView {
 
         LinearLayout topRow = new LinearLayout(activity);
         topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+
         TextView recId = new TextView(activity);
         recId.setText("REG-2024-012");
-        recId.setTextColor(UiTheme.NAVY);
-        recId.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        recId.setTypeface(Typeface.DEFAULT_BOLD);
+        recId.setTextColor(0xff185d9d);
+        recId.setTypeface(bold);
+        ScreenTypography.apply(recId, 13);
         topRow.addView(recId, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         TextView stage = new TextView(activity);
-        stage.setText("Stage Completed");
-        stage.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
-        stage.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        stage.setTypeface(Typeface.DEFAULT_BOLD);
+        stage.setText("Completed");
+        stage.setTextColor(0xff16a34a);
+        stage.setTypeface(bold);
+        ScreenTypography.apply(stage, 11);
+        stage.setPadding(dp(8), dp(2), dp(8), dp(2));
+        GradientDrawable sBg = new GradientDrawable();
+        sBg.setColor(Color.parseColor("#DCFCE7"));
+        sBg.setCornerRadius(dp(4));
+        stage.setBackground(sBg);
         topRow.addView(stage);
         matchCard.addView(topRow);
 
         TextView recTitle = new TextView(activity);
         recTitle.setText("AI Tools in Student Engagement");
-        recTitle.setTextColor(UiTheme.NAVY);
-        recTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        recTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        recTitle.setTextColor(0xff082d50);
+        recTitle.setTypeface(bold);
+        ScreenTypography.apply(recTitle, 14);
         matchCard.addView(recTitle);
 
         TextView recMeta = new TextView(activity);
         recMeta.setText("Dr. J. Oke · AY 2024-2025 · College of Computing and Information Sciences");
-        recMeta.setTextColor(UiTheme.MUTED);
-        recMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        recMeta.setTextColor(0xff64748b);
+        recMeta.setTypeface(regular);
+        ScreenTypography.apply(recMeta, 12);
         matchCard.addView(recMeta);
 
         TextView compareNote = new TextView(activity);
         compareNote.setText("Compare normalized title and team members before creating a separate record.");
-        compareNote.setTextColor(UiTheme.INK);
-        compareNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        compareNote.setTextColor(0xffc2410c);
+        compareNote.setTypeface(regular);
+        ScreenTypography.apply(compareNote, 12);
         LinearLayout.LayoutParams compareParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        compareParams.bottomMargin = dp(12);
+        compareParams.bottomMargin = dp(10);
         card.addView(compareNote, compareParams);
 
         // Confirmation Checkbox
         duplicateConfirmCheckBox = new CheckBox(activity);
         duplicateConfirmCheckBox.setText("I confirm this is a separate record");
-        duplicateConfirmCheckBox.setTextColor(UiTheme.NAVY);
-        duplicateConfirmCheckBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        duplicateConfirmCheckBox.setChecked(true);
+        duplicateConfirmCheckBox.setTextColor(0xff082d50);
+        duplicateConfirmCheckBox.setTypeface(bold);
+        ScreenTypography.apply(duplicateConfirmCheckBox, 13);
+        duplicateConfirmCheckBox.setChecked(duplicateReasonError); // Checked in 7.4 error, unchecked in 7.4 default
         card.addView(duplicateConfirmCheckBox);
 
         // Separate-record reason
         TextView reasonLabel = new TextView(activity);
         reasonLabel.setText("Separate-record reason *");
-        reasonLabel.setTextColor(duplicateReasonError ? UiTheme.ERROR_RED : UiTheme.NAVY);
-        reasonLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        reasonLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        reasonLabel.setTextColor(0xffc2410c);
+        reasonLabel.setTypeface(bold);
+        ScreenTypography.apply(reasonLabel, 13);
         LinearLayout.LayoutParams rLabelParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         rLabelParams.topMargin = dp(8);
@@ -313,34 +445,34 @@ public class AddResearchEntryView {
 
         duplicateReasonInput = new EditText(activity);
         duplicateReasonInput.setHint("Enter a reason to create a separate record.");
-        duplicateReasonInput.setHintTextColor(UiTheme.MUTED);
-        duplicateReasonInput.setTextColor(UiTheme.INK);
-        duplicateReasonInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        duplicateReasonInput.setHintTextColor(0xff94a3b8);
+        duplicateReasonInput.setTextColor(0xff082d50);
+        duplicateReasonInput.setTypeface(regular);
+        ScreenTypography.apply(duplicateReasonInput, 13);
         duplicateReasonInput.setPadding(dp(12), dp(10), dp(12), dp(10));
-        GradientDrawable reasonBg = new GradientDrawable();
-        reasonBg.setColor(UiTheme.WHITE);
-        reasonBg.setCornerRadius(dp(8));
-        reasonBg.setStroke(dp(duplicateReasonError ? 2 : 1), duplicateReasonError ? UiTheme.ERROR_RED : UiTheme.BORDER);
-        duplicateReasonInput.setBackground(reasonBg);
+        duplicateReasonInput.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, duplicateReasonError ? 0xffdc2626 : 0xfffed7aa));
         LinearLayout.LayoutParams reasonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         reasonParams.topMargin = dp(4);
         card.addView(duplicateReasonInput, reasonParams);
 
-        duplicateReasonErrorText = new TextView(activity);
-        duplicateReasonErrorText.setText("Enter a reason to create a separate record.");
-        duplicateReasonErrorText.setTextColor(UiTheme.ERROR_RED);
-        duplicateReasonErrorText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        duplicateReasonErrorText.setVisibility(duplicateReasonError ? View.VISIBLE : View.GONE);
-        LinearLayout.LayoutParams errParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        errParams.topMargin = dp(4);
-        card.addView(duplicateReasonErrorText, errParams);
+        if (duplicateReasonError) {
+            duplicateReasonErrorText = new TextView(activity);
+            duplicateReasonErrorText.setText("⚠ Enter a reason to create a separate record.");
+            duplicateReasonErrorText.setTextColor(0xffdc2626);
+            duplicateReasonErrorText.setTypeface(bold);
+            ScreenTypography.apply(duplicateReasonErrorText, 12);
+            LinearLayout.LayoutParams errParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            errParams.topMargin = dp(4);
+            card.addView(duplicateReasonErrorText, errParams);
+        }
 
         TextView note = new TextView(activity);
         note.setText("Creating a separate record requires explicit confirmation and a reason.");
-        note.setTextColor(UiTheme.MUTED);
-        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        note.setTextColor(0xffc2410c);
+        note.setTypeface(regular);
+        ScreenTypography.apply(note, 12);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         noteParams.topMargin = dp(4);
@@ -354,9 +486,9 @@ public class AddResearchEntryView {
 
         TextView title = new TextView(activity);
         title.setText("Research details");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextColor(0xff082d50);
+        title.setTypeface(UiTheme.boldFont(activity));
+        ScreenTypography.apply(title, 16);
         title.setPadding(0, 0, 0, dp(12));
         card.addView(title);
 
@@ -376,8 +508,12 @@ public class AddResearchEntryView {
 
         // Academic Year *
         addFormFieldLabel(card, "Academic Year *");
-        academicYearInput = createStyledInput("AY 2026-2027");
-        card.addView(academicYearInput);
+        academicYearSpinner = new Spinner(activity);
+        ArrayAdapter<String> ayAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, ACADEMIC_YEARS);
+        ayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        academicYearSpinner.setAdapter(ayAdapter);
+        styleSpinner(academicYearSpinner);
+        card.addView(academicYearSpinner);
 
         // Faculty adviser
         addFormFieldLabel(card, "Faculty adviser");
@@ -386,8 +522,9 @@ public class AddResearchEntryView {
 
         TextView adviserNote = new TextView(activity);
         adviserNote.setText("Required for Student records; optional for Faculty.");
-        adviserNote.setTextColor(UiTheme.MUTED);
-        adviserNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        adviserNote.setTextColor(0xff64748b);
+        adviserNote.setTypeface(UiTheme.bodyFont(activity));
+        ScreenTypography.apply(adviserNote, 12);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         noteParams.topMargin = dp(2);
@@ -407,19 +544,23 @@ public class AddResearchEntryView {
     }
 
     private View createTeamMembersCard() {
+        Typeface bold = UiTheme.boldFont(activity);
+        Typeface regular = UiTheme.bodyFont(activity);
+
         LinearLayout card = createBaseCard();
 
         TextView title = new TextView(activity);
         title.setText("Team members");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextColor(0xff082d50);
+        title.setTypeface(bold);
+        ScreenTypography.apply(title, 16);
         card.addView(title);
 
         TextView subtitle = new TextView(activity);
         subtitle.setText("Select existing Researcher accounts only.");
-        subtitle.setTextColor(UiTheme.MUTED);
-        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        subtitle.setTextColor(0xff64748b);
+        subtitle.setTypeface(regular);
+        ScreenTypography.apply(subtitle, 12);
         LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         subParams.topMargin = dp(2);
@@ -434,154 +575,210 @@ public class AddResearchEntryView {
         // Add team member section
         TextView addLabel = new TextView(activity);
         addLabel.setText("Add team member");
-        addLabel.setTextColor(UiTheme.NAVY);
-        addLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        addLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        addLabel.setTextColor(0xff082d50);
+        addLabel.setTypeface(bold);
+        ScreenTypography.apply(addLabel, 13);
         LinearLayout.LayoutParams addLabelParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         addLabelParams.topMargin = dp(12);
         card.addView(addLabel, addLabelParams);
 
-        teamSearchInput = new AutoCompleteTextView(activity);
-        teamSearchInput.setHint("Search researcher name...");
-        teamSearchInput.setHintTextColor(UiTheme.MUTED);
-        teamSearchInput.setTextColor(UiTheme.INK);
-        teamSearchInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        teamSearchInput.setPadding(dp(12), dp(10), dp(12), dp(10));
-        teamSearchInput.setThreshold(1);
+        boolean isAlreadyMember = "already_member".equals(teamErrorType);
+        boolean isNoSuchAccount = "no_such_account".equals(teamErrorType);
+        boolean hasError = isAlreadyMember || isNoSuchAccount;
 
-        GradientDrawable searchBg = new GradientDrawable();
-        searchBg.setColor(UiTheme.WHITE);
-        searchBg.setCornerRadius(dp(8));
-        searchBg.setStroke(dp(1), "no_such_account".equals(teamErrorType) ? UiTheme.ERROR_RED : UiTheme.BORDER);
-        teamSearchInput.setBackground(searchBg);
+        // Search Input Box with Icon
+        FrameLayout searchContainer = new FrameLayout(activity);
+        searchContainer.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, hasError ? 0xffef4444 : UiTheme.BORDER));
+        LinearLayout.LayoutParams searchBoxParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+        searchBoxParams.topMargin = dp(4);
+        searchContainer.setLayoutParams(searchBoxParams);
 
-        ArrayAdapter<String> candidateAdapter = new ArrayAdapter<>(activity,
-                android.R.layout.simple_dropdown_item_1line, CANDIDATE_RESEARCHERS);
-        teamSearchInput.setAdapter(candidateAdapter);
+        ImageView searchIcon = new ImageView(activity);
+        searchIcon.setImageResource(R.drawable.ic_researcher_search);
+        searchIcon.setColorFilter(0xff64748b);
+        FrameLayout.LayoutParams sIconLp = new FrameLayout.LayoutParams(dp(18), dp(18));
+        sIconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+        sIconLp.leftMargin = dp(12);
+        searchContainer.addView(searchIcon, sIconLp);
 
-        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        searchParams.topMargin = dp(4);
-        card.addView(teamSearchInput, searchParams);
-
-        // Team Picker Errors (Wireframe 7.3 errors)
-        teamErrorBanner = new TextView(activity);
-        teamErrorBanner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        teamErrorBanner.setTextColor(UiTheme.ERROR_RED);
-        teamErrorBanner.setVisibility(View.GONE);
-        LinearLayout.LayoutParams errParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        errParams.topMargin = dp(4);
-        card.addView(teamErrorBanner, errParams);
-
-        if ("already_member".equals(teamErrorType)) {
-            teamErrorBanner.setText("This researcher is already a team member.");
-            teamErrorBanner.setVisibility(View.VISIBLE);
+        teamSearchInput = new EditText(activity);
+        if (isAlreadyMember) {
             teamSearchInput.setText("Juan");
-
-            alreadyMemberItemView = createAlreadyMemberCard("Juan D. Inlwan", "Student · CCIS · Already added");
-            card.addView(alreadyMemberItemView);
-        } else if ("no_such_account".equals(teamErrorType)) {
-            teamErrorBanner.setText("Select an existing Researcher account.");
-            teamErrorBanner.setVisibility(View.VISIBLE);
+        } else if (isNoSuchAccount) {
             teamSearchInput.setText("Mark Villanueva");
         } else {
             teamSearchInput.setText("Pet");
         }
+        teamSearchInput.setTextColor(0xff082d50);
+        teamSearchInput.setTypeface(regular);
+        teamSearchInput.setBackground(null);
+        ScreenTypography.apply(teamSearchInput, 13);
+        teamSearchInput.setPadding(dp(38), 0, dp(12), 0);
+        teamSearchInput.setSingleLine(true);
+        FrameLayout.LayoutParams sInputLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        searchContainer.addView(teamSearchInput, sInputLp);
 
-        teamSearchInput.setOnItemClickListener((parent, view, position, id) -> {
-            String selected = (String) parent.getItemAtPosition(position);
-            handleCandidateSelected(selected);
-        });
+        card.addView(searchContainer);
+
+        // Suggestions / Error Container
+        if (isAlreadyMember) {
+            // Error: already member
+            LinearLayout sugBox = new LinearLayout(activity);
+            sugBox.setOrientation(LinearLayout.VERTICAL);
+            sugBox.setBackground(UiTheme.shape(activity, 0xfff8fafc, 8, 0xffe2e8f0));
+            sugBox.setPadding(dp(10), dp(8), dp(10), dp(8));
+            LinearLayout.LayoutParams sugParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            sugParams.topMargin = dp(6);
+            sugBox.setLayoutParams(sugParams);
+
+            LinearLayout itemRow = new LinearLayout(activity);
+            itemRow.setOrientation(LinearLayout.HORIZONTAL);
+            itemRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            TextView avatar = new TextView(activity);
+            avatar.setText("JI");
+            avatar.setTextColor(0xff0284c7);
+            avatar.setTypeface(bold);
+            ScreenTypography.apply(avatar, 12);
+            avatar.setGravity(Gravity.CENTER);
+            GradientDrawable avBg = new GradientDrawable();
+            avBg.setShape(GradientDrawable.OVAL);
+            avBg.setColor(Color.parseColor("#E0F2FE"));
+            avatar.setBackground(avBg);
+            LinearLayout.LayoutParams avParams = new LinearLayout.LayoutParams(dp(32), dp(32));
+            avParams.rightMargin = dp(10);
+            itemRow.addView(avatar, avParams);
+
+            LinearLayout textCol = new LinearLayout(activity);
+            textCol.setOrientation(LinearLayout.VERTICAL);
+
+            TextView name = new TextView(activity);
+            name.setText("Juan D. Inlwan");
+            name.setTextColor(0xff082d50);
+            name.setTypeface(bold);
+            ScreenTypography.apply(name, 13);
+            textCol.addView(name);
+
+            TextView sub = new TextView(activity);
+            sub.setText("Student · CCIS · Already added");
+            sub.setTextColor(0xff64748b);
+            sub.setTypeface(regular);
+            ScreenTypography.apply(sub, 12);
+            textCol.addView(sub);
+
+            itemRow.addView(textCol);
+            sugBox.addView(itemRow);
+            card.addView(sugBox);
+
+            TextView err = new TextView(activity);
+            err.setText("⚠ This researcher is already a team member.");
+            err.setTextColor(0xffc2410c);
+            err.setTypeface(bold);
+            ScreenTypography.apply(err, 12);
+            LinearLayout.LayoutParams errParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            errParams.topMargin = dp(4);
+            card.addView(err, errParams);
+        } else if (isNoSuchAccount) {
+            // Error: no such account
+            TextView err = new TextView(activity);
+            err.setText("⚠ Select an existing Researcher account.");
+            err.setTextColor(0xffc2410c);
+            err.setTypeface(bold);
+            ScreenTypography.apply(err, 12);
+            LinearLayout.LayoutParams errParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            errParams.topMargin = dp(4);
+            card.addView(err, errParams);
+        } else {
+            // Team Picker (Peter Parker suggestion)
+            LinearLayout sugBox = new LinearLayout(activity);
+            sugBox.setOrientation(LinearLayout.VERTICAL);
+            sugBox.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
+            sugBox.setPadding(dp(10), dp(8), dp(10), dp(8));
+            LinearLayout.LayoutParams sugParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            sugParams.topMargin = dp(6);
+            sugBox.setLayoutParams(sugParams);
+
+            LinearLayout itemRow = new LinearLayout(activity);
+            itemRow.setOrientation(LinearLayout.HORIZONTAL);
+            itemRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            TextView avatar = new TextView(activity);
+            avatar.setText("PP");
+            avatar.setTextColor(0xff0284c7);
+            avatar.setTypeface(bold);
+            ScreenTypography.apply(avatar, 12);
+            avatar.setGravity(Gravity.CENTER);
+            GradientDrawable avBg = new GradientDrawable();
+            avBg.setShape(GradientDrawable.OVAL);
+            avBg.setColor(Color.parseColor("#E0F2FE"));
+            avatar.setBackground(avBg);
+            LinearLayout.LayoutParams avParams = new LinearLayout.LayoutParams(dp(32), dp(32));
+            avParams.rightMargin = dp(10);
+            itemRow.addView(avatar, avParams);
+
+            LinearLayout textCol = new LinearLayout(activity);
+            textCol.setOrientation(LinearLayout.VERTICAL);
+
+            TextView name = new TextView(activity);
+            name.setText("Peter Parker");
+            name.setTextColor(0xff082d50);
+            name.setTypeface(bold);
+            ScreenTypography.apply(name, 13);
+            textCol.addView(name);
+
+            TextView sub = new TextView(activity);
+            sub.setText("Faculty · CCIS");
+            sub.setTextColor(0xff64748b);
+            sub.setTypeface(regular);
+            ScreenTypography.apply(sub, 12);
+            textCol.addView(sub);
+
+            itemRow.addView(textCol);
+            sugBox.addView(itemRow);
+
+            sugBox.setOnClickListener(v -> {
+                currentTeam.add(new StaffRegistryData.TeamMember("Peter Parker", "Co-author", "Faculty", "PP", "CCIS"));
+                teamSearchInput.setText("");
+                renderTeamMembersList();
+                Toast.makeText(activity, "Peter Parker added as Co-author.", Toast.LENGTH_SHORT).show();
+            });
+
+            card.addView(sugBox);
+        }
 
         return card;
     }
 
-    private LinearLayout createAlreadyMemberCard(String name, String sub) {
-        LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(12), dp(8), dp(12), dp(8));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.PEACH_BG);
-        bg.setCornerRadius(dp(8));
-        bg.setStroke(dp(1), UiTheme.PEACH_BORDER);
-        row.setBackground(bg);
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.topMargin = dp(6);
-        row.setLayoutParams(params);
-
-        TextView avatar = new TextView(activity);
-        avatar.setText("JI");
-        avatar.setTextColor(UiTheme.WHITE);
-        avatar.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        avatar.setTypeface(Typeface.DEFAULT_BOLD);
-        avatar.setGravity(Gravity.CENTER);
-        GradientDrawable avBg = new GradientDrawable();
-        avBg.setShape(GradientDrawable.OVAL);
-        avBg.setColor(UiTheme.ERROR_RED);
-        avatar.setBackground(avBg);
-        LinearLayout.LayoutParams avParams = new LinearLayout.LayoutParams(dp(32), dp(32));
-        avParams.rightMargin = dp(10);
-        row.addView(avatar, avParams);
-
-        LinearLayout textCol = new LinearLayout(activity);
-        textCol.setOrientation(LinearLayout.VERTICAL);
-
-        TextView nameView = new TextView(activity);
-        nameView.setText(name);
-        nameView.setTextColor(UiTheme.ERROR_RED);
-        nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        nameView.setTypeface(Typeface.DEFAULT_BOLD);
-        textCol.addView(nameView);
-
-        TextView subView = new TextView(activity);
-        subView.setText(sub);
-        subView.setTextColor(UiTheme.ERROR_RED);
-        subView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        textCol.addView(subView);
-
-        row.addView(textCol);
-        return row;
-    }
-
-    private void handleCandidateSelected(String candidate) {
-        if (candidate.contains("Peter Parker")) {
-            currentTeam.add(new StaffRegistryData.TeamMember("Peter Parker", "Co-author", "Faculty", "PP", "CCIS"));
-            teamSearchInput.setText("");
-            renderTeamMembersList();
-            Toast.makeText(activity, "Peter Parker added as Co-author.", Toast.LENGTH_SHORT).show();
-        } else if (candidate.contains("Juan D. Inlwan")) {
-            setTeamErrorState("already_member");
-        } else if (candidate.contains("Mark Villanueva")) {
-            setTeamErrorState("no_such_account");
-        }
-    }
-
     private void renderTeamMembersList() {
+        Typeface bold = UiTheme.boldFont(activity);
+        Typeface regular = UiTheme.bodyFont(activity);
+
         teamListContainer.removeAllViews();
         for (int i = 0; i < currentTeam.size(); i++) {
             StaffRegistryData.TeamMember member = currentTeam.get(i);
             LinearLayout row = new LinearLayout(activity);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, dp(4), 0, dp(4));
+            row.setPadding(0, dp(6), 0, dp(6));
 
             TextView avatar = new TextView(activity);
             avatar.setText(member.initials);
-            avatar.setTextColor(UiTheme.WHITE);
-            avatar.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            avatar.setTypeface(Typeface.DEFAULT_BOLD);
+            avatar.setTextColor(0xff0284c7);
+            avatar.setTypeface(bold);
+            ScreenTypography.apply(avatar, 12);
             avatar.setGravity(Gravity.CENTER);
             GradientDrawable avBg = new GradientDrawable();
             avBg.setShape(GradientDrawable.OVAL);
-            avBg.setColor(UiTheme.ACCENT);
+            avBg.setColor(Color.parseColor("#E0F2FE"));
             avatar.setBackground(avBg);
-            LinearLayout.LayoutParams avParams = new LinearLayout.LayoutParams(dp(32), dp(32));
+            LinearLayout.LayoutParams avParams = new LinearLayout.LayoutParams(dp(36), dp(36));
             avParams.rightMargin = dp(10);
             row.addView(avatar, avParams);
 
@@ -590,57 +787,65 @@ public class AddResearchEntryView {
 
             TextView nameView = new TextView(activity);
             nameView.setText(member.name);
-            nameView.setTextColor(UiTheme.NAVY);
-            nameView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            nameView.setTypeface(Typeface.DEFAULT_BOLD);
+            nameView.setTextColor(0xff082d50);
+            nameView.setTypeface(bold);
+            ScreenTypography.apply(nameView, 14);
             textCol.addView(nameView);
 
             TextView subView = new TextView(activity);
             subView.setText(member.category + " · " + member.role);
-            subView.setTextColor(UiTheme.MUTED);
-            subView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            subView.setTextColor(0xff64748b);
+            subView.setTypeface(regular);
+            ScreenTypography.apply(subView, 12);
             textCol.addView(subView);
 
             row.addView(textCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-            // Remove member button if not principal author
-            if (!"Principal author".equalsIgnoreCase(member.role)) {
-                TextView removeBtn = new TextView(activity);
-                removeBtn.setText("Remove");
-                removeBtn.setTextColor(UiTheme.MUTED);
-                removeBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-                removeBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
-                removeBtn.setClickable(true);
-                removeBtn.setFocusable(true);
-                final int idx = i;
-                removeBtn.setOnClickListener(v -> {
-                    currentTeam.remove(idx);
-                    renderTeamMembersList();
-                });
-                row.addView(removeBtn);
-            }
+            TextView removeBtn = new TextView(activity);
+            removeBtn.setText("✕");
+            removeBtn.setTextColor(0xff64748b);
+            removeBtn.setTypeface(bold);
+            ScreenTypography.apply(removeBtn, 14);
+            removeBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
+            removeBtn.setClickable(true);
+            removeBtn.setFocusable(true);
+            final int idx = i;
+            removeBtn.setOnClickListener(v -> {
+                currentTeam.remove(idx);
+                renderTeamMembersList();
+            });
+            row.addView(removeBtn);
 
             teamListContainer.addView(row);
         }
     }
 
     private View createHistoricalEntryCard() {
+        Typeface bold = UiTheme.boldFont(activity);
+        Typeface regular = UiTheme.bodyFont(activity);
+
         LinearLayout card = createBaseCard();
 
         TextView title = new TextView(activity);
         title.setText("Historical entry");
-        title.setTextColor(UiTheme.NAVY);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextColor(0xff082d50);
+        title.setTypeface(bold);
+        ScreenTypography.apply(title, 16);
         title.setPadding(0, 0, 0, dp(12));
         card.addView(title);
 
         addFormFieldLabel(card, "Entry type");
-        EditText entryTypeInput = createStyledInput("Current registration");
-        card.addView(entryTypeInput);
+        Spinner entryTypeSpinner = new Spinner(activity);
+        ArrayAdapter<String> etAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, ENTRY_TYPES);
+        etAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        entryTypeSpinner.setAdapter(etAdapter);
+        styleSpinner(entryTypeSpinner);
+        card.addView(entryTypeSpinner);
 
         addFormFieldLabel(card, "Source reference");
-        EditText sourceRefInput = createStyledInput("Enter the archival source reference");
+        EditText sourceRefInput = createStyledInput("");
+        sourceRefInput.setHint("Enter the archival source reference");
+        sourceRefInput.setHintTextColor(0xff94a3b8);
         card.addView(sourceRefInput);
 
         addFormFieldLabel(card, "Source Institution");
@@ -653,8 +858,9 @@ public class AddResearchEntryView {
 
         TextView note = new TextView(activity);
         note.setText("Keep unknown historical values unknown. Do not substitute the encoding date.");
-        note.setTextColor(UiTheme.MUTED);
-        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        note.setTextColor(0xff64748b);
+        note.setTypeface(regular);
+        ScreenTypography.apply(note, 12);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         noteParams.topMargin = dp(2);
@@ -666,9 +872,9 @@ public class AddResearchEntryView {
     private void addFormFieldLabel(LinearLayout parent, String label) {
         TextView view = new TextView(activity);
         view.setText(label);
-        view.setTextColor(UiTheme.NAVY);
-        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        view.setTypeface(Typeface.DEFAULT_BOLD);
+        view.setTextColor(0xff082d50);
+        view.setTypeface(UiTheme.boldFont(activity));
+        ScreenTypography.apply(view, 13);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.topMargin = dp(8);
@@ -678,14 +884,11 @@ public class AddResearchEntryView {
     private EditText createStyledInput(String defaultText) {
         EditText input = new EditText(activity);
         input.setText(defaultText);
-        input.setTextColor(UiTheme.INK);
-        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        input.setTextColor(0xff082d50);
+        input.setTypeface(UiTheme.bodyFont(activity));
+        ScreenTypography.apply(input, 13);
         input.setPadding(dp(12), dp(10), dp(12), dp(10));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.WHITE);
-        bg.setCornerRadius(dp(8));
-        bg.setStroke(dp(1), UiTheme.BORDER);
-        input.setBackground(bg);
+        input.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.topMargin = dp(4);
@@ -695,11 +898,7 @@ public class AddResearchEntryView {
     }
 
     private void styleSpinner(Spinner spinner) {
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.WHITE);
-        bg.setCornerRadius(dp(8));
-        bg.setStroke(dp(1), UiTheme.BORDER);
-        spinner.setBackground(bg);
+        spinner.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
         spinner.setPadding(dp(12), dp(10), dp(12), dp(10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -712,13 +911,7 @@ public class AddResearchEntryView {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.WHITE);
-        bg.setCornerRadius(dp(10));
-        bg.setStroke(dp(1), UiTheme.BORDER);
-        card.setBackground(bg);
-
+        card.setBackground(UiTheme.shape(activity, UiTheme.WHITE, 8, UiTheme.BORDER));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.bottomMargin = dp(12);
@@ -730,10 +923,13 @@ public class AddResearchEntryView {
         if (showDuplicateWarning) {
             String reason = duplicateReasonInput != null ? duplicateReasonInput.getText().toString().trim() : "";
             if (TextUtils.isEmpty(reason)) {
-                duplicateReasonError = true;
-                buildUi();
+                showPreview7_4_ErrorReasonMissing();
                 return;
             }
+        } else if (!isEditMode) {
+            // Trigger Wireframe 7.4 duplicate detection on initial Save
+            showPreview7_4_PossibleDuplicate();
+            return;
         }
 
         if (callbacks != null) {
@@ -743,7 +939,7 @@ public class AddResearchEntryView {
                             titleInput.getText().toString(),
                             "Registered",
                             "Nov 18, 2026",
-                            academicYearInput.getText().toString(),
+                            ACADEMIC_YEARS[academicYearSpinner.getSelectedItemPosition()],
                             "LeBron R. James, et al.",
                             COLLEGES[collegeSpinner.getSelectedItemPosition()],
                             adviserInput.getText().toString(),
@@ -786,14 +982,17 @@ public class AddResearchEntryView {
     }
 
     public void showPreview7_4_ErrorReasonMissing() {
-        resetToDefaultAdd();
         this.showDuplicateWarning = true;
         this.duplicateReasonError = true;
         buildUi();
     }
 
-    public void setTeamErrorState(String type) {
-        this.teamErrorType = type;
+    public void showPreview7_5_StaleDataConflict() {
+        this.isEditMode = true;
+        this.isStaleConflict = true;
+        this.showDuplicateWarning = false;
+        this.duplicateReasonError = false;
+        this.teamErrorType = "none";
         buildUi();
     }
 }

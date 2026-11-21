@@ -1,7 +1,6 @@
 package ph.edu.umak.crm.app.staff.accounts;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
@@ -9,13 +8,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 /**
@@ -31,16 +30,16 @@ public class CreateStaffAccountView {
 
     private final Context context;
     private final Callbacks callbacks;
-    private final ScrollView rootScrollView;
     private final LinearLayout contentLayout;
 
+    private LinearLayout warningBanner;
     private EditText nameInput;
     private TextView nameError;
-    private EditText collegeInput;
+    private FrameLayout collegeBox;
+    private TextView collegeText;
     private TextView collegeError;
     private EditText emailInput;
     private TextView emailError;
-    private LinearLayout bottomErrorBanner;
 
     private String currentState = "5.9_default";
 
@@ -48,17 +47,11 @@ public class CreateStaffAccountView {
         this.context = context;
         this.callbacks = callbacks;
 
-        rootScrollView = new ScrollView(context);
-        rootScrollView.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT));
-        rootScrollView.setBackgroundColor(UiTheme.PAPER);
-
         contentLayout = new LinearLayout(context);
         contentLayout.setOrientation(LinearLayout.VERTICAL);
+        contentLayout.setBackgroundColor(UiTheme.PAPER);
         contentLayout.setPadding(UiTheme.dp(context, 16), UiTheme.dp(context, 16),
                 UiTheme.dp(context, 16), UiTheme.dp(context, 24));
-        rootScrollView.addView(contentLayout);
 
         buildView();
         applyState(currentState);
@@ -68,7 +61,35 @@ public class CreateStaffAccountView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return PageTitle.wrap(contentLayout, "Create Staff Account", "Accounts created here always receive the CRM Staff role.", false);
+
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+
+        // Dark Navy Header Band (#082d50)
+        LinearLayout band = new LinearLayout(context);
+        band.setOrientation(LinearLayout.VERTICAL);
+        band.setBackgroundColor(0xff082d50);
+        int pad = UiTheme.dp(context, 16);
+        band.setPadding(pad, pad, pad, pad);
+
+        TextView heading = new TextView(context);
+        heading.setText("Create Staff Account");
+        heading.setTextColor(0xffffffff);
+        heading.setTypeface(UiTheme.headingFont(context));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        band.addView(heading);
+
+        TextView copy = new TextView(context);
+        copy.setText("Accounts created here always receive the CRM Staff role.");
+        copy.setTextColor(UiTheme.PALE);
+        copy.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(copy, 13);
+        band.addView(copy);
+
+        root.addView(band);
+        root.addView(contentLayout);
+        return root;
     }
 
     public void setPreviewState(String state) {
@@ -81,22 +102,38 @@ public class CreateStaffAccountView {
         Typeface bold = UiTheme.boldFont(context);
         Typeface regular = UiTheme.bodyFont(context);
 
-        // Back button row
-        if (callbacks != null) {
-            TextView backBtn = new TextView(context);
-            backBtn.setText("< Back to Accounts");
-            backBtn.setTextColor(UiTheme.ACCENT);
-            backBtn.setTypeface(bold);
-            ScreenTypography.apply(backBtn, 14);
-            backBtn.setPadding(0, 0, 0, UiTheme.dp(context, 12));
-            backBtn.setOnClickListener(v -> callbacks.onBack());
-            contentLayout.addView(backBtn);
-        }
+        // Top Warning Banner (for missing error state)
+        warningBanner = new LinearLayout(context);
+        warningBanner.setOrientation(LinearLayout.HORIZONTAL);
+        warningBanner.setGravity(Gravity.CENTER_VERTICAL);
+        warningBanner.setBackground(UiTheme.shape(context, 0xfffff7ed, 8, 0xfffed7aa));
+        int wPad = UiTheme.dp(context, 12);
+        warningBanner.setPadding(wPad, wPad, wPad, wPad);
 
-        // Name Field
+        TextView warnIcon = new TextView(context);
+        warnIcon.setText("⚠");
+        warnIcon.setTextColor(0xffc2410c);
+        warnIcon.setTypeface(bold);
+        ScreenTypography.apply(warnIcon, 14);
+        warnIcon.setPadding(0, 0, UiTheme.dp(context, 8), 0);
+        warningBanner.addView(warnIcon);
+
+        TextView warnText = new TextView(context);
+        warnText.setText("Complete the highlighted account details.");
+        warnText.setTextColor(0xffc2410c);
+        warnText.setTypeface(regular);
+        ScreenTypography.apply(warnText, 13);
+        warningBanner.addView(warnText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        warningBanner.setVisibility(View.GONE);
+        contentLayout.addView(warningBanner);
+
+        addSpacing(14);
+
+        // 1. Name Field
         TextView nameLabel = new TextView(context);
         nameLabel.setText("Name *");
-        nameLabel.setTextColor(UiTheme.NAVY);
+        nameLabel.setTextColor(0xff082d50);
         nameLabel.setTypeface(bold);
         ScreenTypography.apply(nameLabel, 13);
         nameLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
@@ -104,63 +141,76 @@ public class CreateStaffAccountView {
 
         nameInput = new EditText(context);
         nameInput.setHint("Enter full name");
-        nameInput.setHintTextColor(UiTheme.MUTED);
-        nameInput.setTextColor(UiTheme.NAVY);
+        nameInput.setHintTextColor(0xff94a3b8);
+        nameInput.setTextColor(0xff082d50);
         nameInput.setTypeface(regular);
         ScreenTypography.apply(nameInput, 14);
-        nameInput.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
-                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
+        int padH = UiTheme.dp(context, 12);
+        int padV = UiTheme.dp(context, 10);
+        nameInput.setPadding(padH, padV, padH, padV);
+        nameInput.setSingleLine(true);
+        nameInput.setMinHeight(UiTheme.dp(context, 46));
         contentLayout.addView(nameInput);
 
         nameError = new TextView(context);
-        nameError.setText("Required");
-        nameError.setTextColor(UiTheme.ERROR_RED);
+        nameError.setText("⚠ Required");
+        nameError.setTextColor(0xffdc2626);
         nameError.setTypeface(regular);
         ScreenTypography.apply(nameError, 12);
-        nameError.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 8));
+        nameError.setPadding(0, UiTheme.dp(context, 4), 0, 0);
         nameError.setVisibility(View.GONE);
         contentLayout.addView(nameError);
 
-        View sp1 = new View(context);
-        sp1.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, 12)));
-        contentLayout.addView(sp1);
+        addSpacing(14);
 
-        // College / Unit Field
+        // 2. College / Unit Field
         TextView collegeLabel = new TextView(context);
         collegeLabel.setText("College / Unit *");
-        collegeLabel.setTextColor(UiTheme.NAVY);
+        collegeLabel.setTextColor(0xff082d50);
         collegeLabel.setTypeface(bold);
         ScreenTypography.apply(collegeLabel, 13);
         collegeLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
         contentLayout.addView(collegeLabel);
 
-        collegeInput = new EditText(context);
-        collegeInput.setHint("Select college or unit");
-        collegeInput.setHintTextColor(UiTheme.MUTED);
-        collegeInput.setTextColor(UiTheme.NAVY);
-        collegeInput.setTypeface(regular);
-        ScreenTypography.apply(collegeInput, 14);
-        collegeInput.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
-                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
-        contentLayout.addView(collegeInput);
+        collegeBox = new FrameLayout(context);
+        collegeBox.setPadding(padH, padV, padH, padV);
+        collegeBox.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 46)));
+
+        collegeText = new TextView(context);
+        collegeText.setText("Center for Research Management");
+        collegeText.setTextColor(0xff082d50);
+        collegeText.setTypeface(regular);
+        ScreenTypography.apply(collegeText, 14);
+        FrameLayout.LayoutParams ctLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        ctLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+        collegeBox.addView(collegeText, ctLp);
+
+        ImageView chevron = new ImageView(context);
+        chevron.setImageResource(R.drawable.ic_crm_chevron_down);
+        chevron.setColorFilter(0xff64748b);
+        FrameLayout.LayoutParams cLp = new FrameLayout.LayoutParams(UiTheme.dp(context, 20), UiTheme.dp(context, 20));
+        cLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        collegeBox.addView(chevron, cLp);
+
+        contentLayout.addView(collegeBox);
 
         collegeError = new TextView(context);
-        collegeError.setText("Required");
-        collegeError.setTextColor(UiTheme.ERROR_RED);
+        collegeError.setText("⚠ Required");
+        collegeError.setTextColor(0xffdc2626);
         collegeError.setTypeface(regular);
         ScreenTypography.apply(collegeError, 12);
-        collegeError.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 8));
+        collegeError.setPadding(0, UiTheme.dp(context, 4), 0, 0);
         collegeError.setVisibility(View.GONE);
         contentLayout.addView(collegeError);
 
-        View sp2 = new View(context);
-        sp2.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, 12)));
-        contentLayout.addView(sp2);
+        addSpacing(14);
 
-        // Institutional email Field
+        // 3. Institutional email Field
         TextView emailLabel = new TextView(context);
         emailLabel.setText("Institutional email *");
-        emailLabel.setTextColor(UiTheme.NAVY);
+        emailLabel.setTextColor(0xff082d50);
         emailLabel.setTypeface(bold);
         ScreenTypography.apply(emailLabel, 13);
         emailLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
@@ -168,104 +218,101 @@ public class CreateStaffAccountView {
 
         emailInput = new EditText(context);
         emailInput.setHint("areyes@umak.edu.ph");
-        emailInput.setHintTextColor(UiTheme.MUTED);
-        emailInput.setTextColor(UiTheme.NAVY);
+        emailInput.setHintTextColor(0xff94a3b8);
+        emailInput.setTextColor(0xff082d50);
         emailInput.setTypeface(regular);
         ScreenTypography.apply(emailInput, 14);
-        emailInput.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
-                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
+        emailInput.setPadding(padH, padV, padH, padV);
+        emailInput.setSingleLine(true);
+        emailInput.setMinHeight(UiTheme.dp(context, 46));
         contentLayout.addView(emailInput);
 
         emailError = new TextView(context);
-        emailError.setText("This institutional email is already registered.");
-        emailError.setTextColor(UiTheme.ERROR_RED);
+        emailError.setText("⚠ This institutional email is already registered.");
+        emailError.setTextColor(0xffdc2626);
         emailError.setTypeface(regular);
         ScreenTypography.apply(emailError, 12);
-        emailError.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 8));
+        emailError.setPadding(0, UiTheme.dp(context, 4), 0, 0);
         emailError.setVisibility(View.GONE);
         contentLayout.addView(emailError);
 
-        View sp3 = new View(context);
-        sp3.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, 12)));
-        contentLayout.addView(sp3);
+        addSpacing(14);
 
-        // Role Field (Fixed)
+        // 4. Role Field (Fixed with lock icon)
         TextView roleLabel = new TextView(context);
         roleLabel.setText("Role");
-        roleLabel.setTextColor(UiTheme.NAVY);
+        roleLabel.setTextColor(0xff082d50);
         roleLabel.setTypeface(bold);
         ScreenTypography.apply(roleLabel, 13);
         roleLabel.setPadding(0, 0, 0, UiTheme.dp(context, 6));
         contentLayout.addView(roleLabel);
 
-        TextView roleBox = new TextView(context);
-        roleBox.setText("CRM Staff");
-        roleBox.setTextColor(UiTheme.NAVY);
-        roleBox.setTypeface(bold);
-        ScreenTypography.apply(roleBox, 14);
-        roleBox.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
-                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
+        FrameLayout roleBox = new FrameLayout(context);
+        roleBox.setBackground(UiTheme.shape(context, 0xfff8fafc, 8, UiTheme.BORDER));
+        roleBox.setPadding(padH, padV, padH, padV);
+        roleBox.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 46)));
 
-        GradientDrawable roleBg = new GradientDrawable();
-        roleBg.setColor(Color.parseColor("#EEF2F6"));
-        roleBg.setCornerRadius(UiTheme.dp(context, 8));
-        roleBg.setStroke(UiTheme.dp(context, 1), UiTheme.BORDER);
-        roleBox.setBackground(roleBg);
+        TextView roleText = new TextView(context);
+        roleText.setText("CRM Staff");
+        roleText.setTextColor(0xff082d50);
+        roleText.setTypeface(regular);
+        ScreenTypography.apply(roleText, 14);
+        FrameLayout.LayoutParams rtLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rtLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+        roleBox.addView(roleText, rtLp);
+
+        ImageView lockIcon = new ImageView(context);
+        lockIcon.setImageResource(R.drawable.ic_crm_lock);
+        lockIcon.setColorFilter(0xff64748b);
+        FrameLayout.LayoutParams lkLp = new FrameLayout.LayoutParams(UiTheme.dp(context, 18), UiTheme.dp(context, 18));
+        lkLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        roleBox.addView(lockIcon, lkLp);
+
         contentLayout.addView(roleBox);
 
         TextView roleHelp = new TextView(context);
         roleHelp.setText("Role is fixed for accounts created here.");
-        roleHelp.setTextColor(UiTheme.MUTED);
+        roleHelp.setTextColor(0xff586b83);
         roleHelp.setTypeface(regular);
         ScreenTypography.apply(roleHelp, 12);
-        roleHelp.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 16));
+        roleHelp.setPadding(0, UiTheme.dp(context, 4), 0, 0);
         contentLayout.addView(roleHelp);
 
-        // Bottom Error Banner (Hidden by default)
-        bottomErrorBanner = new LinearLayout(context);
-        bottomErrorBanner.setOrientation(LinearLayout.HORIZONTAL);
-        bottomErrorBanner.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
-                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
+        addSpacing(24);
 
-        GradientDrawable errBannerBg = new GradientDrawable();
-        errBannerBg.setColor(UiTheme.PEACH_BG);
-        errBannerBg.setCornerRadius(UiTheme.dp(context, 8));
-        errBannerBg.setStroke(UiTheme.dp(context, 1), UiTheme.PEACH_BORDER);
-        bottomErrorBanner.setBackground(errBannerBg);
-
-        TextView errBannerText = new TextView(context);
-        errBannerText.setText("Complete the highlighted account details.");
-        errBannerText.setTextColor(UiTheme.PEACH_TEXT);
-        errBannerText.setTypeface(bold);
-        ScreenTypography.apply(errBannerText, 13);
-        bottomErrorBanner.addView(errBannerText);
-        bottomErrorBanner.setVisibility(View.GONE);
-        contentLayout.addView(bottomErrorBanner);
-
-        View sp4 = new View(context);
-        sp4.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, 20)));
-        contentLayout.addView(sp4);
-
-        // Buttons
-        Button createBtn = UiButton.primary(context, "Create Account", () -> {
-            if ("5.9_error_missing".equals(currentState) || "5.9_error_duplicate".equals(currentState)) {
-                return;
-            }
+        // 5. Buttons: Create Account & Cancel
+        Button createBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        createBtn.setText("Create Account");
+        createBtn.setAllCaps(false);
+        createBtn.setTextColor(0xffffffff);
+        createBtn.setTypeface(bold);
+        ScreenTypography.apply(createBtn, 15);
+        createBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, 0xff131c4b, 8, 0), 0x20ffffff));
+        createBtn.setMinHeight(UiTheme.dp(context, 46));
+        createBtn.setOnClickListener(v -> {
             if (callbacks != null) {
                 callbacks.onAccountCreated(
                         nameInput.getText().toString(),
-                        collegeInput.getText().toString(),
+                        collegeText.getText().toString(),
                         emailInput.getText().toString()
                 );
             }
         });
         contentLayout.addView(createBtn);
 
-        View sp5 = new View(context);
-        sp5.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, 10)));
-        contentLayout.addView(sp5);
+        addSpacing(10);
 
-        Button cancelBtn = UiButton.outline(context, "Cancel", UiTheme.BORDER, UiTheme.NAVY, () -> {
+        Button cancelBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        cancelBtn.setText("Cancel");
+        cancelBtn.setAllCaps(false);
+        cancelBtn.setTextColor(0xff082d50);
+        cancelBtn.setTypeface(bold);
+        ScreenTypography.apply(cancelBtn, 15);
+        cancelBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+        cancelBtn.setMinHeight(UiTheme.dp(context, 44));
+        cancelBtn.setOnClickListener(v -> {
             if (callbacks != null) {
                 callbacks.onBack();
             }
@@ -275,48 +322,53 @@ public class CreateStaffAccountView {
 
     private void applyState(String state) {
         if ("5.9_error_missing".equals(state)) {
+            warningBanner.setVisibility(View.VISIBLE);
+
             nameInput.setText("");
             nameInput.setBackground(createFieldBg(true));
             nameError.setVisibility(View.VISIBLE);
 
-            collegeInput.setText("");
-            collegeInput.setBackground(createFieldBg(true));
+            collegeText.setText("Select college or unit");
+            collegeText.setTextColor(0xff94a3b8);
+            collegeBox.setBackground(createFieldBg(true));
             collegeError.setVisibility(View.VISIBLE);
 
             emailInput.setText("areyes@umak.edu.ph");
             emailInput.setBackground(createFieldBg(false));
             emailError.setVisibility(View.GONE);
 
-            bottomErrorBanner.setVisibility(View.VISIBLE);
         } else if ("5.9_error_duplicate".equals(state)) {
+            warningBanner.setVisibility(View.GONE);
+
             nameInput.setText("Ana M. Reyes");
             nameInput.setBackground(createFieldBg(false));
             nameError.setVisibility(View.GONE);
 
-            collegeInput.setText("Center for Research Management");
-            collegeInput.setBackground(createFieldBg(false));
+            collegeText.setText("Center for Research Management");
+            collegeText.setTextColor(0xff082d50);
+            collegeBox.setBackground(createFieldBg(false));
             collegeError.setVisibility(View.GONE);
 
             emailInput.setText("areyes@umak.edu.ph");
             emailInput.setBackground(createFieldBg(true));
             emailError.setVisibility(View.VISIBLE);
 
-            bottomErrorBanner.setVisibility(View.GONE);
         } else {
             // Default (5.9_default)
+            warningBanner.setVisibility(View.GONE);
+
             nameInput.setText("Ana M. Reyes");
             nameInput.setBackground(createFieldBg(false));
             nameError.setVisibility(View.GONE);
 
-            collegeInput.setText("Center for Research Management");
-            collegeInput.setBackground(createFieldBg(false));
+            collegeText.setText("Center for Research Management");
+            collegeText.setTextColor(0xff082d50);
+            collegeBox.setBackground(createFieldBg(false));
             collegeError.setVisibility(View.GONE);
 
             emailInput.setText("areyes@umak.edu.ph");
             emailInput.setBackground(createFieldBg(false));
             emailError.setVisibility(View.GONE);
-
-            bottomErrorBanner.setVisibility(View.GONE);
         }
     }
 
@@ -325,10 +377,16 @@ public class CreateStaffAccountView {
         bg.setColor(UiTheme.WHITE);
         bg.setCornerRadius(UiTheme.dp(context, 8));
         if (hasError) {
-            bg.setStroke(UiTheme.dp(context, 1), UiTheme.ERROR_RED);
+            bg.setStroke(UiTheme.dp(context, 1), 0xfff87171);
         } else {
             bg.setStroke(UiTheme.dp(context, 1), UiTheme.BORDER);
         }
         return bg;
+    }
+
+    private void addSpacing(int dp) {
+        View spacer = new View(context);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, dp)));
+        contentLayout.addView(spacer);
     }
 }

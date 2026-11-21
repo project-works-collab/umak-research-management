@@ -18,8 +18,6 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import java.util.List;
-
 import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
@@ -128,97 +126,35 @@ public class MilestonesAndOutcomesView {
         rootLayout.setBackgroundColor(UiTheme.PAPER);
         rootLayout.setPadding(dp(16), dp(16), dp(16), dp(32));
 
-        // 1. Top Banners (Error or Confirmation)
-        if (!"none".equals(previewErrorMode)) {
-            rootLayout.addView(createTopErrorBanner());
+        // 1. Summary Card (Title, ID, Current overall stage badge, Unsaved/Saved notice, View stage history)
+        rootLayout.addView(createSummaryCard());
 
-        }
-
-        // 3. Study title, ID, stage & View stage history link
-        TextView studyTitle = new TextView(activity);
-        studyTitle.setText(state.title);
-        studyTitle.setTextColor(UiTheme.NAVY);
-        studyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        studyTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        rootLayout.addView(studyTitle);
-
-        TextView idText = new TextView(activity);
-        idText.setText(state.recordId);
-        idText.setTextColor(UiTheme.MUTED);
-        idText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        rootLayout.addView(idText);
-
-        LinearLayout stageRow = new LinearLayout(activity);
-        stageRow.setOrientation(LinearLayout.HORIZONTAL);
-        stageRow.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams stageRowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        stageRowParams.topMargin = dp(2);
-        stageRowParams.bottomMargin = dp(4);
-        stageRow.setLayoutParams(stageRowParams);
-
-        TextView stageText = new TextView(activity);
-        stageText.setText("Current overall stage: " + state.currentStage);
-        stageText.setTextColor(UiTheme.NAVY);
-        stageText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        stageText.setTypeface(Typeface.DEFAULT_BOLD);
-        stageRow.addView(stageText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        TextView historyLink = new TextView(activity);
-        historyLink.setText("View stage history →");
-        historyLink.setTextColor(UiTheme.ACCENT);
-        historyLink.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        historyLink.setTypeface(Typeface.DEFAULT_BOLD);
-        historyLink.setClickable(true);
-        historyLink.setFocusable(true);
-        historyLink.setOnClickListener(v -> {
-            if (callbacks != null) {
-                callbacks.onViewStageHistory();
-            }
-        });
-        stageRow.addView(historyLink);
-        rootLayout.addView(stageRow);
-
-        if (state.savedTimestamp != null) {
-            TextView savedMeta = new TextView(activity);
-            savedMeta.setText(state.savedTimestamp);
-            savedMeta.setTextColor(UiTheme.MUTED);
-            savedMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            LinearLayout.LayoutParams smParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            smParams.bottomMargin = dp(14);
-            rootLayout.addView(savedMeta, smParams);
-        } else {
-            View spacing = new View(activity);
-            rootLayout.addView(spacing, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(10)));
-        }
-
-        // 4. Section: Update overall stage Card
+        // 2. Section: Update overall stage Card
         rootLayout.addView(createStageUpdateCard());
 
-        // 5. Section: Research Milestones Card
+        // 3. Section: Research Milestones Card
         rootLayout.addView(createMilestonesCard());
 
-        // 6. Section: Completion Outcome Card
+        // 4. Section: Completion Outcome Card
         rootLayout.addView(createCompletionCard());
 
-        // 7. Section: Presentation Outcome Card
+        // 5. Section: Presentation Outcome Card
         rootLayout.addView(createPresentationCard());
 
-        // 8. Section: Publication Outcome Card
+        // 6. Section: Publication Outcome Card
         rootLayout.addView(createPublicationCard());
 
         // Helper instruction
         TextView outcomeNote = new TextView(activity);
         outcomeNote.setText("Record each outcome independently. Saving one does not mark the others as achieved.");
-        outcomeNote.setTextColor(UiTheme.MUTED);
+        outcomeNote.setTextColor(0xff64748b);
         outcomeNote.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams oParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         oParams.bottomMargin = dp(16);
         rootLayout.addView(outcomeNote, oParams);
 
-        // 9. Actions (Save & Close)
+        // 7. Actions (Save & Close)
         Button saveBtn = new Button(activity);
         saveBtn.setText("Save");
         saveBtn.setTextColor(UiTheme.WHITE);
@@ -256,29 +192,135 @@ public class MilestonesAndOutcomesView {
                 callbacks.onClose();
             }
         });
+
+        // Confirmation Banner (8.5a Stage updated, 8.5b Outcome recorded)
+        if (state.savedBannerMessage != null) {
+            LinearLayout banner = new LinearLayout(activity);
+            banner.setOrientation(LinearLayout.HORIZONTAL);
+            banner.setGravity(Gravity.CENTER);
+            banner.setPadding(dp(18), dp(10), dp(18), dp(10));
+            GradientDrawable bBg = new GradientDrawable();
+            bBg.setColor(0xff082d50);
+            bBg.setCornerRadius(dp(22));
+            banner.setBackground(bBg);
+
+            TextView bText = new TextView(activity);
+            bText.setText("✓ " + state.savedBannerMessage);
+            bText.setTextColor(UiTheme.WHITE);
+            bText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            bText.setTypeface(Typeface.DEFAULT_BOLD);
+            banner.addView(bText);
+
+            LinearLayout.LayoutParams bParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+            bParams.gravity = Gravity.CENTER_HORIZONTAL;
+            bParams.topMargin = dp(12);
+            bParams.bottomMargin = dp(4);
+            rootLayout.addView(banner, bParams);
+        }
     }
 
-    private View createTopErrorBanner() {
-        LinearLayout banner = new LinearLayout(activity);
-        banner.setOrientation(LinearLayout.VERTICAL);
-        banner.setPadding(dp(14), dp(10), dp(14), dp(10));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(UiTheme.PEACH_BG);
-        bg.setCornerRadius(dp(8));
-        bg.setStroke(dp(1), UiTheme.PEACH_BORDER);
-        banner.setBackground(bg);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.bottomMargin = dp(14);
-        banner.setLayoutParams(params);
+    private View createSummaryCard() {
+        LinearLayout card = createBaseCard();
 
-        TextView text = new TextView(activity);
-        text.setText("Not saved. The saved record is unchanged.");
-        text.setTextColor(UiTheme.PEACH_TEXT);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        text.setTypeface(Typeface.DEFAULT_BOLD);
-        banner.addView(text);
-        return banner;
+        TextView studyTitle = new TextView(activity);
+        studyTitle.setText(state.title);
+        studyTitle.setTextColor(UiTheme.NAVY);
+        studyTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        studyTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        card.addView(studyTitle);
+
+        TextView idText = new TextView(activity);
+        idText.setText(state.recordId);
+        idText.setTextColor(0xff64748b);
+        idText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        LinearLayout.LayoutParams idParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        idParams.topMargin = dp(2);
+        idParams.bottomMargin = dp(8);
+        card.addView(idText, idParams);
+
+        LinearLayout stageRow = new LinearLayout(activity);
+        stageRow.setOrientation(LinearLayout.HORIZONTAL);
+        stageRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams stageRowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        stageRow.setLayoutParams(stageRowParams);
+
+        TextView stageLabel = new TextView(activity);
+        stageLabel.setText("Current overall stage:   ");
+        stageLabel.setTextColor(UiTheme.NAVY);
+        stageLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        stageLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        stageRow.addView(stageLabel);
+
+        TextView stageBadge = new TextView(activity);
+        stageBadge.setText(state.currentStage);
+        stageBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        stageBadge.setTypeface(Typeface.DEFAULT_BOLD);
+        stageBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setCornerRadius(dp(12));
+        if ("Completed".equalsIgnoreCase(state.currentStage)) {
+            stageBadge.setTextColor(0xff059669);
+            badgeBg.setColor(0xffecfdf5);
+            badgeBg.setStroke(dp(1), 0xffa7f3d0);
+        } else if ("For revision".equalsIgnoreCase(state.currentStage)) {
+            stageBadge.setTextColor(0xffb45309);
+            badgeBg.setColor(0xfffffbeb);
+            badgeBg.setStroke(dp(1), 0xfffde68a);
+        } else {
+            stageBadge.setTextColor(0xff1d4ed8);
+            badgeBg.setColor(0xffeff6ff);
+            badgeBg.setStroke(dp(1), 0xffbfdbfe);
+        }
+        stageBadge.setBackground(badgeBg);
+        stageRow.addView(stageBadge);
+
+        card.addView(stageRow);
+
+        if (!"none".equals(previewErrorMode)) {
+            TextView notSavedText = new TextView(activity);
+            notSavedText.setText("Not saved. The saved record is unchanged.");
+            notSavedText.setTextColor(0xff64748b);
+            notSavedText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            LinearLayout.LayoutParams nsParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            nsParams.topMargin = dp(4);
+            nsParams.bottomMargin = dp(2);
+            card.addView(notSavedText, nsParams);
+        } else if (state.savedTimestamp != null) {
+            TextView savedMeta = new TextView(activity);
+            savedMeta.setText("✓ " + state.savedTimestamp);
+            savedMeta.setTextColor(0xff16a34a);
+            savedMeta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            savedMeta.setTypeface(Typeface.DEFAULT_BOLD);
+            LinearLayout.LayoutParams smParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            smParams.topMargin = dp(4);
+            smParams.bottomMargin = dp(2);
+            card.addView(savedMeta, smParams);
+        }
+
+        TextView historyLink = new TextView(activity);
+        historyLink.setText("View stage history →");
+        historyLink.setTextColor(UiTheme.ACCENT);
+        historyLink.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        historyLink.setTypeface(Typeface.DEFAULT_BOLD);
+        historyLink.setClickable(true);
+        historyLink.setFocusable(true);
+        LinearLayout.LayoutParams linkParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        linkParams.topMargin = dp(6);
+        historyLink.setLayoutParams(linkParams);
+        historyLink.setOnClickListener(v -> {
+            if (callbacks != null) {
+                callbacks.onViewStageHistory();
+            }
+        });
+        card.addView(historyLink);
+
+        return card;
     }
 
     private View createStageUpdateCard() {
@@ -304,7 +346,8 @@ public class MilestonesAndOutcomesView {
         ArrayAdapter<String> stageAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, STAGE_OPTIONS);
         stageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         stageSpinner.setAdapter(stageAdapter);
-        styleSpinner(stageSpinner);
+        boolean isStageError = "8.1a".equals(previewErrorMode);
+        styleSpinner(stageSpinner, isStageError);
 
         if ("8.1a".equals(previewErrorMode)) {
             stageSpinner.setSelection(4); // "Registered" -> triggers not allowed
@@ -325,7 +368,7 @@ public class MilestonesAndOutcomesView {
 
         TextView stageGuidance = new TextView(activity);
         stageGuidance.setText("From In progress, you may request For revision or Completed. Registered can advance to In progress; For revision can return to In progress.");
-        stageGuidance.setTextColor(UiTheme.MUTED);
+        stageGuidance.setTextColor(0xff64748b);
         stageGuidance.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams gParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -335,20 +378,21 @@ public class MilestonesAndOutcomesView {
         // Effective date *
         TextView dateLabel = new TextView(activity);
         dateLabel.setText("Effective date *");
-        dateLabel.setTextColor("8.1b".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        dateLabel.setTextColor(UiTheme.NAVY);
         dateLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         dateLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(dateLabel);
 
+        boolean isDateError = "8.1b".equals(previewErrorMode);
         effectiveDateInput = createStyledInput(
-                "8.1b".equals(previewErrorMode) ? "" :
-                        (state.effectiveDate != null && !state.effectiveDate.isEmpty() ? state.effectiveDate : "2026-11-06"),
+                isDateError ? "" :
+                        (state.effectiveDate != null && !state.effectiveDate.isEmpty() ? state.effectiveDate : ""),
                 "YYYY-MM-DD",
-                "8.1b".equals(previewErrorMode)
+                isDateError
         );
         card.addView(effectiveDateInput);
 
-        if ("8.1b".equals(previewErrorMode)) {
+        if (isDateError) {
             TextView errDate = createErrorTextView("Please enter an effective date.");
             card.addView(errDate);
         }
@@ -356,7 +400,7 @@ public class MilestonesAndOutcomesView {
         // Supporting details or reference *
         TextView refLabel = new TextView(activity);
         refLabel.setText("Supporting details or reference *");
-        refLabel.setTextColor("8.1c".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        refLabel.setTextColor(UiTheme.NAVY);
         refLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         refLabel.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams refLabelParams = new LinearLayout.LayoutParams(
@@ -364,15 +408,16 @@ public class MilestonesAndOutcomesView {
         refLabelParams.topMargin = dp(8);
         card.addView(refLabel, refLabelParams);
 
+        boolean isRefError = "8.1c".equals(previewErrorMode);
         supportingRefInput = createStyledInput(
-                "8.1c".equals(previewErrorMode) ? "" :
-                        (state.supportingRef != null && !state.supportingRef.isEmpty() ? state.supportingRef : "Panel evaluation memo 2026-131"),
+                isRefError ? "" :
+                        (state.supportingRef != null && !state.supportingRef.isEmpty() ? state.supportingRef : ""),
                 "Enter the supporting reference",
-                "8.1c".equals(previewErrorMode)
+                isRefError
         );
         card.addView(supportingRefInput);
 
-        if ("8.1c".equals(previewErrorMode)) {
+        if (isRefError) {
             TextView errRef = createErrorTextView("Provide supporting details or a reference.");
             card.addView(errRef);
         }
@@ -380,7 +425,7 @@ public class MilestonesAndOutcomesView {
         // Next action
         TextView nextLabel = new TextView(activity);
         nextLabel.setText("Next action");
-        nextLabel.setTextColor("8.1d".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        nextLabel.setTextColor(UiTheme.NAVY);
         nextLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         nextLabel.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams nextLabelParams = new LinearLayout.LayoutParams(
@@ -388,15 +433,16 @@ public class MilestonesAndOutcomesView {
         nextLabelParams.topMargin = dp(8);
         card.addView(nextLabel, nextLabelParams);
 
+        boolean isNextError = "8.1d".equals(previewErrorMode);
         nextActionInput = createStyledInput(
-                "8.1d".equals(previewErrorMode) ? "" :
-                        (state.nextAction != null && !state.nextAction.isEmpty() ? state.nextAction : "Revise Chapter 3 methodology per panel memo."),
+                isNextError ? "" :
+                        (state.nextAction != null && !state.nextAction.isEmpty() ? state.nextAction : ""),
                 "Enter the next action",
-                "8.1d".equals(previewErrorMode)
+                isNextError
         );
         card.addView(nextActionInput);
 
-        if ("8.1d".equals(previewErrorMode)) {
+        if (isNextError) {
             TextView errNext = createErrorTextView("Enter a next action or select No next action recorded.");
             card.addView(errNext);
         }
@@ -407,12 +453,17 @@ public class MilestonesAndOutcomesView {
         noNextActionCheckBox.setTextColor(UiTheme.NAVY);
         noNextActionCheckBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         noNextActionCheckBox.setChecked(state.noNextActionRecorded);
+        if (isNextError) {
+            noNextActionCheckBox.setButtonTintList(ColorStateList.valueOf(0xffea580c));
+        } else {
+            noNextActionCheckBox.setButtonTintList(ColorStateList.valueOf(0xff131c4b));
+        }
         card.addView(noNextActionCheckBox);
 
         TextView note = new TextView(activity);
         note.setText("Completion requires a completion date. Invalid transitions leave the saved record unchanged.");
-        note.setTextColor(UiTheme.MUTED);
-        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        note.setTextColor(0xffb45309);
+        note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
         LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         noteParams.topMargin = dp(6);
@@ -433,46 +484,49 @@ public class MilestonesAndOutcomesView {
 
         TextView sub1 = new TextView(activity);
         sub1.setText("Milestones are separate from the overall stage. CRM confirms which milestones apply.");
-        sub1.setTextColor(UiTheme.MUTED);
+        sub1.setTextColor(0xff64748b);
         sub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams s1Params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         s1Params.topMargin = dp(2);
+        s1Params.bottomMargin = dp(12);
         card.addView(sub1, s1Params);
-
-        TextView sub2 = new TextView(activity);
-        sub2.setText("Status options: Pending · In progress · Completed · Not applicable");
-        sub2.setTextColor(UiTheme.MUTED);
-        sub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        LinearLayout.LayoutParams s2Params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        s2Params.topMargin = dp(2);
-        s2Params.bottomMargin = dp(12);
-        card.addView(sub2, s2Params);
 
         for (int i = 0; i < state.milestones.size(); i++) {
             StaffLifecycleData.MilestoneItem item = state.milestones.get(i);
             card.addView(createMilestoneRow(item));
-
-            if (i < state.milestones.size() - 1) {
-                View div = new View(activity);
-                div.setBackgroundColor(UiTheme.BORDER);
-                LinearLayout.LayoutParams divParams = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(1));
-                divParams.topMargin = dp(8);
-                divParams.bottomMargin = dp(8);
-                card.addView(div, divParams);
-            }
         }
+
+        TextView sub2 = new TextView(activity);
+        sub2.setText("Status options: Pending · In progress · Completed · Not applicable");
+        sub2.setTextColor(0xff64748b);
+        sub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+        LinearLayout.LayoutParams s2Params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        s2Params.topMargin = dp(4);
+        s2Params.bottomMargin = dp(2);
+        card.addView(sub2, s2Params);
 
         return card;
     }
 
     private View createMilestoneRow(StaffLifecycleData.MilestoneItem item) {
-        LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(0, dp(4), 0, dp(4));
+        LinearLayout box = new LinearLayout(activity);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(12), dp(10), dp(12), dp(10));
 
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(UiTheme.WHITE);
+        bg.setCornerRadius(dp(8));
+        bg.setStroke(dp(1), 0xffe2e8f0);
+        box.setBackground(bg);
+
+        LinearLayout.LayoutParams boxParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        boxParams.bottomMargin = dp(8);
+        box.setLayoutParams(boxParams);
+
+        // Row 1: Name (left) and Status badge (right)
         LinearLayout topRow = new LinearLayout(activity);
         topRow.setOrientation(LinearLayout.HORIZONTAL);
         topRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -489,40 +543,55 @@ public class MilestonesAndOutcomesView {
         badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         badge.setTypeface(Typeface.DEFAULT_BOLD);
         badge.setPadding(dp(8), dp(3), dp(8), dp(3));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(10));
+        GradientDrawable bBg = new GradientDrawable();
+        bBg.setCornerRadius(dp(10));
         if ("Completed".equalsIgnoreCase(item.status)) {
-            bg.setColor(UiTheme.STATUS_COMPLETED_BG);
-            badge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
+            bBg.setColor(0xffecfdf5);
+            badge.setTextColor(0xff059669);
         } else if ("In progress".equalsIgnoreCase(item.status)) {
-            bg.setColor(UiTheme.STATUS_IN_REVIEW_BG);
-            badge.setTextColor(UiTheme.STATUS_IN_REVIEW_TEXT);
+            bBg.setColor(0xfffffbeb);
+            badge.setTextColor(0xffd97706);
         } else {
-            bg.setColor(UiTheme.TAG_BG);
-            badge.setTextColor(UiTheme.TAG_TEXT);
+            bBg.setColor(0xfff3f4f6);
+            badge.setTextColor(0xff4b5563);
         }
-        badge.setBackground(bg);
+        badge.setBackground(bBg);
         topRow.addView(badge);
-        row.addView(topRow);
+        box.addView(topRow);
+
+        // Row 2: Subtitle (meta) on left, chevron › on right
+        LinearLayout bottomRow = new LinearLayout(activity);
+        bottomRow.setOrientation(LinearLayout.HORIZONTAL);
+        bottomRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams bRowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        bRowParams.topMargin = dp(4);
+        bottomRow.setLayoutParams(bRowParams);
 
         TextView metaText = new TextView(activity);
         metaText.setText(item.meta);
-        metaText.setTextColor(UiTheme.MUTED);
+        metaText.setTextColor(0xff64748b);
         metaText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        metaParams.topMargin = dp(2);
-        row.addView(metaText, metaParams);
+        bottomRow.addView(metaText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-        row.setClickable(true);
-        row.setFocusable(true);
-        row.setOnClickListener(v -> MilestoneEditorDialog.show(
+        TextView chevron = new TextView(activity);
+        chevron.setText("›");
+        chevron.setTextColor(0xff94a3b8);
+        chevron.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        chevron.setTypeface(Typeface.DEFAULT_BOLD);
+        bottomRow.addView(chevron);
+
+        box.addView(bottomRow);
+
+        box.setClickable(true);
+        box.setFocusable(true);
+        box.setOnClickListener(v -> MilestoneEditorDialog.show(
                 activity,
                 item,
                 updated -> buildUi()
         ));
 
-        return row;
+        return box;
     }
 
     private View createCompletionCard() {
@@ -542,12 +611,12 @@ public class MilestonesAndOutcomesView {
         if (state.completion.isSaved) {
             TextView savedBadge = new TextView(activity);
             savedBadge.setText("Saved");
-            savedBadge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
+            savedBadge.setTextColor(0xff059669);
             savedBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
             savedBadge.setTypeface(Typeface.DEFAULT_BOLD);
             savedBadge.setPadding(dp(8), dp(3), dp(8), dp(3));
             GradientDrawable sBg = new GradientDrawable();
-            sBg.setColor(UiTheme.STATUS_COMPLETED_BG);
+            sBg.setColor(0xffecfdf5);
             sBg.setCornerRadius(dp(8));
             savedBadge.setBackground(sBg);
             headerRow.addView(savedBadge);
@@ -568,26 +637,28 @@ public class MilestonesAndOutcomesView {
         ArrayAdapter<String> cAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, COMPLETION_OPTIONS);
         cAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         completionSpinner.setAdapter(cAdapter);
-        styleSpinner(completionSpinner);
-        completionSpinner.setSelection("Completed".equalsIgnoreCase(state.completion.status) || "8.1e".equals(previewErrorMode) ? 1 : 0);
+        styleSpinner(completionSpinner, false);
+        boolean isCompleted = "Completed".equalsIgnoreCase(state.completion.status) || "8.1e".equals(previewErrorMode);
+        completionSpinner.setSelection(isCompleted ? 1 : 0);
         card.addView(completionSpinner);
 
         TextView dateLabel = new TextView(activity);
-        dateLabel.setText("Completion date *");
-        dateLabel.setTextColor("8.1e".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        dateLabel.setText(isCompleted ? "Completion date *" : "Completion date");
+        dateLabel.setTextColor(UiTheme.NAVY);
         dateLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         dateLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(dateLabel);
 
+        boolean isDateError = "8.1e".equals(previewErrorMode);
         completionDateInput = createStyledInput(
-                "8.1e".equals(previewErrorMode) ? "" :
-                        (state.completion.completionDate != null && !state.completion.completionDate.isEmpty() ? state.completion.completionDate : "YYYY-MM-DD"),
+                isDateError ? "" :
+                        (state.completion.completionDate != null && !state.completion.completionDate.isEmpty() ? state.completion.completionDate : ""),
                 "YYYY-MM-DD",
-                "8.1e".equals(previewErrorMode)
+                isDateError
         );
         card.addView(completionDateInput);
 
-        if ("8.1e".equals(previewErrorMode)) {
+        if (isDateError) {
             TextView errDate = createErrorTextView("Please enter the completion date.");
             card.addView(errDate);
         }
@@ -651,42 +722,44 @@ public class MilestonesAndOutcomesView {
         ArrayAdapter<String> pAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, PRESENTATION_OPTIONS);
         pAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         presentationSpinner.setAdapter(pAdapter);
-        styleSpinner(presentationSpinner);
-        presentationSpinner.setSelection("8.1f".equals(previewErrorMode) ? 1 : 0);
+        styleSpinner(presentationSpinner, false);
+        boolean isPresented = "Presented".equalsIgnoreCase(state.presentation.status) || "8.1f".equals(previewErrorMode);
+        presentationSpinner.setSelection(isPresented ? 1 : 0);
         card.addView(presentationSpinner);
 
         TextView dateLabel = new TextView(activity);
         dateLabel.setText("Presentation date");
-        dateLabel.setTextColor("8.1f".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        dateLabel.setTextColor(UiTheme.NAVY);
         dateLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         dateLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(dateLabel);
 
+        boolean isPresError = "8.1f".equals(previewErrorMode);
         presentationDateInput = createStyledInput(
-                "8.1f".equals(previewErrorMode) ? "" : state.presentation.presentationDate,
+                isPresError ? "" : state.presentation.presentationDate,
                 "YYYY-MM-DD",
-                "8.1f".equals(previewErrorMode)
+                isPresError
         );
         card.addView(presentationDateInput);
 
+        if (isPresError) {
+            TextView errPres = createErrorTextView("Enter the presentation date and event.");
+            card.addView(errPres);
+        }
+
         TextView eventLabel = new TextView(activity);
         eventLabel.setText("Conference or event");
-        eventLabel.setTextColor("8.1f".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        eventLabel.setTextColor(UiTheme.NAVY);
         eventLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         eventLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(eventLabel);
 
         presentationEventInput = createStyledInput(
-                "8.1f".equals(previewErrorMode) ? "" : state.presentation.eventName,
+                isPresError ? "" : state.presentation.eventName,
                 "Enter event name",
-                "8.1f".equals(previewErrorMode)
+                isPresError
         );
         card.addView(presentationEventInput);
-
-        if ("8.1f".equals(previewErrorMode)) {
-            TextView errPres = createErrorTextView("Enter the presentation date and event.");
-            card.addView(errPres);
-        }
 
         return card;
     }
@@ -715,42 +788,44 @@ public class MilestonesAndOutcomesView {
         ArrayAdapter<String> pubAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, PUBLICATION_OPTIONS);
         pubAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         publicationSpinner.setAdapter(pubAdapter);
-        styleSpinner(publicationSpinner);
-        publicationSpinner.setSelection("8.1g".equals(previewErrorMode) ? 2 : 0);
+        styleSpinner(publicationSpinner, false);
+        boolean isPublished = "Published".equalsIgnoreCase(state.publication.status) || "8.1g".equals(previewErrorMode);
+        publicationSpinner.setSelection(isPublished ? 2 : 0);
         card.addView(publicationSpinner);
 
         TextView dateLabel = new TextView(activity);
         dateLabel.setText("Publication date");
-        dateLabel.setTextColor("8.1g".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        dateLabel.setTextColor(UiTheme.NAVY);
         dateLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         dateLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(dateLabel);
 
+        boolean isPubError = "8.1g".equals(previewErrorMode);
         publicationDateInput = createStyledInput(
-                "8.1g".equals(previewErrorMode) ? "" : state.publication.publicationDate,
-                "Exact date not recorded",
-                "8.1g".equals(previewErrorMode)
+                isPubError ? "" : state.publication.publicationDate,
+                isPubError ? "YYYY-MM-DD" : "Exact date not recorded",
+                isPubError
         );
         card.addView(publicationDateInput);
 
+        if (isPubError) {
+            TextView errPub = createErrorTextView("Enter the publication date and citation.");
+            card.addView(errPub);
+        }
+
         TextView citeLabel = new TextView(activity);
         citeLabel.setText("Journal or citation");
-        citeLabel.setTextColor("8.1g".equals(previewErrorMode) ? UiTheme.ERROR_RED : UiTheme.NAVY);
+        citeLabel.setTextColor(UiTheme.NAVY);
         citeLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         citeLabel.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(citeLabel);
 
         publicationCitationInput = createStyledInput(
-                "8.1g".equals(previewErrorMode) ? "" : state.publication.journalCitation,
-                "Citation not recorded",
-                "8.1g".equals(previewErrorMode)
+                isPubError ? "" : state.publication.journalCitation,
+                isPubError ? "Enter journal or citation" : "Citation not recorded",
+                isPubError
         );
         card.addView(publicationCitationInput);
-
-        if ("8.1g".equals(previewErrorMode)) {
-            TextView errPub = createErrorTextView("Enter the publication date and citation.");
-            card.addView(errPub);
-        }
 
         return card;
     }
@@ -786,6 +861,41 @@ public class MilestonesAndOutcomesView {
             return;
         }
 
+        // Completion validation if Completed is selected in stage or completion
+        int compPos = completionSpinner.getSelectedItemPosition();
+        String compStatus = COMPLETION_OPTIONS[compPos];
+        String compDate = completionDateInput.getText().toString().trim();
+        if (("Completed".equalsIgnoreCase(selectedStage) || "Completed".equalsIgnoreCase(compStatus))
+                && (TextUtils.isEmpty(compDate) || "YYYY-MM-DD".equalsIgnoreCase(compDate))) {
+            previewErrorMode = "8.1e";
+            buildUi();
+            return;
+        }
+
+        // Presentation validation
+        int presPos = presentationSpinner.getSelectedItemPosition();
+        String presStatus = PRESENTATION_OPTIONS[presPos];
+        String presDate = presentationDateInput.getText().toString().trim();
+        String presEvent = presentationEventInput.getText().toString().trim();
+        if ("Presented".equalsIgnoreCase(presStatus)
+                && (TextUtils.isEmpty(presDate) || "YYYY-MM-DD".equalsIgnoreCase(presDate) || TextUtils.isEmpty(presEvent))) {
+            previewErrorMode = "8.1f";
+            buildUi();
+            return;
+        }
+
+        // Publication validation
+        int pubPos = publicationSpinner.getSelectedItemPosition();
+        String pubStatus = PUBLICATION_OPTIONS[pubPos];
+        String pubDate = publicationDateInput.getText().toString().trim();
+        String pubCite = publicationCitationInput.getText().toString().trim();
+        if ("Published".equalsIgnoreCase(pubStatus)
+                && (TextUtils.isEmpty(pubDate) || "YYYY-MM-DD".equalsIgnoreCase(pubDate) || TextUtils.isEmpty(pubCite))) {
+            previewErrorMode = "8.1g";
+            buildUi();
+            return;
+        }
+
         // Save successfully
         previewErrorMode = "none";
         state.savedBannerMessage = "Stage updated.";
@@ -795,6 +905,21 @@ public class MilestonesAndOutcomesView {
         state.supportingRef = suppRef;
         state.nextAction = nextAct;
         state.noNextActionRecorded = noNextActionCheckBox.isChecked();
+        if ("Completed".equalsIgnoreCase(compStatus)) {
+            state.completion.status = "Completed";
+            state.completion.completionDate = compDate;
+            state.completion.isSaved = true;
+        }
+        if ("Presented".equalsIgnoreCase(presStatus)) {
+            state.presentation.status = "Presented";
+            state.presentation.presentationDate = presDate;
+            state.presentation.eventName = presEvent;
+        }
+        if ("Published".equalsIgnoreCase(pubStatus)) {
+            state.publication.status = "Published";
+            state.publication.publicationDate = pubDate;
+            state.publication.journalCitation = pubCite;
+        }
 
         buildUi();
         if (callbacks != null) callbacks.onStageSaved();
@@ -805,9 +930,10 @@ public class MilestonesAndOutcomesView {
 
     private TextView createErrorTextView(String message) {
         TextView err = new TextView(activity);
-        err.setText(message);
-        err.setTextColor(UiTheme.ERROR_RED);
+        err.setText(message.startsWith("⚠") ? message : "⚠ " + message);
+        err.setTextColor(0xffc2410c);
         err.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        err.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.topMargin = dp(2);
@@ -820,14 +946,14 @@ public class MilestonesAndOutcomesView {
         EditText input = new EditText(activity);
         input.setText(text);
         input.setHint(hint);
-        input.setHintTextColor(UiTheme.MUTED);
+        input.setHintTextColor(0xff94a3b8);
         input.setTextColor(UiTheme.INK);
         input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         input.setPadding(dp(12), dp(10), dp(12), dp(10));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(UiTheme.WHITE);
         bg.setCornerRadius(dp(8));
-        bg.setStroke(dp(isError ? 2 : 1), isError ? UiTheme.ERROR_RED : UiTheme.BORDER);
+        bg.setStroke(dp(isError ? 2 : 1), isError ? 0xffea580c : UiTheme.BORDER);
         input.setBackground(bg);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -837,11 +963,11 @@ public class MilestonesAndOutcomesView {
         return input;
     }
 
-    private void styleSpinner(Spinner spinner) {
+    private void styleSpinner(Spinner spinner, boolean isError) {
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(UiTheme.WHITE);
         bg.setCornerRadius(dp(8));
-        bg.setStroke(dp(1), UiTheme.BORDER);
+        bg.setStroke(dp(isError ? 2 : 1), isError ? 0xffea580c : UiTheme.BORDER);
         spinner.setBackground(bg);
         spinner.setPadding(dp(12), dp(10), dp(12), dp(10));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -875,15 +1001,22 @@ public class MilestonesAndOutcomesView {
         this.state = StaffLifecycleData.getDefaultLifecycleState();
         this.state.savedBannerMessage = null;
         this.state.savedTimestamp = null;
+        this.state.newStage = "";
+        this.state.effectiveDate = "";
+        this.state.supportingRef = "";
+        this.state.nextAction = "";
+        this.state.noNextActionRecorded = true;
         buildUi();
     }
 
     public void showPreview8_1a_ErrorStageNotAllowed() {
         this.previewErrorMode = "8.1a";
         this.state = StaffLifecycleData.getDefaultLifecycleState();
+        this.state.newStage = "Registered";
         this.state.effectiveDate = "2026-11-06";
         this.state.supportingRef = "Panel evaluation memo 2026-131";
         this.state.nextAction = "Revise Chapter 3 methodology per panel memo.";
+        this.state.noNextActionRecorded = false;
         buildUi();
     }
 
@@ -891,8 +1024,10 @@ public class MilestonesAndOutcomesView {
         this.previewErrorMode = "8.1b";
         this.state = StaffLifecycleData.getDefaultLifecycleState();
         this.state.newStage = "For revision";
+        this.state.effectiveDate = "";
         this.state.supportingRef = "Panel evaluation memo 2026-131";
         this.state.nextAction = "Revise Chapter 3 methodology per panel memo.";
+        this.state.noNextActionRecorded = false;
         buildUi();
     }
 
@@ -901,7 +1036,9 @@ public class MilestonesAndOutcomesView {
         this.state = StaffLifecycleData.getDefaultLifecycleState();
         this.state.newStage = "For revision";
         this.state.effectiveDate = "2026-11-06";
+        this.state.supportingRef = "";
         this.state.nextAction = "Revise Chapter 3 methodology per panel memo.";
+        this.state.noNextActionRecorded = false;
         buildUi();
     }
 
@@ -911,6 +1048,7 @@ public class MilestonesAndOutcomesView {
         this.state.newStage = "For revision";
         this.state.effectiveDate = "2026-11-06";
         this.state.supportingRef = "Panel evaluation memo 2026-131";
+        this.state.nextAction = "";
         this.state.noNextActionRecorded = false;
         buildUi();
     }
@@ -922,6 +1060,10 @@ public class MilestonesAndOutcomesView {
         this.state.effectiveDate = "2026-11-06";
         this.state.supportingRef = "Panel evaluation memo 2026-131";
         this.state.nextAction = "Revise Chapter 3 methodology per panel memo.";
+        this.state.noNextActionRecorded = false;
+        this.state.completion.status = "Completed";
+        this.state.completion.completionDate = "";
+        this.state.completion.isSaved = false;
         buildUi();
     }
 
@@ -932,6 +1074,10 @@ public class MilestonesAndOutcomesView {
         this.state.effectiveDate = "2026-11-06";
         this.state.supportingRef = "Panel evaluation memo 2026-131";
         this.state.nextAction = "Revise Chapter 3 methodology per panel memo.";
+        this.state.noNextActionRecorded = false;
+        this.state.presentation.status = "Presented";
+        this.state.presentation.presentationDate = "";
+        this.state.presentation.eventName = "";
         buildUi();
     }
 
@@ -942,6 +1088,10 @@ public class MilestonesAndOutcomesView {
         this.state.effectiveDate = "2026-11-06";
         this.state.supportingRef = "Panel evaluation memo 2026-131";
         this.state.nextAction = "Revise Chapter 3 methodology per panel memo.";
+        this.state.noNextActionRecorded = false;
+        this.state.publication.status = "Published";
+        this.state.publication.publicationDate = "";
+        this.state.publication.journalCitation = "";
         buildUi();
     }
 
@@ -951,6 +1101,11 @@ public class MilestonesAndOutcomesView {
         this.state.currentStage = "For revision";
         this.state.savedBannerMessage = "Stage updated.";
         this.state.savedTimestamp = "Saved Nov 6, 2026, 2:40 PM by LeBron James";
+        this.state.newStage = "";
+        this.state.effectiveDate = "";
+        this.state.supportingRef = "";
+        this.state.nextAction = "";
+        this.state.noNextActionRecorded = true;
         buildUi();
     }
 
@@ -960,11 +1115,18 @@ public class MilestonesAndOutcomesView {
         this.state.currentStage = "Completed";
         this.state.savedBannerMessage = "Outcome recorded.";
         this.state.savedTimestamp = "Saved Nov 6, 2026, 2:40 PM by LeBron James";
+        this.state.newStage = "Completed";
+        this.state.effectiveDate = "2027-03-15";
+        this.state.supportingRef = "Final defense result, CRM memo 2027-022";
+        this.state.nextAction = "";
+        this.state.noNextActionRecorded = true;
         this.state.completion.status = "Completed";
         this.state.completion.completionDate = "2027-03-15";
         this.state.completion.isSaved = true;
-        this.state.effectiveDate = "2027-03-15";
-        this.state.supportingRef = "Final defense result, CRM memo 2027-022";
+        this.state.presentation.status = "Not recorded";
+        this.state.publication.status = "Not recorded";
+        this.state.publication.publicationDate = "";
+        this.state.publication.journalCitation = "";
         buildUi();
     }
 }

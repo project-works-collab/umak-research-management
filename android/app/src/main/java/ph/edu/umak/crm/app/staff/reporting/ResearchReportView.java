@@ -105,9 +105,9 @@ public class ResearchReportView {
         rootLayout.addView(filtersCard, params);
 
         TextView header = new TextView(activity);
-        header.setText("Applied filters");
-        header.setTextColor(UiTheme.NAVY);
-        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        header.setText("APPLIED FILTERS");
+        header.setTextColor(0xff64748b);
+        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         filtersCard.addView(header);
 
@@ -211,16 +211,30 @@ public class ResearchReportView {
         params.bottomMargin = dp(16);
         rootLayout.addView(defCard, params);
 
+        LinearLayout headerRow = new LinearLayout(activity);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        defCard.addView(headerRow);
+
         TextView title = new TextView(activity);
         title.setText("Metric definitions");
         title.setTextColor(UiTheme.NAVY);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         title.setTypeface(Typeface.DEFAULT_BOLD);
-        defCard.addView(title);
+        headerRow.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-        defCard.addView(createDefinitionItem("Distinct studies", "Each research record is counted once."));
-        defCard.addView(createDefinitionItem("Completed · Presented · Published", "Independent outcome counts. One study can count in more than one."));
-        defCard.addView(createDefinitionItem("Distinct linked researchers", "Each linked researcher or adviser is counted once across all studies."));
+        boolean isEmpty = model.underlyingRecords.isEmpty();
+        TextView chevron = new TextView(activity);
+        chevron.setText(isEmpty ? "⌵" : "⌃");
+        chevron.setTextColor(0xff94a3b8);
+        chevron.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        headerRow.addView(chevron);
+
+        if (!isEmpty) {
+            defCard.addView(createDefinitionItem("Distinct studies", "Each research record is counted once."));
+            defCard.addView(createDefinitionItem("Completed · Presented · Published", "Independent outcome counts. One study can count in more than one."));
+            defCard.addView(createDefinitionItem("Distinct linked researchers", "Each linked researcher or adviser is counted once across all studies."));
+        }
     }
 
     private View createDefinitionItem(String heading, String description) {
@@ -273,16 +287,28 @@ public class ResearchReportView {
 
         List<StaffReportingData.RecordSummary> records = model.underlyingRecords;
         if (records.isEmpty()) {
+            LinearLayout emptyBox = new LinearLayout(activity);
+            emptyBox.setOrientation(LinearLayout.VERTICAL);
+            emptyBox.setGravity(Gravity.CENTER);
+            int boxPad = dp(16);
+            emptyBox.setPadding(boxPad, boxPad, boxPad, boxPad);
+            GradientDrawable ebBg = new GradientDrawable();
+            ebBg.setColor(0xfff8fafc);
+            ebBg.setCornerRadius(dp(6));
+            ebBg.setStroke(dp(1), 0xffe2e8f0);
+            emptyBox.setBackground(ebBg);
+            LinearLayout.LayoutParams ebParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            ebParams.topMargin = dp(12);
+            emptyBox.setLayoutParams(ebParams);
+
             TextView emptyTv = new TextView(activity);
             emptyTv.setText("No matching records");
-            emptyTv.setTextColor(UiTheme.MUTED);
+            emptyTv.setTextColor(0xff64748b);
             emptyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            emptyTv.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams eParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            eParams.topMargin = dp(16);
-            eParams.bottomMargin = dp(12);
-            recordsSection.addView(emptyTv, eParams);
+            emptyBox.addView(emptyTv);
+
+            recordsSection.addView(emptyBox);
         } else {
             for (int i = 0; i < records.size(); i++) {
                 StaffReportingData.RecordSummary rec = records.get(i);
@@ -372,10 +398,11 @@ public class ResearchReportView {
 
         // Export Button
         Button exportBtn = new Button(activity);
-        exportBtn.setText("Export");
+        exportBtn.setText("⇪ Export");
         exportBtn.setTextColor(UiTheme.WHITE);
         exportBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         exportBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        exportBtn.setAllCaps(false);
 
         GradientDrawable expBg = new GradientDrawable();
         expBg.setColor(UiTheme.NAVY);

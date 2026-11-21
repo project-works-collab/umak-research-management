@@ -8,14 +8,16 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import ph.edu.umak.crm.app.R;
+import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.components.PendingStatus;
-import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class EditProfileView {
@@ -32,6 +34,7 @@ public final class EditProfileView {
 
     private final EditText nameInput;
     private final TextView nameError;
+    private final FrameLayout collegeContainer;
     private final Spinner collegeSpinner;
     private final TextView collegeError;
     private final Button saveBtn;
@@ -67,9 +70,9 @@ public final class EditProfileView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
-        addSpacing(context, layout, 16);
+        addSpacing(context, layout, 12);
 
-        // Personal Details Card
+        // 1. Personal Details Card
         LinearLayout personalCard = new LinearLayout(context);
         personalCard.setOrientation(LinearLayout.VERTICAL);
         personalCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
@@ -77,19 +80,19 @@ public final class EditProfileView {
 
         TextView pTitle = new TextView(context);
         pTitle.setText("Personal details");
-        pTitle.setTextColor(UiTheme.NAVY);
+        pTitle.setTextColor(0xff082d50);
         pTitle.setTypeface(bold);
         ScreenTypography.apply(pTitle, 16);
         personalCard.addView(pTitle);
 
-        addSpacing(context, personalCard, 12);
+        addSpacing(context, personalCard, 14);
 
         // Name field
         TextView nameLabel = new TextView(context);
         nameLabel.setText("Name *");
-        nameLabel.setTextColor(UiTheme.NAVY);
+        nameLabel.setTextColor(0xff082d50);
         nameLabel.setTypeface(bold);
-        ScreenTypography.apply(nameLabel, 14);
+        ScreenTypography.apply(nameLabel, 13);
         personalCard.addView(nameLabel);
 
         addSpacing(context, personalCard, 6);
@@ -97,17 +100,20 @@ public final class EditProfileView {
         nameInput = new EditText(context);
         nameInput.setText(userProfile.name);
         nameInput.setHint("Enter your full name");
-        nameInput.setTextColor(UiTheme.NAVY);
+        nameInput.setHintTextColor(0xff8898aa);
+        nameInput.setTextColor(0xff082d50);
         nameInput.setTypeface(regular);
         ScreenTypography.apply(nameInput, 14);
         nameInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
-        int inpPad = UiTheme.dp(context, 10);
-        nameInput.setPadding(inpPad, inpPad, inpPad, inpPad);
+        int inpPadH = UiTheme.dp(context, 12);
+        int inpPadV = UiTheme.dp(context, 10);
+        nameInput.setPadding(inpPadH, inpPadV, inpPadH, inpPadV);
+        nameInput.setMinHeight(UiTheme.dp(context, 46));
         nameInput.setSingleLine(true);
         personalCard.addView(nameInput);
 
         nameError = new TextView(context);
-        nameError.setTextColor(UiTheme.ERROR_RED);
+        nameError.setTextColor(0xffdc2626);
         nameError.setTypeface(regular);
         ScreenTypography.apply(nameError, 12);
         nameError.setPadding(0, UiTheme.dp(context, 4), 0, 0);
@@ -119,17 +125,44 @@ public final class EditProfileView {
         // College field
         TextView collegeLabel = new TextView(context);
         collegeLabel.setText("College / Institute *");
-        collegeLabel.setTextColor(UiTheme.NAVY);
+        collegeLabel.setTextColor(0xff082d50);
         collegeLabel.setTypeface(bold);
-        ScreenTypography.apply(collegeLabel, 14);
+        ScreenTypography.apply(collegeLabel, 13);
         personalCard.addView(collegeLabel);
 
         addSpacing(context, personalCard, 6);
 
+        collegeContainer = new FrameLayout(context);
+        collegeContainer.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+
         collegeSpinner = new Spinner(context);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, COLLEGES);
+        collegeSpinner.setBackground(null);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, COLLEGES) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View v = super.getView(position, convertView, parent);
+                if (v instanceof TextView) {
+                    TextView tv = (TextView) v;
+                    tv.setTypeface(UiTheme.bodyFont(context));
+                    ScreenTypography.apply(tv, 14);
+                    tv.setTextColor(position == 0 ? 0xff8898aa : 0xff082d50);
+                    tv.setPadding(UiTheme.dp(context, 12), 0, UiTheme.dp(context, 32), 0);
+                }
+                return v;
+            }
+        };
         collegeSpinner.setAdapter(adapter);
-        collegeSpinner.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        FrameLayout.LayoutParams spinLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 46));
+        collegeContainer.addView(collegeSpinner, spinLp);
+
+        ImageView chevron = new ImageView(context);
+        chevron.setImageResource(R.drawable.ic_crm_chevron_down);
+        chevron.setColorFilter(0xff64748b);
+        FrameLayout.LayoutParams chevLp = new FrameLayout.LayoutParams(UiTheme.dp(context, 20), UiTheme.dp(context, 20));
+        chevLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        chevLp.rightMargin = UiTheme.dp(context, 12);
+        collegeContainer.addView(chevron, chevLp);
+
         int collegeIdx = 0;
         for (int i = 0; i < COLLEGES.length; i++) {
             if (COLLEGES[i].equalsIgnoreCase(userProfile.college)) {
@@ -138,10 +171,10 @@ public final class EditProfileView {
             }
         }
         collegeSpinner.setSelection(collegeIdx);
-        personalCard.addView(collegeSpinner);
+        personalCard.addView(collegeContainer);
 
         collegeError = new TextView(context);
-        collegeError.setTextColor(UiTheme.ERROR_RED);
+        collegeError.setTextColor(0xffdc2626);
         collegeError.setTypeface(regular);
         ScreenTypography.apply(collegeError, 12);
         collegeError.setPadding(0, UiTheme.dp(context, 4), 0, 0);
@@ -150,9 +183,9 @@ public final class EditProfileView {
 
         layout.addView(personalCard);
 
-        addSpacing(context, layout, 16);
+        addSpacing(context, layout, 14);
 
-        // Account Details Card
+        // 2. Account Details Card
         LinearLayout accountCard = new LinearLayout(context);
         accountCard.setOrientation(LinearLayout.VERTICAL);
         accountCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
@@ -160,7 +193,7 @@ public final class EditProfileView {
 
         TextView accTitle = new TextView(context);
         accTitle.setText("Account details");
-        accTitle.setTextColor(UiTheme.NAVY);
+        accTitle.setTextColor(0xff082d50);
         accTitle.setTypeface(bold);
         ScreenTypography.apply(accTitle, 16);
         accountCard.addView(accTitle);
@@ -168,13 +201,13 @@ public final class EditProfileView {
         addSpacing(context, accountCard, 4);
 
         TextView accNote = new TextView(context);
-        accNote.setText("These details are managed by CRM and can’t be edited here.");
-        accNote.setTextColor(UiTheme.MUTED);
+        accNote.setText("These details are managed by CRM and can't be edited here.");
+        accNote.setTextColor(0xff586b83);
         accNote.setTypeface(regular);
         ScreenTypography.apply(accNote, 13);
         accountCard.addView(accNote);
 
-        addSpacing(context, accountCard, 12);
+        addSpacing(context, accountCard, 14);
 
         addAccountRow(accountCard, "Institutional email", userProfile.email);
         addAccountRow(accountCard, "Account identifier", userProfile.accountId);
@@ -183,44 +216,71 @@ public final class EditProfileView {
 
         layout.addView(accountCard);
 
-        addSpacing(context, layout, 24);
+        addSpacing(context, layout, 20);
 
         // Buttons: Save & Cancel
         saveStatus = new PendingStatus(context);
         layout.addView(saveStatus);
-        saveBtn = UiButton.primary(context, "Save", this::handleSave);
-        layout.addView(saveBtn);
 
-        addSpacing(context, layout, 12);
+        saveBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        saveBtn.setText("Save");
+        saveBtn.setAllCaps(false);
+        saveBtn.setTextColor(0xffffffff);
+        saveBtn.setTypeface(bold);
+        ScreenTypography.apply(saveBtn, 15);
+        saveBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, 0xff131c4b, 8, 0), 0x20ffffff));
+        saveBtn.setOnClickListener(v -> handleSave());
+        layout.addView(saveBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
 
-        Button cancelBtn = UiButton.outline(context, "Cancel", UiTheme.BORDER, UiTheme.NAVY, () -> {
+        addSpacing(context, layout, 10);
+
+        Button cancelBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        cancelBtn.setText("Cancel");
+        cancelBtn.setAllCaps(false);
+        cancelBtn.setTextColor(0xff082d50);
+        cancelBtn.setTypeface(bold);
+        ScreenTypography.apply(cancelBtn, 15);
+        cancelBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+        cancelBtn.setOnClickListener(v -> {
             if (listener != null) listener.onCancel();
         });
-        layout.addView(cancelBtn);
+        layout.addView(cancelBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
     }
 
     private void addAccountRow(LinearLayout parent, String label, String value) {
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0, UiTheme.dp(context, 6), 0, UiTheme.dp(context, 6));
-
         TextView lbl = new TextView(context);
         lbl.setText(label);
-        lbl.setTextColor(UiTheme.MUTED);
-        lbl.setTypeface(UiTheme.bodyFont(context));
+        lbl.setTextColor(0xff082d50);
+        lbl.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(lbl, 13);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        row.addView(lbl, lp);
+        lbl.setPadding(0, 0, 0, UiTheme.dp(context, 4));
+        parent.addView(lbl);
+
+        LinearLayout box = new LinearLayout(context);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setBackground(UiTheme.shape(context, 0xfff8fafc, 8, 0xffe2e8f0));
+        int padH = UiTheme.dp(context, 12);
+        box.setPadding(padH, 0, padH, 0);
+        box.setMinimumHeight(UiTheme.dp(context, 44));
 
         TextView val = new TextView(context);
         val.setText(value != null ? value : "—");
-        val.setTextColor(UiTheme.NAVY);
-        val.setTypeface(UiTheme.boldFont(context));
+        val.setTextColor(0xff586b83);
+        val.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(val, 13);
-        row.addView(val);
+        LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        box.addView(val, valLp);
 
-        parent.addView(row);
+        ImageView lockIcon = new ImageView(context);
+        lockIcon.setImageResource(R.drawable.ic_crm_lock);
+        lockIcon.setColorFilter(0xff94a3b8);
+        int lockSize = UiTheme.dp(context, 16);
+        box.addView(lockIcon, new LinearLayout.LayoutParams(lockSize, lockSize));
+
+        LinearLayout.LayoutParams boxLp = new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 44));
+        boxLp.bottomMargin = UiTheme.dp(context, 12);
+        parent.addView(box, boxLp);
     }
 
     private void handleSave() {
@@ -230,18 +290,22 @@ public final class EditProfileView {
         boolean hasError = false;
 
         if (name.isEmpty()) {
-            nameError.setText("Please enter your name.");
+            nameInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffdc2626));
+            nameError.setText("⚠ Please enter your name.");
             nameError.setVisibility(View.VISIBLE);
             hasError = true;
         } else {
+            nameInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
             nameError.setVisibility(View.GONE);
         }
 
         if (collegePos <= 0) {
-            collegeError.setText("Please select your college or institute.");
+            collegeContainer.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffdc2626));
+            collegeError.setText("⚠ Please select your college or institute.");
             collegeError.setVisibility(View.VISIBLE);
             hasError = true;
         } else {
+            collegeContainer.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
             collegeError.setVisibility(View.GONE);
         }
 
@@ -270,16 +334,20 @@ public final class EditProfileView {
     public void setPreviewState(String state) {
         nameError.setVisibility(View.GONE);
         collegeError.setVisibility(View.GONE);
+        nameInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        collegeContainer.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
 
         if ("4.1_error_name".equals(state)) {
             nameInput.setText("");
-            nameError.setText("Please enter your name.");
+            nameInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffdc2626));
+            nameError.setText("⚠ Please enter your name.");
             nameError.setVisibility(View.VISIBLE);
             collegeSpinner.setSelection(1);
         } else if ("4.1_error_college".equals(state)) {
             nameInput.setText(userProfile.name);
             collegeSpinner.setSelection(0);
-            collegeError.setText("Please select your college or institute.");
+            collegeContainer.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffdc2626));
+            collegeError.setText("⚠ Please select your college or institute.");
             collegeError.setVisibility(View.VISIBLE);
         } else {
             nameInput.setText(userProfile.name);

@@ -988,6 +988,13 @@ final class ResearcherScreen extends LinearLayout {
             }
 
             @Override
+            public void onSubmitCorrection(RequestData.RequestItem item) {
+                receiptIsCorrection = true;
+                selectedRequestItem = RequestData.createReq089("Submitted");
+                openDetail("request_receipt");
+            }
+
+            @Override
             public void onCancel() {
                 goBack();
             }
@@ -2107,7 +2114,7 @@ final class ResearcherScreen extends LinearLayout {
             }
         });
         if (profileUpdatedSnackbar) {
-            snackbar.show("Profile updated.");
+            profileView.setShowSnackbar(true);
             profileUpdatedSnackbar = false;
         }
         body.addView(profileView.getContentLayout());

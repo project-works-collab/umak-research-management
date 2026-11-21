@@ -6,12 +6,13 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.StaffData;
 
@@ -40,125 +41,142 @@ public final class ApprovedFormsView {
         layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setBackgroundColor(UiTheme.PAPER);
-        layout.setPadding(pad, pad, pad, pad);
+        layout.setPadding(pad, pad, pad, UiTheme.dp(context, 24));
 
-        // Header with Back button
-        LinearLayout topHeader = new LinearLayout(context);
-        topHeader.setOrientation(LinearLayout.HORIZONTAL);
-        topHeader.setGravity(Gravity.CENTER_VERTICAL);
-
-        Button backBtn = UiButton.text(context, "Back", UiTheme.NAVY, () -> {
-            if (listener != null) listener.onBackToManage();
-        });
-        topHeader.addView(backBtn);
-        layout.addView(topHeader);
-
-        addSpacing(context, layout, 4);
-
-        addSpacing(context, layout, 16);
-
-        // Service selector card
-        LinearLayout serviceCard = new LinearLayout(context);
-        serviceCard.setOrientation(LinearLayout.VERTICAL);
-        serviceCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        serviceCard.setPadding(pad, pad, pad, pad);
-
+        // 1. Service Selector Card
         TextView servLabel = new TextView(context);
         servLabel.setText("Service");
-        servLabel.setTextColor(UiTheme.MUTED);
-        servLabel.setTypeface(regular);
-        ScreenTypography.apply(servLabel, 12);
-        serviceCard.addView(servLabel);
+        servLabel.setTextColor(0xff082d50);
+        servLabel.setTypeface(bold);
+        ScreenTypography.apply(servLabel, 13);
+        layout.addView(servLabel);
 
-        addSpacing(context, serviceCard, 4);
+        addSpacing(context, layout, 6);
+
+        FrameLayout serviceBox = new FrameLayout(context);
+        serviceBox.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        int boxPadH = UiTheme.dp(context, 14);
+        int boxPadV = UiTheme.dp(context, 12);
+        serviceBox.setPadding(boxPadH, boxPadV, boxPadH, boxPadV);
 
         TextView servVal = new TextView(context);
         servVal.setText(formData.serviceId + " · " + formData.serviceName);
-        servVal.setTextColor(UiTheme.NAVY);
+        servVal.setTextColor(0xff082d50);
         servVal.setTypeface(bold);
-        ScreenTypography.apply(servVal, 15);
-        serviceCard.addView(servVal);
+        ScreenTypography.apply(servVal, 14);
+        FrameLayout.LayoutParams sValLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        sValLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+        serviceBox.addView(servVal, sValLp);
 
-        layout.addView(serviceCard);
+        ImageView chevron = new ImageView(context);
+        chevron.setImageResource(R.drawable.ic_crm_chevron_down);
+        chevron.setColorFilter(0xff64748b);
+        FrameLayout.LayoutParams cLp = new FrameLayout.LayoutParams(UiTheme.dp(context, 20), UiTheme.dp(context, 20));
+        cLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        serviceBox.addView(chevron, cLp);
+
+        layout.addView(serviceBox);
 
         addSpacing(context, layout, 20);
 
-        // Current Version Section
+        // 2. Current Version Section
+        LinearLayout curHeaderRow = new LinearLayout(context);
+        curHeaderRow.setOrientation(LinearLayout.HORIZONTAL);
+        curHeaderRow.setGravity(Gravity.CENTER_VERTICAL);
+
         TextView curHeader = new TextView(context);
         curHeader.setText("Current version");
-        curHeader.setTextColor(UiTheme.NAVY);
+        curHeader.setTextColor(0xff082d50);
         curHeader.setTypeface(bold);
         ScreenTypography.apply(curHeader, 16);
-        layout.addView(curHeader);
-
-        addSpacing(context, layout, 10);
-
-        LinearLayout curCard = new LinearLayout(context);
-        curCard.setOrientation(LinearLayout.VERTICAL);
-        curCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        curCard.setPadding(pad, pad, pad, pad);
-
-        // Badges row
-        LinearLayout badgeRow = new LinearLayout(context);
-        badgeRow.setOrientation(LinearLayout.HORIZONTAL);
-        badgeRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView staffOnly = new TextView(context);
-        staffOnly.setText("Staff only");
-        staffOnly.setTypeface(bold);
-        ScreenTypography.apply(staffOnly, 11);
-        int px = UiTheme.dp(context, 8);
-        int py = UiTheme.dp(context, 3);
-        staffOnly.setPadding(px, py, px, py);
-        staffOnly.setBackground(UiTheme.shape(context, 0xFFF1F5F9, 4, 0));
-        staffOnly.setTextColor(UiTheme.MUTED);
-        badgeRow.addView(staffOnly);
-
-        addHorizontalSpacing(context, badgeRow, 8);
+        curHeaderRow.addView(curHeader, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView currentBadge = new TextView(context);
         currentBadge.setText("Current");
         currentBadge.setTypeface(bold);
         ScreenTypography.apply(currentBadge, 11);
+        int px = UiTheme.dp(context, 8);
+        int py = UiTheme.dp(context, 3);
         currentBadge.setPadding(px, py, px, py);
-        currentBadge.setBackground(UiTheme.shape(context, UiTheme.STATUS_COMPLETED_BG, 4, 0));
-        currentBadge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
-        badgeRow.addView(currentBadge);
+        currentBadge.setBackground(UiTheme.shape(context, 0xffdcfce7, 4, 0));
+        currentBadge.setTextColor(0xff16a34a);
+        curHeaderRow.addView(currentBadge);
 
-        curCard.addView(badgeRow);
+        layout.addView(curHeaderRow);
 
-        addSpacing(context, curCard, 8);
+        addSpacing(context, layout, 8);
+
+        // Current Version Card Box
+        LinearLayout curCard = new LinearLayout(context);
+        curCard.setOrientation(LinearLayout.VERTICAL);
+        curCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        curCard.setPadding(pad, pad, pad, pad);
+
+        LinearLayout docRow = new LinearLayout(context);
+        docRow.setOrientation(LinearLayout.HORIZONTAL);
+        docRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        ImageView docIcon = new ImageView(context);
+        docIcon.setImageResource(R.drawable.ic_crm_doc);
+        docIcon.setColorFilter(0xff185d9d);
+        int dSize = UiTheme.dp(context, 24);
+        LinearLayout.LayoutParams dLp = new LinearLayout.LayoutParams(dSize, dSize);
+        dLp.rightMargin = UiTheme.dp(context, 12);
+        docRow.addView(docIcon, dLp);
+
+        LinearLayout docTextCol = new LinearLayout(context);
+        docTextCol.setOrientation(LinearLayout.VERTICAL);
 
         TextView fTitle = new TextView(context);
         fTitle.setText(formData.formTitle);
-        fTitle.setTextColor(UiTheme.NAVY);
+        fTitle.setTextColor(0xff082d50);
         fTitle.setTypeface(bold);
-        ScreenTypography.apply(fTitle, 16);
-        curCard.addView(fTitle);
-
-        addSpacing(context, curCard, 4);
+        ScreenTypography.apply(fTitle, 15);
+        docTextCol.addView(fTitle);
 
         TextView fVer = new TextView(context);
         fVer.setText(formData.currentVersion);
-        fVer.setTextColor(UiTheme.MUTED);
+        fVer.setTextColor(0xff586b83);
         fVer.setTypeface(regular);
-        ScreenTypography.apply(fVer, 13);
-        curCard.addView(fVer);
+        ScreenTypography.apply(fVer, 12);
+        fVer.setPadding(0, UiTheme.dp(context, 2), 0, 0);
+        docTextCol.addView(fVer);
+
+        docRow.addView(docTextCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        curCard.addView(docRow);
 
         addSpacing(context, curCard, 14);
 
-        // Actions: Replace Version & Withdraw
+        // Action Buttons Row: Replace Version & Withdraw
         LinearLayout actRow = new LinearLayout(context);
         actRow.setOrientation(LinearLayout.HORIZONTAL);
 
-        Button replaceBtn = UiButton.primary(context, "Replace Version", () -> {
+        Button replaceBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        replaceBtn.setText("Replace Version");
+        replaceBtn.setAllCaps(false);
+        replaceBtn.setTextColor(0xff082d50);
+        replaceBtn.setTypeface(bold);
+        ScreenTypography.apply(replaceBtn, 13);
+        replaceBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+        replaceBtn.setMinHeight(UiTheme.dp(context, 40));
+        replaceBtn.setPadding(UiTheme.dp(context, 16), 0, UiTheme.dp(context, 16), 0);
+        replaceBtn.setOnClickListener(v -> {
             if (listener != null) listener.onReplaceVersion();
         });
         actRow.addView(replaceBtn);
 
         addHorizontalSpacing(context, actRow, 10);
 
-        Button withdrawBtn = UiButton.outline(context, "Withdraw", UiTheme.BORDER, UiTheme.ERROR_RED, () -> {
+        Button withdrawBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        withdrawBtn.setText("Withdraw");
+        withdrawBtn.setAllCaps(false);
+        withdrawBtn.setTextColor(0xffdc2626);
+        withdrawBtn.setTypeface(bold);
+        ScreenTypography.apply(withdrawBtn, 13);
+        withdrawBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xfffca5a5), 0x20dc2626));
+        withdrawBtn.setMinHeight(UiTheme.dp(context, 40));
+        withdrawBtn.setPadding(UiTheme.dp(context, 16), 0, UiTheme.dp(context, 16), 0);
+        withdrawBtn.setOnClickListener(v -> {
             if (listener != null) listener.onWithdraw();
         });
         actRow.addView(withdrawBtn);
@@ -166,35 +184,85 @@ public final class ApprovedFormsView {
         curCard.addView(actRow);
         layout.addView(curCard);
 
-        addSpacing(context, layout, 24);
+        addSpacing(context, layout, 22);
 
-        // Superseded versions Section
+        // 3. Superseded versions Section
+        LinearLayout supHeaderRow = new LinearLayout(context);
+        supHeaderRow.setOrientation(LinearLayout.HORIZONTAL);
+        supHeaderRow.setGravity(Gravity.CENTER_VERTICAL);
+
         TextView supHeader = new TextView(context);
         supHeader.setText("Superseded versions");
-        supHeader.setTextColor(UiTheme.NAVY);
+        supHeader.setTextColor(0xff082d50);
         supHeader.setTypeface(bold);
         ScreenTypography.apply(supHeader, 16);
-        layout.addView(supHeader);
+        supHeaderRow.addView(supHeader, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        addSpacing(context, layout, 10);
+        TextView staffOnly = new TextView(context);
+        staffOnly.setText("🔒 Staff only");
+        staffOnly.setTypeface(bold);
+        ScreenTypography.apply(staffOnly, 11);
+        staffOnly.setPadding(px, py, px, py);
+        staffOnly.setBackground(UiTheme.shape(context, 0xfff1f5f9, 4, 0));
+        staffOnly.setTextColor(0xff64748b);
+        supHeaderRow.addView(staffOnly);
 
-        for (String sup : formData.supersededVersions) {
-            LinearLayout sCard = new LinearLayout(context);
-            sCard.setOrientation(LinearLayout.VERTICAL);
-            sCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
-            int sPad = UiTheme.dp(context, 12);
-            sCard.setPadding(sPad, sPad, sPad, sPad);
+        layout.addView(supHeaderRow);
 
-            TextView sText = new TextView(context);
-            sText.setText(sup);
-            sText.setTextColor(UiTheme.MUTED);
-            sText.setTypeface(regular);
-            ScreenTypography.apply(sText, 13);
-            sCard.addView(sText);
+        addSpacing(context, layout, 8);
 
-            layout.addView(sCard);
-            addSpacing(context, layout, 8);
-        }
+        // Add each superseded version card
+        addSupersededCard("Version 2", "Updated Jan 2026 · Superseded Sep 2026");
+        addSupersededCard("Version 1", "Updated Aug 2025 · Superseded Jan 2026");
+    }
+
+    private void addSupersededCard(String versionTitle, String versionMeta) {
+        Typeface regular = UiTheme.bodyFont(context);
+        Typeface bold = UiTheme.boldFont(context);
+
+        LinearLayout sCard = new LinearLayout(context);
+        sCard.setOrientation(LinearLayout.HORIZONTAL);
+        sCard.setGravity(Gravity.CENTER_VERTICAL);
+        sCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        int sPad = UiTheme.dp(context, 12);
+        sCard.setPadding(sPad, sPad, sPad, sPad);
+
+        ImageView docIcon = new ImageView(context);
+        docIcon.setImageResource(R.drawable.ic_crm_doc);
+        docIcon.setColorFilter(0xff64748b);
+        int dSize = UiTheme.dp(context, 20);
+        LinearLayout.LayoutParams dLp = new LinearLayout.LayoutParams(dSize, dSize);
+        dLp.rightMargin = UiTheme.dp(context, 12);
+        sCard.addView(docIcon, dLp);
+
+        LinearLayout textCol = new LinearLayout(context);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+
+        TextView title = new TextView(context);
+        title.setText(versionTitle);
+        title.setTextColor(0xff082d50);
+        title.setTypeface(bold);
+        ScreenTypography.apply(title, 14);
+        textCol.addView(title);
+
+        TextView meta = new TextView(context);
+        meta.setText(versionMeta);
+        meta.setTextColor(0xff586b83);
+        meta.setTypeface(regular);
+        ScreenTypography.apply(meta, 12);
+        meta.setPadding(0, UiTheme.dp(context, 2), 0, 0);
+        textCol.addView(meta);
+
+        sCard.addView(textCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        ImageView eyeIcon = new ImageView(context);
+        eyeIcon.setImageResource(R.drawable.ic_crm_eye);
+        eyeIcon.setColorFilter(0xff64748b);
+        int eSize = UiTheme.dp(context, 20);
+        sCard.addView(eyeIcon, new LinearLayout.LayoutParams(eSize, eSize));
+
+        layout.addView(sCard);
+        addSpacing(context, layout, 8);
     }
 
     private static void addSpacing(Context context, LinearLayout parent, int dp) {
@@ -213,6 +281,34 @@ public final class ApprovedFormsView {
         if (layout.getParent() instanceof ViewGroup) {
             ((ViewGroup) layout.getParent()).removeView(layout);
         }
-        return PageTitle.wrap(layout, "Approved Forms & Resources", "Researchers only see the current version.", false);
+
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+
+        // Dark Navy Header Band (#082d50)
+        LinearLayout band = new LinearLayout(context);
+        band.setOrientation(LinearLayout.VERTICAL);
+        band.setBackgroundColor(0xff082d50);
+        int pad = UiTheme.dp(context, 16);
+        band.setPadding(pad, pad, pad, pad);
+
+        TextView heading = new TextView(context);
+        heading.setText("Approved Forms & Resources");
+        heading.setTextColor(0xffffffff);
+        heading.setTypeface(UiTheme.headingFont(context));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        band.addView(heading);
+
+        TextView copy = new TextView(context);
+        copy.setText("Researchers only see the current version.");
+        copy.setTextColor(UiTheme.PALE);
+        copy.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(copy, 13);
+        band.addView(copy);
+
+        root.addView(band);
+        root.addView(layout);
+        return root;
     }
 }

@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -17,9 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.StaffData;
 
@@ -61,36 +62,49 @@ public final class ServiceCatalogView {
         layout.setBackgroundColor(UiTheme.PAPER);
         layout.setPadding(pad, pad, pad, pad);
 
-        // Header with Back button
-        LinearLayout topHeader = new LinearLayout(context);
-        topHeader.setOrientation(LinearLayout.HORIZONTAL);
-        topHeader.setGravity(Gravity.CENTER_VERTICAL);
-
-        Button backBtn = UiButton.text(context, "Back", UiTheme.NAVY, () -> {
-            if (listener != null) listener.onBackToManage();
-        });
-        topHeader.addView(backBtn);
-
-        layout.addView(topHeader);
-        addSpacing(context, layout, 4);
-
-        layout.addView(UiButton.primary(context, "New Service", () -> {
+        // + New Service Button (Dark Navy)
+        Button newServiceBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        newServiceBtn.setText("+ New Service");
+        newServiceBtn.setAllCaps(false);
+        newServiceBtn.setTypeface(bold);
+        newServiceBtn.setTextColor(0xffffffff);
+        ScreenTypography.apply(newServiceBtn, 15);
+        newServiceBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, 0xff131c4b, 8, 0), 0x20ffffff));
+        newServiceBtn.setMinHeight(UiTheme.dp(context, 46));
+        newServiceBtn.setOnClickListener(v -> {
             if (listener != null) listener.onNewService();
-        }));
+        });
+        layout.addView(newServiceBtn);
 
-        addSpacing(context, layout, 16);
+        addSpacing(context, layout, 14);
 
-        // Search bar
+        // Search Bar with search icon
+        LinearLayout searchBox = new LinearLayout(context);
+        searchBox.setOrientation(LinearLayout.HORIZONTAL);
+        searchBox.setGravity(Gravity.CENTER_VERTICAL);
+        searchBox.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        searchBox.setMinimumHeight(UiTheme.dp(context, 46));
+        int sPad = UiTheme.dp(context, 12);
+        searchBox.setPadding(sPad, 0, sPad, 0);
+
+        ImageView searchIcon = new ImageView(context);
+        searchIcon.setImageResource(R.drawable.ic_researcher_search);
+        searchIcon.setColorFilter(0xff64748b);
+        int iconSize = UiTheme.dp(context, 18);
+        searchBox.addView(searchIcon, new LinearLayout.LayoutParams(iconSize, iconSize));
+
         searchInput = new EditText(context);
         searchInput.setHint("Search services by name or ID");
-        searchInput.setSingleLine(true);
-        searchInput.setTextColor(UiTheme.NAVY);
-        searchInput.setHintTextColor(UiTheme.MUTED);
+        searchInput.setHintTextColor(0xff8898aa);
+        searchInput.setTextColor(0xff082d50);
         searchInput.setTypeface(regular);
         ScreenTypography.apply(searchInput, 14);
-        int inpPad = UiTheme.dp(context, 12);
-        searchInput.setPadding(inpPad, inpPad, inpPad, inpPad);
-        searchInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        searchInput.setBackground(null);
+        searchInput.setPadding(UiTheme.dp(context, 8), sPad, UiTheme.dp(context, 8), sPad);
+        searchInput.setSingleLine(true);
+        LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        searchBox.addView(searchInput, inputLp);
+
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -104,7 +118,7 @@ public final class ServiceCatalogView {
             @Override
             public void afterTextChanged(Editable s) {}
         });
-        layout.addView(searchInput);
+        layout.addView(searchBox);
 
         addSpacing(context, layout, 12);
 
@@ -120,7 +134,7 @@ public final class ServiceCatalogView {
 
         // Count text
         countText = new TextView(context);
-        countText.setTextColor(UiTheme.MUTED);
+        countText.setTextColor(0xff586b83);
         countText.setTypeface(regular);
         ScreenTypography.apply(countText, 13);
         layout.addView(countText);
@@ -144,7 +158,7 @@ public final class ServiceCatalogView {
             boolean isSelected = filterName.equalsIgnoreCase(selectedFilter);
 
             TextView cView = new TextView(context);
-            cView.setText(chip);
+            cView.setText(isSelected ? "✓ " + chip : chip);
             cView.setTypeface(isSelected ? UiTheme.boldFont(context) : UiTheme.bodyFont(context));
             ScreenTypography.apply(cView, 12);
             int px = UiTheme.dp(context, 12);
@@ -152,11 +166,11 @@ public final class ServiceCatalogView {
             cView.setPadding(px, py, px, py);
 
             if (isSelected) {
-                cView.setBackground(UiTheme.shape(context, UiTheme.NAVY, 16, 0));
-                cView.setTextColor(UiTheme.WHITE);
+                cView.setBackground(UiTheme.shape(context, UiTheme.WHITE, 16, 0xff082d50));
+                cView.setTextColor(0xff082d50);
             } else {
                 cView.setBackground(UiTheme.shape(context, UiTheme.WHITE, 16, UiTheme.BORDER));
-                cView.setTextColor(UiTheme.MUTED);
+                cView.setTextColor(0xff586b83);
             }
 
             cView.setClickable(true);
@@ -204,7 +218,7 @@ public final class ServiceCatalogView {
 
             TextView idText = new TextView(context);
             idText.setText(item.id);
-            idText.setTextColor(UiTheme.MUTED);
+            idText.setTextColor(0xff185d9d);
             idText.setTypeface(UiTheme.boldFont(context));
             ScreenTypography.apply(idText, 12);
             topRow.addView(idText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -218,14 +232,14 @@ public final class ServiceCatalogView {
             badge.setPadding(px, py, px, py);
 
             if ("Published".equalsIgnoreCase(item.status)) {
-                badge.setBackground(UiTheme.shape(context, UiTheme.STATUS_COMPLETED_BG, 4, 0));
-                badge.setTextColor(UiTheme.STATUS_COMPLETED_TEXT);
+                badge.setBackground(UiTheme.shape(context, 0xffdcfce7, 4, 0));
+                badge.setTextColor(0xff16a34a);
             } else if ("Draft".equalsIgnoreCase(item.status)) {
-                badge.setBackground(UiTheme.shape(context, UiTheme.AMBER_BG, 4, UiTheme.AMBER_BORDER));
-                badge.setTextColor(UiTheme.AMBER_TEXT);
+                badge.setBackground(UiTheme.shape(context, 0xfff1f5f9, 4, 0xffcbd5e1));
+                badge.setTextColor(0xff586b83);
             } else {
-                badge.setBackground(UiTheme.shape(context, 0xFFF1F5F9, 4, 0));
-                badge.setTextColor(UiTheme.MUTED);
+                badge.setBackground(UiTheme.shape(context, 0xfffef2f2, 4, 0xfffee2e2));
+                badge.setTextColor(0xffdc2626);
             }
             topRow.addView(badge);
             card.addView(topRow);
@@ -235,7 +249,7 @@ public final class ServiceCatalogView {
             // Title
             TextView tView = new TextView(context);
             tView.setText(item.title);
-            tView.setTextColor(UiTheme.NAVY);
+            tView.setTextColor(0xff082d50);
             tView.setTypeface(UiTheme.boldFont(context));
             ScreenTypography.apply(tView, 16);
             card.addView(tView);
@@ -245,43 +259,87 @@ public final class ServiceCatalogView {
             // Version and updated date
             TextView vView = new TextView(context);
             vView.setText(item.version + " · " + item.updatedDate);
-            vView.setTextColor(UiTheme.MUTED);
+            vView.setTextColor(0xff586b83);
             vView.setTypeface(UiTheme.bodyFont(context));
             ScreenTypography.apply(vView, 12);
             card.addView(vView);
 
-            // Visibility note if draft
+            // Visibility note if draft: Eye off icon + text
             if (item.visibilityNote != null && !item.visibilityNote.isEmpty()) {
                 addSpacing(context, card, 4);
+                LinearLayout noteRow = new LinearLayout(context);
+                noteRow.setOrientation(LinearLayout.HORIZONTAL);
+                noteRow.setGravity(Gravity.CENTER_VERTICAL);
+
+                ImageView eyeOff = new ImageView(context);
+                eyeOff.setImageResource(R.drawable.ic_crm_eye_off);
+                eyeOff.setColorFilter(0xff586b83);
+                int eyeSize = UiTheme.dp(context, 14);
+                LinearLayout.LayoutParams eyeLp = new LinearLayout.LayoutParams(eyeSize, eyeSize);
+                eyeLp.rightMargin = UiTheme.dp(context, 6);
+                noteRow.addView(eyeOff, eyeLp);
+
                 TextView nView = new TextView(context);
                 nView.setText(item.visibilityNote);
-                nView.setTextColor(UiTheme.AMBER_TEXT);
+                nView.setTextColor(0xff586b83);
                 nView.setTypeface(UiTheme.bodyFont(context));
                 ScreenTypography.apply(nView, 11);
-                card.addView(nView);
+                noteRow.addView(nView);
+
+                card.addView(noteRow);
             }
 
-            addSpacing(context, card, 10);
+            addSpacing(context, card, 12);
 
             // Action buttons row: Edit, and Withdraw if SVC-02
-            LinearLayout btnRow = new LinearLayout(context);
-            btnRow.setOrientation(LinearLayout.HORIZONTAL);
-            btnRow.setGravity(Gravity.END);
-
             if ("SVC-02".equalsIgnoreCase(item.id) && "Published".equalsIgnoreCase(item.status)) {
-                Button withdrawBtn = UiButton.outline(context, "Withdraw", UiTheme.BORDER, UiTheme.ERROR_RED, () -> {
+                LinearLayout btnRow = new LinearLayout(context);
+                btnRow.setOrientation(LinearLayout.HORIZONTAL);
+
+                Button editBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+                editBtn.setText("Edit");
+                editBtn.setAllCaps(false);
+                editBtn.setTextColor(0xff082d50);
+                editBtn.setTypeface(UiTheme.boldFont(context));
+                ScreenTypography.apply(editBtn, 14);
+                editBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+                editBtn.setMinHeight(UiTheme.dp(context, 40));
+                editBtn.setOnClickListener(v -> {
+                    if (listener != null) listener.onEditService(item);
+                });
+                LinearLayout.LayoutParams eLp = new LinearLayout.LayoutParams(0, UiTheme.dp(context, 40), 1f);
+                eLp.rightMargin = UiTheme.dp(context, 8);
+                btnRow.addView(editBtn, eLp);
+
+                Button withdrawBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+                withdrawBtn.setText("Withdraw");
+                withdrawBtn.setAllCaps(false);
+                withdrawBtn.setTextColor(0xffdc2626);
+                withdrawBtn.setTypeface(UiTheme.boldFont(context));
+                ScreenTypography.apply(withdrawBtn, 14);
+                withdrawBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xfffca5a5), 0x20dc2626));
+                withdrawBtn.setMinHeight(UiTheme.dp(context, 40));
+                withdrawBtn.setOnClickListener(v -> {
                     if (listener != null) listener.onWithdrawService(item);
                 });
-                btnRow.addView(withdrawBtn);
-                addHorizontalSpacing(context, btnRow, 8);
+                LinearLayout.LayoutParams wLp = new LinearLayout.LayoutParams(0, UiTheme.dp(context, 40), 1f);
+                btnRow.addView(withdrawBtn, wLp);
+
+                card.addView(btnRow);
+            } else {
+                Button editBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+                editBtn.setText("Edit");
+                editBtn.setAllCaps(false);
+                editBtn.setTextColor(0xff082d50);
+                editBtn.setTypeface(UiTheme.boldFont(context));
+                ScreenTypography.apply(editBtn, 14);
+                editBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+                editBtn.setMinHeight(UiTheme.dp(context, 40));
+                editBtn.setOnClickListener(v -> {
+                    if (listener != null) listener.onEditService(item);
+                });
+                card.addView(editBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 40)));
             }
-
-            Button editBtn = UiButton.outline(context, "Edit", UiTheme.BORDER, UiTheme.NAVY, () -> {
-                if (listener != null) listener.onEditService(item);
-            });
-            btnRow.addView(editBtn);
-
-            card.addView(btnRow);
 
             cardsContainer.addView(card);
             addSpacing(context, cardsContainer, 10);

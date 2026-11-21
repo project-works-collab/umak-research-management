@@ -108,9 +108,9 @@ public class ServiceUtilizationView {
         rootLayout.addView(filtersCard, params);
 
         TextView header = new TextView(activity);
-        header.setText("Applied filters");
-        header.setTextColor(UiTheme.NAVY);
-        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        header.setText("APPLIED FILTERS");
+        header.setTextColor(0xff64748b);
+        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         header.setTypeface(Typeface.DEFAULT_BOLD);
         filtersCard.addView(header);
 
@@ -262,12 +262,23 @@ public class ServiceUtilizationView {
         params.bottomMargin = dp(16);
         rootLayout.addView(defCard, params);
 
+        LinearLayout headerRow = new LinearLayout(activity);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        defCard.addView(headerRow);
+
         TextView title = new TextView(activity);
         title.setText("Metric definitions");
         title.setTextColor(UiTheme.NAVY);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         title.setTypeface(Typeface.DEFAULT_BOLD);
-        defCard.addView(title);
+        headerRow.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        TextView chevron = new TextView(activity);
+        chevron.setText("⌵");
+        chevron.setTextColor(0xff94a3b8);
+        chevron.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        headerRow.addView(chevron);
 
         TextView note = new TextView(activity);
         note.setText("Pending shown as — until definition confirmed");
@@ -403,10 +414,11 @@ public class ServiceUtilizationView {
 
         // Export Button
         Button exportBtn = new Button(activity);
-        exportBtn.setText("Export");
+        exportBtn.setText("⇪ Export");
         exportBtn.setTextColor(UiTheme.WHITE);
         exportBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         exportBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        exportBtn.setAllCaps(false);
 
         GradientDrawable expBg = new GradientDrawable();
         expBg.setColor(UiTheme.NAVY);

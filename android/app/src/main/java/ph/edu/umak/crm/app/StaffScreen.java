@@ -479,6 +479,13 @@ final class StaffScreen extends LinearLayout {
                 }
 
                 @Override
+                public void onBackToQueueCompleted() {
+                    ensureReviewQueueView();
+                    reviewQueueView.setSelectedTab("Completed");
+                    openRequestsSubPage("queue");
+                }
+
+                @Override
                 public void onSessionDraftKept() {
                     openRequestsSubPage("queue");
                     snackbar.show("Draft kept for this session.");
@@ -1704,9 +1711,7 @@ final class StaffScreen extends LinearLayout {
     void showPreview7_5_StaleDataConflict() {
         selectedRegistryRecord = StaffRegistryData.getMockRecords().get(0);
         openRegistrySubPage("edit_entry");
-        CenteredActionDialog.show(activity, "This research record was updated. Reload before saving.",
-                "Your changes have not been saved. Reload the latest version, then review it before making changes.",
-                "Reload", null, () -> openRegistrySubPage("detail"), null);
+        addResearchEntryView.showPreview7_5_StaleDataConflict();
     }
 
     void showPreview7_6_DocumentsVersionList() {

@@ -173,7 +173,7 @@ public final class StaffLifecycleData {
                 "",
                 "",
                 "",
-                false,
+                true,
                 milestones,
                 new OutcomeCompletion("Not completed", "", false),
                 new OutcomePresentation("Not recorded", "", ""),

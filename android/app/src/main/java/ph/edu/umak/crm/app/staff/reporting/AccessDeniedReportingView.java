@@ -1,14 +1,18 @@
 package ph.edu.umak.crm.app.staff.reporting;
 
 import android.app.Activity;
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
@@ -34,9 +38,23 @@ public class AccessDeniedReportingView {
     public View getContentLayout() {
         LinearLayout content = new LinearLayout(activity);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setBackgroundColor(UiTheme.PAPER);
-        content.setPadding(dp(20), dp(24), dp(20), dp(24));
-        content.setGravity(Gravity.CENTER);
+        content.setBackgroundColor(UiTheme.WHITE);
+        content.setPadding(dp(24), dp(48), dp(24), dp(48));
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        // Circular lock icon
+        TextView iconTv = new TextView(activity);
+        iconTv.setText("🔒");
+        iconTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+        iconTv.setGravity(Gravity.CENTER);
+        GradientDrawable iconBg = new GradientDrawable();
+        iconBg.setShape(GradientDrawable.OVAL);
+        iconBg.setColor(0xfffef3c7);
+        iconBg.setStroke(dp(1), 0xfffde68a);
+        iconTv.setBackground(iconBg);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(56), dp(56));
+        iconParams.bottomMargin = dp(16);
+        content.addView(iconTv, iconParams);
 
         // Title: Access denied
         TextView titleTv = new TextView(activity);
@@ -47,8 +65,7 @@ public class AccessDeniedReportingView {
         titleTv.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams tParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        tParams.topMargin = dp(12);
-        tParams.bottomMargin = dp(8);
+        tParams.bottomMargin = dp(10);
         content.addView(titleTv, tParams);
 
         // Main description
@@ -64,7 +81,7 @@ public class AccessDeniedReportingView {
         // Instructions
         TextView instrTv = new TextView(activity);
         instrTv.setText("Go back to your previous screen. If you need access, contact CRM.");
-        instrTv.setTextColor(UiTheme.MUTED);
+        instrTv.setTextColor(0xff64748b);
         instrTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         instrTv.setGravity(Gravity.CENTER);
         instrTv.setTypeface(UiTheme.bodyFont(activity));
@@ -72,12 +89,27 @@ public class AccessDeniedReportingView {
         LinearLayout.LayoutParams iParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         iParams.topMargin = dp(10);
-        iParams.bottomMargin = dp(20);
+        iParams.bottomMargin = dp(24);
         content.addView(instrTv, iParams);
 
-        content.addView(UiButton.primary(activity, "Go Back", () -> {
+        // Go Back button
+        Button goBackBtn = new Button(activity);
+        goBackBtn.setText("← Go Back");
+        goBackBtn.setTextColor(UiTheme.WHITE);
+        goBackBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        goBackBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        goBackBtn.setAllCaps(false);
+        GradientDrawable btnBg = new GradientDrawable();
+        btnBg.setColor(UiTheme.NAVY);
+        btnBg.setCornerRadius(dp(8));
+        goBackBtn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x33ffffff), btnBg, null));
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+        content.addView(goBackBtn, btnParams);
+
+        goBackBtn.setOnClickListener(v -> {
             if (callbacks != null) callbacks.onGoBack();
-        }));
+        });
 
         LinearLayout page = PageTitle.wrap(content, "Account access", "UMak Research Management", false);
         content.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));

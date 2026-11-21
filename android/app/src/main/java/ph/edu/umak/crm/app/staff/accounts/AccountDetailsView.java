@@ -9,18 +9,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.ScrollView;
-import android.widget.Switch;
 import android.widget.TextView;
 
 import java.util.Map;
 
-import ph.edu.umak.crm.app.common.components.PageTitle;
+import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
-import ph.edu.umak.crm.app.common.components.UiButton;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.StaffData;
 import ph.edu.umak.crm.app.staff.StaffDialogs;
@@ -39,26 +36,20 @@ public class AccountDetailsView {
 
     private final Context context;
     private final Callbacks callbacks;
-    private final ScrollView rootScrollView;
     private final LinearLayout contentLayout;
 
     private StaffData.StaffAccountItem currentAccount;
+    private boolean isStudentSelected = true;
 
     public AccountDetailsView(Context context, Callbacks callbacks) {
         this.context = context;
         this.callbacks = callbacks;
 
-        rootScrollView = new ScrollView(context);
-        rootScrollView.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT));
-        rootScrollView.setBackgroundColor(UiTheme.PAPER);
-
         contentLayout = new LinearLayout(context);
         contentLayout.setOrientation(LinearLayout.VERTICAL);
+        contentLayout.setBackgroundColor(UiTheme.PAPER);
         contentLayout.setPadding(UiTheme.dp(context, 16), UiTheme.dp(context, 16),
                 UiTheme.dp(context, 16), UiTheme.dp(context, 24));
-        rootScrollView.addView(contentLayout);
 
         // Default to Ana M. Reyes (5.10a)
         setAccount(findDefaultStaffAccount());
@@ -68,11 +59,33 @@ public class AccountDetailsView {
         if (contentLayout.getParent() instanceof ViewGroup) {
             ((ViewGroup) contentLayout.getParent()).removeView(contentLayout);
         }
-        return PageTitle.wrap(contentLayout, "Account Details", null, false);
+
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+
+        // Dark Navy Header Band (#082d50)
+        LinearLayout band = new LinearLayout(context);
+        band.setOrientation(LinearLayout.VERTICAL);
+        band.setBackgroundColor(0xff082d50);
+        int pad = UiTheme.dp(context, 16);
+        band.setPadding(pad, pad, pad, pad);
+
+        TextView heading = new TextView(context);
+        heading.setText("Account Details");
+        heading.setTextColor(0xffffffff);
+        heading.setTypeface(UiTheme.headingFont(context));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        band.addView(heading);
+
+        root.addView(band);
+        root.addView(contentLayout);
+        return root;
     }
 
     public void setAccount(StaffData.StaffAccountItem account) {
         this.currentAccount = account;
+        this.isStudentSelected = account == null || !"Faculty".equalsIgnoreCase(account.category);
         buildView();
     }
 
@@ -121,71 +134,85 @@ public class AccountDetailsView {
         if (currentAccount == null) return;
 
         Typeface bold = UiTheme.boldFont(context);
-        Typeface regular = UiTheme.bodyFont(context);
 
-        // Back button row
-        if (callbacks != null) {
-            TextView backBtn = new TextView(context);
-            backBtn.setText("< Back to Accounts");
-            backBtn.setTextColor(UiTheme.ACCENT);
-            backBtn.setTypeface(bold);
-            ScreenTypography.apply(backBtn, 14);
-            backBtn.setPadding(0, 0, 0, UiTheme.dp(context, 12));
-            backBtn.setOnClickListener(v -> callbacks.onBack());
-            contentLayout.addView(backBtn);
-        }
-
-        // Account Profile Card
+        // 1. Account Profile Card
         contentLayout.addView(createProfileSummaryCard());
 
         addSpacing(16);
 
-        // Conditional Section: Staff Permissions vs Researcher Category Correction
+        // 2. Conditional Section: Staff Permissions vs Researcher Category Correction
         boolean isStaff = "CRM Staff".equalsIgnoreCase(currentAccount.role);
         if (isStaff) {
             contentLayout.addView(createPermissionsSection());
         } else {
+            // Notice: Researcher accounts cannot receive CRM Staff permissions.
+            contentLayout.addView(createResearcherNoticeBanner());
+            addSpacing(16);
             contentLayout.addView(createResearcherCategorySection());
         }
 
         addSpacing(20);
 
-        // Action Buttons
-        Button tempCredBtn = UiButton.outline(context, "Issue Temporary Credential", UiTheme.BORDER, UiTheme.NAVY, () -> {
+        // 3. Action Buttons: Issue Temporary Credential
+        Button tempCredBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        tempCredBtn.setText("🗝  Issue Temporary Credential");
+        tempCredBtn.setAllCaps(false);
+        tempCredBtn.setTextColor(0xff082d50);
+        tempCredBtn.setTypeface(bold);
+        ScreenTypography.apply(tempCredBtn, 14);
+        tempCredBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1), 0x20082d50));
+        tempCredBtn.setMinHeight(UiTheme.dp(context, 44));
+        tempCredBtn.setOnClickListener(v -> {
             StaffDialogs.showTemporaryCredentialIssuedDialog(context, "TMP-0000-0000");
         });
         contentLayout.addView(tempCredBtn);
 
         addSpacing(10);
 
+        // 4. Action Button: Deactivate / Activate Account
         boolean isActive = "Active".equalsIgnoreCase(currentAccount.status);
         String deactTitle = isActive ? "Deactivate Account" : "Activate Account";
-        Button deactBtn = UiButton.outline(context, deactTitle, UiTheme.BORDER,
-                isActive ? UiTheme.ERROR_RED : UiTheme.SUCCESS_GREEN, () -> {
-                    if ("STF-0007".equalsIgnoreCase(currentAccount.identifier)) {
-                        // Own account error (5.11c)
-                        StaffDialogs.showCantDeactivateOwnAccountDialog(context);
-                    } else if (isActive) {
-                        // Deactivate confirmation (5.11a)
-                        StaffDialogs.showDeactivateAccountDialog(context, currentAccount.name, currentAccount.role, () -> {
-                            if (callbacks != null) {
-                                callbacks.onViewAuditHistory(currentAccount.identifier, currentAccount.name);
-                            }
-                        });
-                    } else {
-                        // Activate confirmation (5.11b)
-                        StaffDialogs.showActivateAccountDialog(context, currentAccount.name, currentAccount.role, () -> {
-                            if (callbacks != null) {
-                                callbacks.onViewAuditHistory(currentAccount.identifier, currentAccount.name);
-                            }
-                        });
+        Button deactBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        deactBtn.setText(deactTitle);
+        deactBtn.setAllCaps(false);
+        deactBtn.setTextColor(isActive ? 0xffdc2626 : 0xff16a34a);
+        deactBtn.setTypeface(bold);
+        ScreenTypography.apply(deactBtn, 14);
+        deactBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, isActive ? 0xfffca5a5 : 0xff86efac), 0x20dc2626));
+        deactBtn.setMinHeight(UiTheme.dp(context, 44));
+        deactBtn.setOnClickListener(v -> {
+            if ("STF-0007".equalsIgnoreCase(currentAccount.identifier)) {
+                // Own account error (5.11c)
+                StaffDialogs.showCantDeactivateOwnAccountDialog(context);
+            } else if (isActive) {
+                // Deactivate confirmation (5.11a)
+                StaffDialogs.showDeactivateAccountDialog(context, currentAccount.name, currentAccount.role, () -> {
+                    if (callbacks != null) {
+                        callbacks.onViewAuditHistory(currentAccount.identifier, currentAccount.name);
                     }
                 });
+            } else {
+                // Activate confirmation (5.11b)
+                StaffDialogs.showActivateAccountDialog(context, currentAccount.name, currentAccount.role, () -> {
+                    if (callbacks != null) {
+                        callbacks.onViewAuditHistory(currentAccount.identifier, currentAccount.name);
+                    }
+                });
+            }
+        });
         contentLayout.addView(deactBtn);
 
-        addSpacing(10);
+        addSpacing(14);
 
-        Button auditBtn = UiButton.outline(context, "View account audit history", UiTheme.BORDER, UiTheme.NAVY, () -> {
+        // 5. Action Button: View account audit history (Link)
+        TextView auditBtn = new TextView(context);
+        auditBtn.setText("View account audit history");
+        auditBtn.setTextColor(0xff185d9d);
+        auditBtn.setTypeface(bold);
+        auditBtn.setGravity(Gravity.CENTER);
+        ScreenTypography.apply(auditBtn, 13);
+        auditBtn.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
+        auditBtn.setOnClickListener(v -> {
             if (callbacks != null) {
                 callbacks.onViewAuditHistory(currentAccount.identifier, currentAccount.name);
             }
@@ -208,25 +235,25 @@ public class AccountDetailsView {
         bg.setStroke(UiTheme.dp(context, 1), UiTheme.BORDER);
         card.setBackground(bg);
 
-        // Header Row: Avatar, Name, Status Badge
+        // Header Row: Avatar, Name, Badges row
         LinearLayout headerRow = new LinearLayout(context);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView avatar = new TextView(context);
         avatar.setText(currentAccount.initials);
-        avatar.setTextColor(UiTheme.NAVY);
+        avatar.setTextColor(0xff185d9d);
         avatar.setTypeface(bold);
-        ScreenTypography.apply(avatar, 14);
+        ScreenTypography.apply(avatar, 15);
         avatar.setGravity(Gravity.CENTER);
-        int avatarSize = UiTheme.dp(context, 42);
+        int avatarSize = UiTheme.dp(context, 46);
         LinearLayout.LayoutParams aLp = new LinearLayout.LayoutParams(avatarSize, avatarSize);
         aLp.setMarginEnd(UiTheme.dp(context, 12));
         avatar.setLayoutParams(aLp);
 
         GradientDrawable avatarBg = new GradientDrawable();
         avatarBg.setShape(GradientDrawable.OVAL);
-        avatarBg.setColor(Color.parseColor("#E5EDF6"));
+        avatarBg.setColor(Color.parseColor("#E0F2FE"));
         avatar.setBackground(avatarBg);
         headerRow.addView(avatar);
 
@@ -236,68 +263,120 @@ public class AccountDetailsView {
 
         TextView name = new TextView(context);
         name.setText(currentAccount.name);
-        name.setTextColor(UiTheme.NAVY);
+        name.setTextColor(0xff082d50);
         name.setTypeface(bold);
-        ScreenTypography.apply(name, 16);
+        ScreenTypography.apply(name, 17);
         col.addView(name);
 
-        String sub = currentAccount.role;
-        if (currentAccount.category != null && !currentAccount.category.isEmpty()) {
-            sub += " · " + currentAccount.category;
-        }
-        TextView subView = new TextView(context);
-        subView.setText(sub);
-        subView.setTextColor(UiTheme.MUTED);
-        subView.setTypeface(regular);
-        ScreenTypography.apply(subView, 12);
-        col.addView(subView);
-        headerRow.addView(col, colLp);
+        // Badges row
+        LinearLayout badgesRow = new LinearLayout(context);
+        badgesRow.setOrientation(LinearLayout.HORIZONTAL);
+        badgesRow.setGravity(Gravity.CENTER_VERTICAL);
+        badgesRow.setPadding(0, UiTheme.dp(context, 4), 0, 0);
 
-        // Status Badge
+        TextView roleBadge = new TextView(context);
+        roleBadge.setText(currentAccount.role);
+        roleBadge.setTypeface(bold);
+        ScreenTypography.apply(roleBadge, 11);
+        int px = UiTheme.dp(context, 7);
+        int py = UiTheme.dp(context, 2);
+        roleBadge.setPadding(px, py, px, py);
+        roleBadge.setBackground(UiTheme.shape(context, 0xffe0f2fe, 4, 0));
+        roleBadge.setTextColor(0xff0284c7);
+        badgesRow.addView(roleBadge);
+
         TextView statusBadge = new TextView(context);
         statusBadge.setText(currentAccount.status);
         statusBadge.setTypeface(bold);
         ScreenTypography.apply(statusBadge, 11);
-        statusBadge.setPadding(UiTheme.dp(context, 8), UiTheme.dp(context, 3),
-                UiTheme.dp(context, 8), UiTheme.dp(context, 3));
+        statusBadge.setPadding(px, py, px, py);
+        LinearLayout.LayoutParams statLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        statLp.leftMargin = UiTheme.dp(context, 6);
+        statusBadge.setLayoutParams(statLp);
 
         GradientDrawable sBg = new GradientDrawable();
         sBg.setCornerRadius(UiTheme.dp(context, 4));
         if ("Active".equalsIgnoreCase(currentAccount.status)) {
-            sBg.setColor(Color.parseColor("#E6F4EA"));
-            statusBadge.setTextColor(Color.parseColor("#137333"));
+            sBg.setColor(Color.parseColor("#DCFCE7"));
+            statusBadge.setTextColor(Color.parseColor("#16A34A"));
         } else {
-            sBg.setColor(Color.parseColor("#F1F3F4"));
-            statusBadge.setTextColor(Color.parseColor("#5F6368"));
+            sBg.setColor(Color.parseColor("#F1F5F9"));
+            statusBadge.setTextColor(Color.parseColor("#64748B"));
         }
         statusBadge.setBackground(sBg);
-        headerRow.addView(statusBadge);
+        badgesRow.addView(statusBadge);
 
+        col.addView(badgesRow);
+        headerRow.addView(col, colLp);
         card.addView(headerRow);
 
-        addDivider(card);
+        addSpacingInCard(card, 16);
 
-        // Institutional email
-        card.addView(createFieldRow("Institutional email", currentAccount.email));
-        addDivider(card);
+        // 1. Institutional email
+        card.addView(createFieldContainer("Institutional email", currentAccount.email));
+        addSpacingInCard(card, 10);
 
-        // Account identifier
-        card.addView(createFieldRow("Account identifier", currentAccount.identifier));
-        addDivider(card);
+        // 2. Account identifier
+        card.addView(createFieldContainer("Account identifier", currentAccount.identifier));
+        addSpacingInCard(card, 10);
 
-        // Role
-        card.addView(createFieldRow("Role", currentAccount.role));
+        // 3. Role
+        card.addView(createFieldContainer("Role", currentAccount.role));
+        addSpacingInCard(card, 8);
 
-        // Note: Existing passwords are never displayed.
+        // Note: 🔒 Existing passwords are never displayed.
         TextView pwNote = new TextView(context);
-        pwNote.setText("Existing passwords are never displayed.");
-        pwNote.setTextColor(UiTheme.MUTED);
+        pwNote.setText("🔒 Existing passwords are never displayed.");
+        pwNote.setTextColor(0xff64748b);
         pwNote.setTypeface(regular);
         ScreenTypography.apply(pwNote, 12);
-        pwNote.setPadding(0, UiTheme.dp(context, 8), 0, 0);
         card.addView(pwNote);
 
         return card;
+    }
+
+    private View createFieldContainer(String label, String value) {
+        Typeface regular = UiTheme.bodyFont(context);
+
+        LinearLayout group = new LinearLayout(context);
+        group.setOrientation(LinearLayout.VERTICAL);
+
+        TextView lbl = new TextView(context);
+        lbl.setText(label);
+        lbl.setTextColor(0xff586b83);
+        lbl.setTypeface(regular);
+        ScreenTypography.apply(lbl, 12);
+        lbl.setPadding(0, 0, 0, UiTheme.dp(context, 4));
+        group.addView(lbl);
+
+        FrameLayout box = new FrameLayout(context);
+        box.setBackground(UiTheme.shape(context, 0xfff8fafc, 8, UiTheme.BORDER));
+        int padH = UiTheme.dp(context, 12);
+        int padV = UiTheme.dp(context, 10);
+        box.setPadding(padH, padV, padH, padV);
+        box.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 44)));
+
+        TextView val = new TextView(context);
+        val.setText(value != null ? value : "—");
+        val.setTextColor(0xff082d50);
+        val.setTypeface(regular);
+        ScreenTypography.apply(val, 14);
+        FrameLayout.LayoutParams vLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        vLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+        box.addView(val, vLp);
+
+        ImageView lockIcon = new ImageView(context);
+        lockIcon.setImageResource(R.drawable.ic_crm_lock);
+        lockIcon.setColorFilter(0xff64748b);
+        FrameLayout.LayoutParams lkLp = new FrameLayout.LayoutParams(UiTheme.dp(context, 18), UiTheme.dp(context, 18));
+        lkLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        box.addView(lockIcon, lkLp);
+
+        group.addView(box);
+        return group;
     }
 
     private View createPermissionsSection() {
@@ -317,9 +396,9 @@ public class AccountDetailsView {
 
         TextView sectionTitle = new TextView(context);
         sectionTitle.setText("Permissions");
-        sectionTitle.setTextColor(UiTheme.NAVY);
+        sectionTitle.setTextColor(0xff082d50);
         sectionTitle.setTypeface(bold);
-        ScreenTypography.apply(sectionTitle, 15);
+        ScreenTypography.apply(sectionTitle, 16);
         sectionTitle.setPadding(0, 0, 0, UiTheme.dp(context, 12));
         card.addView(sectionTitle);
 
@@ -328,28 +407,76 @@ public class AccountDetailsView {
             LinearLayout row = new LinearLayout(context);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, UiTheme.dp(context, 6), 0, UiTheme.dp(context, 6));
+            row.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 8));
 
             TextView permName = new TextView(context);
             permName.setText(entry.getKey());
-            permName.setTextColor(UiTheme.NAVY);
+            permName.setTextColor(0xff082d50);
             permName.setTypeface(regular);
             ScreenTypography.apply(permName, 13);
             LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
             row.addView(permName, pLp);
 
-            TextView toggleLabel = new TextView(context);
             boolean isOn = Boolean.TRUE.equals(entry.getValue());
+
+            TextView toggleLabel = new TextView(context);
             toggleLabel.setText(isOn ? "On" : "Off");
-            toggleLabel.setTextColor(isOn ? UiTheme.NAVY : UiTheme.MUTED);
+            toggleLabel.setTextColor(isOn ? 0xff082d50 : 0xff64748b);
             toggleLabel.setTypeface(bold);
-            ScreenTypography.apply(toggleLabel, 13);
+            ScreenTypography.apply(toggleLabel, 12);
+            toggleLabel.setPadding(0, 0, UiTheme.dp(context, 8), 0);
             row.addView(toggleLabel);
+
+            // Toggle switch pill visual
+            FrameLayout switchPill = new FrameLayout(context);
+            int pillWidth = UiTheme.dp(context, 36);
+            int pillHeight = UiTheme.dp(context, 20);
+            switchPill.setLayoutParams(new LinearLayout.LayoutParams(pillWidth, pillHeight));
+
+            View pillBg = new View(context);
+            pillBg.setBackground(UiTheme.shape(context, isOn ? 0xff082d50 : 0xffcbd5e1, pillHeight / 2, 0));
+            switchPill.addView(pillBg, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+            View thumb = new View(context);
+            int thumbSize = UiTheme.dp(context, 16);
+            thumb.setBackground(UiTheme.shape(context, 0xffffffff, thumbSize / 2, 0));
+            FrameLayout.LayoutParams tLp = new FrameLayout.LayoutParams(thumbSize, thumbSize);
+            tLp.gravity = (isOn ? Gravity.END : Gravity.START) | Gravity.CENTER_VERTICAL;
+            int margin = UiTheme.dp(context, 2);
+            tLp.setMargins(margin, margin, margin, margin);
+            switchPill.addView(thumb, tLp);
+
+            row.addView(switchPill);
 
             card.addView(row);
         }
 
         return card;
+    }
+
+    private View createResearcherNoticeBanner() {
+        LinearLayout banner = new LinearLayout(context);
+        banner.setOrientation(LinearLayout.HORIZONTAL);
+        banner.setGravity(Gravity.CENTER_VERTICAL);
+        banner.setBackground(UiTheme.shape(context, 0xffeff6ff, 8, 0xffbfdbfe));
+        int pad = UiTheme.dp(context, 12);
+        banner.setPadding(pad, pad, pad, pad);
+
+        ImageView infoIcon = new ImageView(context);
+        infoIcon.setImageResource(R.drawable.ic_crm_info);
+        int iSize = UiTheme.dp(context, 18);
+        LinearLayout.LayoutParams iLp = new LinearLayout.LayoutParams(iSize, iSize);
+        iLp.rightMargin = UiTheme.dp(context, 8);
+        banner.addView(infoIcon, iLp);
+
+        TextView text = new TextView(context);
+        text.setText("Researcher accounts cannot receive CRM Staff permissions.");
+        text.setTextColor(0xff1e40af);
+        text.setTypeface(UiTheme.bodyFont(context));
+        ScreenTypography.apply(text, 12);
+        banner.addView(text, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        return banner;
     }
 
     private View createResearcherCategorySection() {
@@ -369,71 +496,85 @@ public class AccountDetailsView {
 
         TextView sectionTitle = new TextView(context);
         sectionTitle.setText("Correct researcher category");
-        sectionTitle.setTextColor(UiTheme.NAVY);
+        sectionTitle.setTextColor(0xff082d50);
         sectionTitle.setTypeface(bold);
-        ScreenTypography.apply(sectionTitle, 15);
+        ScreenTypography.apply(sectionTitle, 16);
         card.addView(sectionTitle);
+
+        addSpacingInCard(card, 10);
 
         TextView catLabel = new TextView(context);
         catLabel.setText("Researcher category");
-        catLabel.setTextColor(UiTheme.MUTED);
+        catLabel.setTextColor(0xff586b83);
         catLabel.setTypeface(regular);
         ScreenTypography.apply(catLabel, 12);
-        catLabel.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 6));
         card.addView(catLabel);
 
-        // Radio group
-        RadioGroup radioGroup = new RadioGroup(context);
-        radioGroup.setOrientation(LinearLayout.HORIZONTAL);
+        addSpacingInCard(card, 6);
 
-        RadioButton studentRadio = new RadioButton(context);
-        studentRadio.setText("Student");
-        studentRadio.setTextColor(UiTheme.NAVY);
-        studentRadio.setChecked(!"Faculty".equalsIgnoreCase(currentAccount.category));
-        radioGroup.addView(studentRadio);
+        // Segmented pill toggle: Student vs Faculty
+        LinearLayout toggleContainer = new LinearLayout(context);
+        toggleContainer.setOrientation(LinearLayout.HORIZONTAL);
+        toggleContainer.setBackground(UiTheme.shape(context, 0xfff1f5f9, 6, 0));
+        int tPad = UiTheme.dp(context, 2);
+        toggleContainer.setPadding(tPad, tPad, tPad, tPad);
 
-        RadioButton facultyRadio = new RadioButton(context);
-        facultyRadio.setText("Faculty");
-        facultyRadio.setTextColor(UiTheme.NAVY);
-        facultyRadio.setChecked("Faculty".equalsIgnoreCase(currentAccount.category));
-        radioGroup.addView(facultyRadio);
+        Button studentBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        Button facultyBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
 
-        card.addView(radioGroup);
+        updateCategoryButtons(studentBtn, facultyBtn);
 
-        // Reason for correction
+        studentBtn.setOnClickListener(v -> {
+            isStudentSelected = true;
+            updateCategoryButtons(studentBtn, facultyBtn);
+        });
+
+        facultyBtn.setOnClickListener(v -> {
+            isStudentSelected = false;
+            updateCategoryButtons(studentBtn, facultyBtn);
+        });
+
+        toggleContainer.addView(studentBtn, new LinearLayout.LayoutParams(0, UiTheme.dp(context, 36), 1f));
+        toggleContainer.addView(facultyBtn, new LinearLayout.LayoutParams(0, UiTheme.dp(context, 36), 1f));
+        card.addView(toggleContainer);
+
+        addSpacingInCard(card, 14);
+
+        // Reason for correction *
         TextView reasonLabel = new TextView(context);
         reasonLabel.setText("Reason for correction *");
-        reasonLabel.setTextColor(UiTheme.NAVY);
+        reasonLabel.setTextColor(0xff082d50);
         reasonLabel.setTypeface(bold);
         ScreenTypography.apply(reasonLabel, 13);
-        reasonLabel.setPadding(0, UiTheme.dp(context, 12), 0, UiTheme.dp(context, 6));
         card.addView(reasonLabel);
+
+        addSpacingInCard(card, 6);
 
         EditText reasonInput = new EditText(context);
         reasonInput.setHint("Explain why the category is being corrected");
-        reasonInput.setHintTextColor(UiTheme.MUTED);
-        reasonInput.setTextColor(UiTheme.NAVY);
+        reasonInput.setHintTextColor(0xff94a3b8);
+        reasonInput.setTextColor(0xff082d50);
         reasonInput.setTypeface(regular);
         ScreenTypography.apply(reasonInput, 14);
-        reasonInput.setPadding(UiTheme.dp(context, 12), UiTheme.dp(context, 12),
-                UiTheme.dp(context, 12), UiTheme.dp(context, 12));
-        GradientDrawable rBg = new GradientDrawable();
-        rBg.setColor(UiTheme.WHITE);
-        rBg.setCornerRadius(UiTheme.dp(context, 8));
-        rBg.setStroke(UiTheme.dp(context, 1), UiTheme.BORDER);
-        reasonInput.setBackground(rBg);
+        int padH = UiTheme.dp(context, 12);
+        int padV = UiTheme.dp(context, 10);
+        reasonInput.setPadding(padH, padV, padH, padV);
+        reasonInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, UiTheme.BORDER));
+        reasonInput.setMinLines(3);
+        reasonInput.setGravity(Gravity.TOP | Gravity.START);
         card.addView(reasonInput);
 
-        // Note: Researcher accounts cannot receive CRM Staff permissions.
-        TextView permNote = new TextView(context);
-        permNote.setText("Researcher accounts cannot receive CRM Staff permissions.");
-        permNote.setTextColor(UiTheme.MUTED);
-        permNote.setTypeface(regular);
-        ScreenTypography.apply(permNote, 12);
-        permNote.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 14));
-        card.addView(permNote);
+        addSpacingInCard(card, 16);
 
-        Button saveCorrectionBtn = UiButton.primary(context, "Save Category Correction", () -> {
+        Button saveCorrectionBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        saveCorrectionBtn.setText("Save Category Correction");
+        saveCorrectionBtn.setAllCaps(false);
+        saveCorrectionBtn.setTextColor(0xff082d50);
+        saveCorrectionBtn.setTypeface(bold);
+        ScreenTypography.apply(saveCorrectionBtn, 14);
+        saveCorrectionBtn.setBackground(UiTheme.ripple(UiTheme.shape(context, UiTheme.WHITE, 8, 0xff082d50), 0x20082d50));
+        saveCorrectionBtn.setMinHeight(UiTheme.dp(context, 44));
+        saveCorrectionBtn.setOnClickListener(v -> {
             if (callbacks != null) {
                 callbacks.onViewAuditHistory(currentAccount.identifier, currentAccount.name);
             }
@@ -443,38 +584,26 @@ public class AccountDetailsView {
         return card;
     }
 
-    private View createFieldRow(String label, String value) {
-        Typeface bold = UiTheme.boldFont(context);
-        Typeface regular = UiTheme.bodyFont(context);
+    private void updateCategoryButtons(Button studentBtn, Button facultyBtn) {
+        studentBtn.setAllCaps(false);
+        studentBtn.setText(isStudentSelected ? "✓ Student" : "Student");
+        studentBtn.setTypeface(isStudentSelected ? UiTheme.boldFont(context) : UiTheme.bodyFont(context));
+        studentBtn.setTextColor(isStudentSelected ? 0xff082d50 : 0xff586b83);
+        ScreenTypography.apply(studentBtn, 13);
+        studentBtn.setBackground(isStudentSelected ? UiTheme.shape(context, UiTheme.WHITE, 6, 0xff082d50) : null);
 
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(0, UiTheme.dp(context, 8), 0, UiTheme.dp(context, 8));
-
-        TextView lbl = new TextView(context);
-        lbl.setText(label);
-        lbl.setTextColor(UiTheme.MUTED);
-        lbl.setTypeface(regular);
-        ScreenTypography.apply(lbl, 12);
-        row.addView(lbl);
-
-        TextView val = new TextView(context);
-        val.setText(value != null ? value : "—");
-        val.setTextColor(UiTheme.NAVY);
-        val.setTypeface(bold);
-        ScreenTypography.apply(val, 14);
-        val.setPadding(0, UiTheme.dp(context, 2), 0, 0);
-        row.addView(val);
-
-        return row;
+        facultyBtn.setAllCaps(false);
+        facultyBtn.setText(!isStudentSelected ? "✓ Faculty" : "Faculty");
+        facultyBtn.setTypeface(!isStudentSelected ? UiTheme.boldFont(context) : UiTheme.bodyFont(context));
+        facultyBtn.setTextColor(!isStudentSelected ? 0xff082d50 : 0xff586b83);
+        ScreenTypography.apply(facultyBtn, 13);
+        facultyBtn.setBackground(!isStudentSelected ? UiTheme.shape(context, UiTheme.WHITE, 6, 0xff082d50) : null);
     }
 
-    private void addDivider(LinearLayout parent) {
-        View divider = new View(context);
-        divider.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 1)));
-        divider.setBackgroundColor(UiTheme.BORDER);
-        parent.addView(divider);
+    private void addSpacingInCard(LinearLayout parent, int dp) {
+        View spacer = new View(context);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(1, UiTheme.dp(context, dp)));
+        parent.addView(spacer);
     }
 
     private void addSpacing(int dp) {
