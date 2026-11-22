@@ -15,6 +15,7 @@ export const validate=(schema,source='body',includeFields=false)=>(req,res,next)
 export {z};
 
 export const search=z.strictObject({keyword:z.string().max(200),year:z.number().int().min(1900).max(9999).nullable().optional(),department:text(100).nullable().optional(),limit:z.number().int().min(1).max(100).optional(),offset:z.number().int().min(0).max(10000).optional()});
+export const duplicateReview=z.strictObject({title:text(200).refine(value=>/[\p{L}\p{N}]/u.test(value.normalize('NFKC'))),abstract:text(4000),year:z.number().int().min(1900).max(9999).nullable().optional(),department:text(100).nullable().optional(),exclude_id:id.optional()});
 export const consent=z.strictObject({policy_version:z.literal('2026-10-v1'),choices:z.strictObject({institutional_analytics:z.boolean(),email_notifications:z.boolean()})});
 export const empty=z.strictObject({});
 const step=z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
