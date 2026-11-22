@@ -53,81 +53,69 @@ If information is necessary to process a particular request, omission may preven
 
 Public visitors can browse published service information, instructions and available blank forms, and search approved public research metadata without registering. Browsing or downloading a blank form does not itself create an account, service request or research registration, although technical connection and security data may still be processed.
 
-The intended researcher access model is self-registration by students and faculty using institutional email accounts, followed by verification before normal access. The backend implements this model: it accepts only student or faculty categories and email domains on the configured allowlist, with any additional configured address restrictions. It collects name, college and password and checks a single-use, six-digit verification code that expires after 15 minutes. Unverified accounts cannot complete normal sign-in or use protected sessions. Approved production domains and email delivery arrangements still require institutional confirmation; the source does not hardcode every UMak address as eligible.
+Students and faculty self-register using an eligible institutional email address, name, college, researcher category and password. Email verification is required before normal account access. Eligibility depends on the institutional addresses accepted for the service; possessing a UMak address does not automatically establish eligibility.
 
-The hosted demonstration instead restricts registration to designated synthetic addresses and displays codes in a protected demo inbox without external email delivery. That inbox is not an approved production verification channel.
+Authorized account administrators create staff accounts, assign permissions, activate or deactivate accounts and initiate credential recovery. A person issued temporary credentials must replace them before normal protected access. Researcher registration does not confer staff privileges. Researchers can update their name and college; email changes require administrative assistance.
 
-Authorized account administrators create staff accounts, assign specified permissions, activate or deactivate accounts and initiate credential recovery. Temporary credentials require replacement before normal protected access. Researcher self-registration does not confer staff permissions. Profile name and college can be updated through implemented controls; email changes require administrative assistance.
+Private access depends on an active authenticated account and the relevant research membership, review assignment or staff permission. Permissions separately cover content, requests, registry, research lifecycle updates, reporting and account administration. Naming an adviser in a record does not automatically give that person an account or access.
 
-The reviewed Requirements Engineering baseline proposes staff-provisioned accounts and excludes public self-registration. It therefore differs from the team's intended researcher model and the implemented self-registration route. The institution must confirm the deployment model and reconcile the requirements before release. No formal amendment of that baseline is claimed.
-
-Private functions require an active authenticated account. Access depends on research membership, review assignment or the relevant staff permission. Staff permissions separately cover content, request processing, registry, progress, reporting and account administration. A person's adviser name in a record does not automatically create an adviser account or grant access.
+The revised requirements and user stories both support researcher self-registration and email verification. The exact versions reviewed and remaining implementation decisions are recorded in [Reviewer appendix A](#appendix-a-requirements-and-implementation-review).
 
 ## 5. Public research and restricted records
 
-The reviewed public research projection exposes approved records' identifiers, titles, abstracts, approval status, research year and department. Full manuscripts, account emails, team lists, author names, keywords, internal notes and individual service requests are outside that public projection.
+The public catalogue shows approved records' identifiers, titles, abstracts, approval status, research year and department. Full manuscripts, account emails, team lists, author names, keywords, internal notes and individual service requests are outside that public view.
 
-Research lifecycle tracking covers registration, monitoring, stages, milestones and outcomes and is separate from catalogue approval. Completion, presentation and publication are separate outcomes; recording one does not automatically record another or require them to occur in a fixed sequence. A recorded research lifecycle outcome does not automatically authorize public disclosure. Before publishing real records, UMak must confirm publication authority and review abstracts for personal or confidential information.
+Research lifecycle tracking covers registration, monitoring, stages, milestones and outcomes and is separate from catalogue approval. Completion, presentation and publication are separate outcomes; recording one does not automatically record another or require a fixed sequence. An outcome does not itself authorize public disclosure. Publication authority and the treatment of personal or confidential information must be confirmed before real records are published.
 
-Research teams access their permitted private records. Assigned reviewers and authorized staff access information through the relevant controls. Researcher-visible feedback is separated from internal staff remarks. Registry and reporting permissions can expose information across records for their authorized administrative purposes; they are not limited in every case to an individual review assignment. Reports and exported summaries must receive protection appropriate to their contents.
+Research teams can access their permitted records. Assigned reviewers and authorized staff receive access appropriate to their responsibilities. Researcher-visible feedback is separated from internal staff remarks. Some registry and reporting responsibilities cover multiple studies; these are not universal permissions for all employees. Reports and exports must be protected according to their contents.
 
-Duplicate-title checks, consultation queue ordering and workflow-planning estimates support administrative decisions. They do not themselves establish plagiarism, approve research, grant clearance or guarantee a completion date. Concerns about a record or its processing should be raised with the responsible office.
+Duplicate-title checks, queue ordering and research lifecycle planning assist human decisions. They do not establish plagiarism, grant clearance or guarantee completion dates. Raise concerns with the responsible office.
 
-## 6. Documents and upload limits
+## 6. Research documents and uploads
 
-Only supported PDF and DOCX documents are accepted by the reviewed upload routes. File validation and, in the normal backend configuration, a configured scanner are required. The synthetic demo does not establish production malware scanning.
+Submit only relevant documents you are authorized to provide. The reviewed upload workflows accept supported PDF and DOCX files and may reject unsupported, oversized or invalid documents. Follow the instructions for the selected service and protect any private download link.
 
-**Current technical limits differ from the proposed institutional baseline:**
+File-size rules differ between implemented workflows and are not yet reconciled with the proposed requirements. A limit displayed for one workflow must not be assumed to apply to another. Correction submissions may retain earlier files and review history rather than replacing every previous copy.
 
-| Upload workflow | Verified implementation |
-| --- | --- |
-| Service-request attachments | Maximum **10,000,000 bytes per file**; up to **five files per submission attempt**. Correction resubmissions can add retained versions. The backend also limits distinct requirement slots across existing and incoming files to five; it does not impose a five-file lifetime cap across all versions. |
-| Staff registry documents and service blank forms | Maximum **10,000,000 bytes per file**. |
-| Separate study-document/manuscript route | Maximum **25,000,000 bytes per file**; this does not raise the service-request limit. |
-
-The reviewed Requirements Engineering document proposes PDF/DOCX files up to 10 MB each for both service requests and research documents, and five files per service request. The existing Terms describe 25,000,000 bytes per submission. No evidence establishes institutional approval of a permanent distinction between manuscript and request limits. UMak must approve a consistent rule and reconcile requirements, interfaces, backend routes and Terms before institutional release. This policy records the present discrepancy; it does not authorize larger uploads as an exception.
-
-Some files are held in database-backed request or registry records; the separate study-document service uses configured object storage and temporary signed download links. Access remains restricted. Do not redistribute private documents or access links to unauthorized recipients.
+The exact limits, retained-version behavior and required pre-deployment decision are set out in [Reviewer appendix A](#appendix-a-requirements-and-implementation-review). Those technical differences do not establish an approved university exception. No production release should proceed until the governing upload rule and the Terms, screens and backend have been aligned.
 
 ## 7. Consent and optional uses
 
-The backend can record separate choices for institutional analytics and email notifications, with a policy version and server timestamp; both choices may be false. Later submissions record updated preferences. These records do not prove that optional services are operating or that an adopted policy has been accepted.
+Separate preferences can be recorded for optional institutional analytics and email notifications; both may be declined. Recording a preference does not mean that the optional service is operating or that an adopted policy has been accepted.
 
-The reviewed application does not establish an optional analytics integration or general optional email-notification delivery. Verification email and in-application request updates are separate functions. Permission-controlled research and service reports already exist and must have their own established lawful basis; they must not be described as inactive merely because an optional analytics choice exists.
+Verification messages, in-application request updates and authorized administrative reports serve different purposes. Existing research and service reporting requires its own established lawful basis and should not be confused with optional analytics.
 
-Before an optional purpose is activated, UMak must explain its scope, recipients and consequences and obtain valid consent where required under NPC Circular No. 2023-04. Withdrawal must be available without affecting unrelated services. Until a user-facing preference workflow is verified, requests may be directed to the privacy contact in section 12. Withdrawal affects consent-based future processing and does not automatically invalidate prior lawful processing or remove records retained on another lawful basis. Use of the application is not blanket consent to all possible processing.
+Before activating an optional purpose, UMak must explain its scope, recipients and consequences and obtain valid consent where required under NPC Circular No. 2023-04. Declining or withdrawing optional consent must not affect unrelated services. Until an accessible preference-change process is verified, direct requests to the privacy contact in section 12. Withdrawal applies to future consent-based processing; it does not automatically invalidate prior lawful processing or remove records retained on another lawful basis. Using the application is not blanket consent.
 
 ## 8. Sharing, providers and external channels
 
-Permitted recipients may include research team members, assigned reviewers and staff with the necessary permissions. Any additional disclosure to other UMak offices, regulators or external institutions requires an identified lawful purpose, minimum necessary information and appropriate authority. No standing integration with CHED, DOST or other government recipients was established by this review. Valid legal demands require assessment rather than automatic unrestricted disclosure.
+Permitted recipients include research team members, assigned reviewers and staff with the necessary permissions. Disclosure to other university offices, regulators or external institutions requires a lawful purpose, appropriate authority and the minimum necessary information. No standing reporting integration with CHED, DOST or other government recipients was established by this review. Legal demands require assessment rather than unrestricted automatic disclosure.
 
-The source supports SMTP verification, PostgreSQL database hosting, S3-compatible document storage and backup infrastructure. Deployment documents describe a Render and Supabase synthetic demonstration. Those documents do not establish approved production providers, contracts, subprocessors, storage locations or operational safeguards. External submission links direct users to another channel; opening one is not confirmation that an in-app request was submitted. Review that channel's notice before sending information.
+Hosting, verification messages, document storage and recovery can involve service providers. The demonstration's arrangements do not establish approved production providers, locations or safeguards. Before institutional use, UMak must confirm and disclose material provider arrangements, assess transfers and establish appropriate protections. Neither Philippines-only hosting nor an unrestricted right to transfer data abroad is asserted.
 
-For controller-to-controller sharing, apply [NPC Circular No. 2020-03](https://privacy.gov.ph/wp-content/uploads/2021/01/Circular-Data-Sharing-Agreement-amending-16-02-21-Dec-2020-clean-copy-FINAL-LYA-and-JDN-signed-minor-edit.pdf), which superseded Circular No. 16-02, and [NPC Advisory No. 2025-01](https://privacy.gov.ph/wp-content/uploads/2025/07/SGD-2025-01-DSA-Clarification.pdf). A data-sharing agreement is not a universal prerequisite or a substitute for a lawful basis. Processor outsourcing is a distinct arrangement requiring appropriate instructions, safeguards and accountability.
+For controller-to-controller sharing, apply [NPC Circular No. 2020-03](https://privacy.gov.ph/wp-content/uploads/2021/01/Circular-Data-Sharing-Agreement-amending-16-02-21-Dec-2020-clean-copy-FINAL-LYA-and-JDN-signed-minor-edit.pdf), which superseded Circular No. 16-02, and [NPC Advisory No. 2025-01](https://privacy.gov.ph/wp-content/uploads/2025/07/SGD-2025-01-DSA-Clarification.pdf). A data-sharing agreement is not a universal prerequisite or a substitute for a lawful basis. Processor outsourcing is distinct and requires appropriate instructions, safeguards and accountability.
 
-Before production use, UMak must confirm the provider and recipient inventory, disclose material arrangements, assess transfers and establish appropriate contractual or other protections. No Philippines-only hosting or prohibition on cross-border transfers is asserted. The reviewed source contains no advertising or commercial tracking integration; this is not a guarantee concerning future deployments or provider logging.
+Some services direct applicants to an external submission channel. Opening a link is not confirmation of a submitted application request. Read that channel's instructions and privacy notice before sending information. Provider and demonstration details appear in the reviewer appendix.
 
-## 9. Retention, deletion and recovery
+## 9. Retention, deletion and shared research
 
-Records should be retained only for justified purposes and applicable legal requirements. Public-record retention and disposal must take account of [RA No. 9470](https://elibrary.judiciary.gov.ph/thebookshelf/showdocs/2/19575), applicable National Archives rules and an approved university retention schedule. That law does not make every research record permanent or establish a universal five-year period. No approved system-specific schedule was verified for accounts, research, service records, documents, logs or backups.
+Retain records only for justified purposes and applicable legal requirements. Public-record management and disposal must take account of [RA No. 9470](https://elibrary.judiciary.gov.ph/thebookshelf/showdocs/2/19575), applicable National Archives rules and an approved university retention schedule. That law does not make every research record permanent or prescribe a universal five-year period. No approved system-specific retention schedule was verified.
 
-Students and faculty can submit an account-deletion request through the implemented backend. Staff completion requires an explicit review confirmation. Staff-account deletion follows a separate administrative review path. These capabilities do not establish a verified in-app interface for every privacy request or an adopted response timetable.
+Students and faculty can request account deletion through the implemented backend, subject to an explicit staff review confirmation. Staff-account deletion requires separate administrative review. The responsible office must assess lawful retention, other people's rights and preservation duties and explain any justified limitation. This policy creates no automatic clearance hold or blanket refusal rule.
 
-Deleting a researcher account can delete research records for which that account is the recorded owner, including records with coauthors, together with dependent records. Removing a coauthor who is not the recorded owner does not by itself invoke that ownership cascade. Selective preservation of shared research is not implemented by the deletion mechanism. These consequences require institutional and technical review before production adoption. Before completion, the authorized office must assess lawful retention, other people's rights, shared records and any applicable preservation duty, and explain any justified refusal or limitation. This draft creates no automatic clearance hold, academic sanction or blanket prohibition on deletion.
+**Deleting the recorded owner's account can also remove coauthored studies and related records. The current mechanism does not selectively preserve all shared research.** This risk must be resolved before destructive deletion is enabled for real institutional records. Ownership transfer, selective retention or another approved safeguard must first be established and verified. This is a proposed production-release condition, not a claim that such protection is already implemented; see the [release blocker in appendix A](#shared-record-preservation-production-release-blocker).
 
-Removing live database records does not immediately erase backups, retained audit or deletion records, downloaded files, or all object-storage versions. Source tools support encrypted backups, queued object cleanup and deletion-event replay during recovery. Actual schedules, offsite arrangements, version disposal and restore reconciliation depend on deployment and operator action. Recent deletion events may be missing from an earlier export. No fixed backup expiry, guaranteed recovery time or complete immediate erasure is promised. Retained deletion and security metadata also require a documented purpose and retention period.
+Deleting live records does not immediately erase every backup, retained audit record, document version, local draft or downloaded copy. Recovery and cleanup arrangements require verified operation, approved retention and reconciliation. No immediate complete erasure, fixed backup expiry or guaranteed recovery time is promised. Retained security and deletion metadata also need a justified purpose and retention period.
 
 ## 10. Security and information on devices
 
-The reviewed implementation includes salted Argon2id password hashing, signed sessions with server-side validation and revocation, inactivity controls, input validation, throttling, database access restrictions, permission checks and audit histories. Audit-chain mechanisms can help detect changes; they do not make privileged administrators incapable of altering a system. Secure deployment and monitoring remain necessary.
+The reviewed application uses account authentication, access permissions, validation and audit records to help protect information. Their effectiveness depends on secure configuration, maintenance and authorized operation. No absolute security, independent certification, active multi-factor authentication or operational disaster-recovery service is promised by this draft.
 
-Source configurations support HTTPS, protected database connections, file validation and scanning, private document storage and encrypted recovery tools. Their effectiveness depends on configuration, maintenance and operational verification. The hosted demo and development variants must not be treated as evidence that every production safeguard is active. Multi-factor authentication was not established in the reviewed implementation. No absolute security, universal TLS version, independently certified environment, operational disaster-recovery service or particular physical control is guaranteed here.
+The Android application protects stored session material through device-backed encryption and caches public content for offline access. Registration draft text is stored separately in private application preferences and can be deleted locally; application-level encryption for that draft store was not established. Signing out should not be assumed to erase all drafts or exported files. Downloads and reports can remain on a device or in a destination selected by its user.
 
-The Android app protects stored session material through Android Keystore-backed encryption and caches public content for offline access. It also saves account-scoped registration draft text in private application preferences, with a local-draft deletion control. That draft store is distinct from encrypted session storage; this policy does not claim it has application-level encryption. Signing out must not be assumed to delete every local draft or previously exported file. Staff report exports and user-selected downloads may remain on devices or in destinations chosen by the user.
+Protect devices and credentials and remove unnecessary drafts and downloads, especially on shared devices. Private submissions need connectivity; cached information may be outdated.
 
-Use device access protection, avoid shared credentials and remove unneeded drafts and downloads, particularly on shared devices. Private submissions require connectivity; cached information may be outdated.
-
-Before institutional operation, safeguards and governance must be assessed against [NPC Circular No. 2023-06](https://privacy.gov.ph/wp-content/uploads/2024/03/NPC-Circular-Repeal-16-01-Signed.pdf), *Security of Personal Data in the Government and the Private Sector*. It repealed Circular No. 16-01. Source controls do not establish completion of privacy impact assessments, training, provider reviews, incident arrangements or other required organizational measures.
+Before institutional operation, security and governance must be assessed against [NPC Circular No. 2023-06](https://privacy.gov.ph/wp-content/uploads/2024/03/NPC-Circular-Repeal-16-01-Signed.pdf), which repealed Circular No. 16-01. Source controls do not establish completed privacy impact assessments, training, provider reviews or incident arrangements. The reviewer appendix distinguishes tested controls from configuration-dependent capabilities.
 
 ## 11. Security incidents and personal data breaches
 
@@ -158,13 +146,13 @@ An adopted policy should identify its approving authority, version and effective
 Before institutional adoption, UMak must confirm:
 
 - The operating authority, DPO and responsible offices, and current institutional privacy instruments.
-- The registration model, eligibility, staff permissions, production verification channel and privacy-request procedures.
+- Production eligibility, staff permissions, verification and privacy-request procedures, and documentary alignment with the latest requirements.
 - Purpose-specific lawful bases, treatment of sensitive data, collaborator access and public-catalogue publication authority.
 - A consistent upload rule across research documents, requests, requirements and Terms.
 - Providers, locations, recipients, contracts, cross-border protections and verified security and incident arrangements.
 - Retention schedules, lawful preservation grounds, coauthored-record handling, local-draft guidance, backup disposal and recovery reconciliation.
 
-The existing [Terms and Conditions](TERMS_AND_CONDITIONS.md) were reviewed and remain unchanged. Their outdated system expansion must be aligned with the team-confirmed UMak-RMLIS name. Their 25 MB upload rule, coauthor-related deletion restrictions, local-storage description and broader institutional or operational claims also require reconciliation by the authorized institution. This draft does not affirm their unverified guarantees, sanctions, copyright provisions or exclusive court jurisdiction, and does not itself amend or replace them.
+This policy was reviewed alongside the [revised academic Terms and Conditions](TERMS_AND_CONDITIONS_FINAL_DRAFT.md). Both carry the same pending-adoption status and disclose the upload discrepancy and shared-record deletion blocker. They are a coordinated pair of proposed academic drafts, not an adopted or deployment-cleared policy suite. The [original Terms](TERMS_AND_CONDITIONS.md) remain unchanged for comparison and contain historical claims that the revised drafts do not endorse.
 
 ## 14. Philippine legal and institutional references
 
@@ -180,21 +168,156 @@ The following sources inform this draft within their applicable scope; listing a
 8. **Makati City Ordinance No. 2020-059, Revised UMak Charter**: the ordinance number and description appear in the supplied official UMak policy's student and employee consent forms and the official [UMak alumni registration notice](https://umak.edu.ph/alumni/register). An authenticated complete ordinance and any amendments were not obtained from an authoritative repository. Its exact operative provisions and relevance to particular processing purposes remain for institutional legal verification.
 9. **University of Makati, Data Privacy Policy Statement**, including the *Data Privacy Notice for Data Subjects*, employee notice and consent forms, in the supplied 15-page capture of the [official Privacy Policy page](https://www.umak.edu.ph/privacy-policy/); and the official [Data Privacy Notice for Students](https://umak.edu.ph/olrog/assets/pdf/DATA%20PRIVACY%20NOTICE%20FOR%20STUDENTS.pdf). The official student notice was located through indexed university content; direct access returned an access restriction. The supplied capture supports the institutional principles and published privacy email used here, but does not establish the current adoption date or completeness of subsequent revisions.
 
-### Academic review basis
+## Reviewer appendix — academic evidence and deployment decisions
 
-Implementation was reviewed on 22 November 2026 against Git HEAD **`b2d9388557696876c369986418ecf4b9365587bd`**, including the working-tree versions of [registration](../../src/research/registrations.js) and [progress routes](../../src/research/progress.js), which already contained uncommitted pagination changes. The starting working tree also included changes to `scripts/android-synthetic-acceptance.js` and untracked benchmark, planning, output and pagination-test files. The final-draft policy itself was untracked. These pre-existing changes were preserved; only this policy was edited during finalization. The reviewed baseline is therefore HEAD plus the available working tree, not a clean immutable checkout or a certified production deployment.
+This appendix records engineering evidence and unresolved decisions. It is separate from the user-facing policy above. Its proposed release conditions do not claim institutional adoption or implemented safeguards.
 
-Primary evidence included [backend routes](../../src/app.js), [authentication](../../src/auth), [schema and migrations](../../db), [service requests](../../src/requests/service-requests.js), [research registry](../../src/research/registry.js), [reporting](../../src/reporting/reports.js), [document routes](../../src/storage/routes.js), [Android researcher flows](../../android/app/src/main/java/ph/edu/umak/crm/app/ResearcherScreen.java), [session storage](../../android/core/src/main/java/ph/edu/umak/crm/security/SessionVault.java), [hosted-demo boundaries](../HOSTED_DEMO.md), [deployment documentation](../SUPABASE_RENDER_DEPLOYMENT_PLAN.md), and [recovery/privacy documentation](../implementation/PRIVACY.md). Older explanatory documents were checked against current source rather than treated as conclusive.
+### Appendix A. Requirements and implementation review
 
-The locally supplied **REQUIREMENTS_ENGINEERING_v3.14.10.2026.pdf**, particularly S-A01, S-01–S-05, staff modules, NFR03/NFR06 and proposed rules 2–15, was reviewed alongside repository plans. It proposes account, upload and operational rules; it does not establish institutional approval or proof that backup, availability or other service targets have been achieved. The registration and upload conflicts are expressly preserved above for resolution.
+**Current requirements reviewed:** `REQUIREMENTS_ENGINEERING_v6.13.11.2026.docx`, supplied for this review, compared with `USER-STORY_v5.13.11.2026.xlsx`. Both filenames identify 13 November 2026. The full requirements text was inspected, including researcher and staff access, registration, request handling, research registry and outcomes, security and backup requirements, and the Test Conditions and Proposed Rules. The earlier `REQUIREMENTS_ENGINEERING_v3.14.10.2026.pdf` is retained below only as a historical comparison source. No institutional approval is inferred from these filenames or the project specification.
 
-Verification for this finalization included the existing backend test suite through `node scripts/synthetic-acceptance.js --full-tests`, using a disposable local database. All **66 tests passed**, with no failures or skipped tests. Relevant checks cover institutional-domain rejection, blocked unverified sign-in, expired and reused verification codes, researcher privilege rejection, restricted records and files, consent validation, reviewed deletion, audit integrity, document validation, encryption utilities and session controls. No application tests were added or modified. Android behavior was inspected in source and existing device tests; Android instrumentation and production infrastructure were not rerun or certified by this policy review.
+The supplied v6 requirements replace the earlier missing-v5 source limitation for this review. This document does not claim to have inspected the separate v5 file mentioned in the review image. The source comparison now uses the newer v6 supplied by the project team.
 
-| Evidence status | Scope and limitation |
+**Account model confirmed:** v6 S-A01, C-01 and the Account access rule require researchers to self-register with approved institutional email, verify email ownership before protected functions, and sign in without routine manual CRM approval when active. Staff accounts and permissions are provisioned only by authorized account administrators. The v5 user stories and reviewed backend agree. The earlier v3-only account conflict is resolved at the requirements level and is no longer listed as an unresolved design decision. Operational eligibility, approved configuration and institutional adoption still require confirmation. Email verification establishes email ownership, not independent certification of researcher category or academic claims.
+
+V6's Registration controls rule requires expiry, resend/rate limits and retention of unverified registrations to be defined in approved configuration and retention procedures. The source's current code expiry and resend controls do not establish approval of those settings or an operational unverified-account disposal schedule. Institutional single sign-on remains outside the v6 scope.
+
+**Research lifecycle comparison:** v6 distinguishes stages, milestones and independent completion, presentation and publication outcomes. Its proposed stage vocabulary includes “For revision,” while the backend stores `UnderReview`. These labels must be mapped or reconciled before deployment; they must not be treated as automatically synonymous. This is separate from the resolved account-model issue and does not authorize a linear sequence among research outcomes.
+
+The exact documentary sources available for comparison are identified by SHA-256 below. These hashes identify the exact reviewed files; they do not establish institutional approval. V6 is the current supplied requirements baseline; v3 is historical.
+
+| Source | SHA-256 |
 | --- | --- |
-| Implemented and verified in local tests | Backend authentication and verification controls, access boundaries, consent recording, deletion behavior and the other tested safeguards described above. Synthetic results do not establish production approval. |
-| Implemented in source, not operationally verified here | Android Keystore session storage, local registration drafts and public cache; deployed email, storage and recovery configurations. |
-| Partially implemented | Optional preference recording exists; optional analytics and general email-notification delivery were not established. Deletion exists without selective preservation of coauthored records. |
-| Proposed | Requirements Engineering rules and service, backup and availability targets remain proposals where not separately adopted and demonstrated. |
-| Deployment-dependent | Provider locations and contracts, TLS configuration, live malware scanning, backup schedules, cleanup and recovery reconciliation. |
-| Requiring institutional approval | Lawful bases, publication authority, account-model reconciliation, upload rules, retention, shared-record preservation, privacy contacts and operational responsibilities. The system name is team-confirmed. |
+| `REQUIREMENTS_ENGINEERING_v6.13.11.2026.docx` | `42660c73fe4445d4c364ff9f5ed4d3d426e170fd5533ba60628b535dd42e039a` |
+| `REQUIREMENTS_ENGINEERING_v3.14.10.2026.pdf` | `62dfa5f69c4dc4a7202c51e23b0194c109a2f93c4004fe3796831bc0025dc579` |
+| `USER-STORY_v5.13.11.2026.xlsx` | `b8c423e9645226d176da192065d5607aa13c92a862bb400005f3f293b81d28b8` |
+
+#### Upload discrepancy and required governing decision
+
+| Workflow | Reviewed technical behavior |
+| --- | --- |
+| Service-request attachments | Maximum **10,000,000 bytes per file**; up to **five files per submission attempt**. |
+| Correction submissions | Up to five distinct requirement slots across previous and incoming files; earlier versions can remain, so there is no five-file lifetime maximum across all retained versions. |
+| Staff registry documents and service blank forms | Maximum **10,000,000 bytes per file**. |
+| Separate study-document/manuscript route | Maximum **25,000,000 bytes per file**. This is not an institutionally approved exception. |
+
+V6's Upload limits rule specifies a proposed **10 MB per-file PDF/DOCX baseline** for both research documents and service attachments and **five files per service request**. S-02 requires client validation and repeated server validation before storage. The v5 user stories' S-02 criteria 7–11 and C-03 document criteria support that baseline. These are documented intended rules, not proof of institutional adoption or full implementation. The separate 25,000,000-byte manuscript route conflicts with that per-file baseline, and retained correction versions require clarification of the per-request file count. The original Terms' blanket 25 MB rule is historical; the revised Terms disclose the divergence.
+
+**The intended specification baseline is now confirmed as 10 MB, but the institutionally approved governing rule and retained-version interpretation remain to be confirmed.** Align the revised Terms, screens, validation and all backend routes with the adopted rule before deployment. This documentary review does not change technical limits or authorize the 25 MB route as an exception.
+
+#### Shared-record preservation: production-release blocker
+
+**Do not enable destructive account deletion for real institutional records until an approved shared-record preservation safeguard has been implemented and verified.** The current recorded-owner cascade can delete coauthored research and dependent records. Merely documenting it or requiring staff confirmation does not resolve the risk.
+
+The responsible institution and technical team must establish ownership transfer, selective lawful retention or another approved mechanism; define how other researchers' records and rights are protected; and verify the selected behavior before release. The review condition is a proposed release blocker, not a claim that the application already enforces a deletion hold or that every deletion request must be refused. Requests and lawful remedies must remain available. No particular preservation procedure, retention period or institutional responsibility is invented here.
+
+#### Implemented controls and deployment boundaries
+
+- **Authentication:** configured institutional-domain allowlist and optional address restrictions; six-digit, single-use codes expire after 15 minutes. Protected access checks active and verified accounts. Normal SMTP delivery is configurable. The hosted synthetic demo uses restricted addresses and a protected inbox without external email; it is not production email verification.
+- **Access and storage:** database and API permissions restrict studies, requests, feedback and internal notes. Request/registry files are database-backed; the separate manuscript route uses configured S3-compatible storage and signed URLs lasting 600 seconds. These mechanisms are not a public manuscript-release policy.
+- **Security:** source includes Argon2id password hashing, signed and server-validated sessions, revocation, throttling, audit histories and audit-chain verification. Privileged operators remain a trust boundary. HTTPS, database TLS, scanning, storage protections and backup operation depend on verified deployment configuration. No MFA integration or universal TLS guarantee is established.
+- **Providers and recovery:** documentation describes Render/Supabase demonstration hosting, SMTP and S3-compatible services. Contracts, regions, subprocessors and approved production arrangements are unverified. Encrypted backup, cleanup and deletion-replay tools exist; enabled schedules, version disposal, export freshness and recovery reconciliation need operational evidence.
+- **Devices:** Android Keystore-backed session encryption, public offline cache, private-preference registration drafts, local-draft deletion and report exports are present in source. The draft store is not claimed to have application-level encryption. Device instrumentation and production infrastructure were not rerun in this review.
+- **Optional processing:** preference recording is implemented, but optional analytics and general email-delivery integration are not established. Administrative reporting and in-application updates are separate capabilities.
+
+### Appendix B. Reproducible implementation and checked test evidence
+
+**Implementation revision:** [`d73faf6a50a9b5b1ae6c7be4282dee46f449be59`](https://github.com/a-a123456789/umak-research-management/tree/d73faf6a50a9b5b1ae6c7be4282dee46f449be59), committed before this review; Git tree `d554150464e1fb1543f61f63d48b8dc02648bdee`. This commit includes the reviewed pagination changes, their test and Android test-class selector. All tracked implementation paths (`src`, `db`, `android`, `scripts`, `test`, dependency manifests) matched that commit before the test run; they remain unchanged in this revision. Untracked planning, benchmark and output files are excluded from this implementation baseline. The policy/Terms edits in this review are subsequent documentation changes and are not claimed to be present in that commit.
+
+Primary sources: [authentication](../../src/auth), [application routes](../../src/app.js), [schema/migrations](../../db), [service requests](../../src/requests/service-requests.js), [registry](../../src/research/registry.js), [research lifecycle progress](../../src/research/progress.js), [document validation](../../src/storage/validate.js), [Android flows](../../android/app/src/main/java/ph/edu/umak/crm/app), [device storage](../../android/core/src/main/java/ph/edu/umak/crm), [hosted demo](../HOSTED_DEMO.md) and [privacy/recovery handoff](../implementation/PRIVACY.md). For immutable versions, use these paths under the linked revision rather than assuming the current branch is unchanged.
+
+**Checked test run:** 22 November 2026, Asia/Manila; command `node scripts/synthetic-acceptance.js --full-tests`, executed against a disposable local database on implementation revision `d73faf6a50a9b5b1ae6c7be4282dee46f449be59`. The process exited successfully. The actual output was inspected: **66 passed, zero failed, zero skipped**. This replaces the earlier unsupported standalone verification claim with a checked, revision-specific record. It is local synthetic evidence, not independent institutional review or production certification.
+
+The [embedded test-log excerpt](#checked-test-log-excerpt) below preserves the named test results and runner totals from that run. Full captured stdout/stderr SHA-256: `d1ead294389ac77d3dc374db2d2c50fccdabf90c3fe2372ccca78a947e3d9a08`. Database initialization and other setup output are omitted from the excerpt; the hash identifies the complete captured stream, not the excerpt. No separate evidence deliverable is created.
+
+#### Checked test-log excerpt
+
+<details>
+<summary>Local backend test results — 22 November 2026</summary>
+
+```text
+✔ worker response validates complete shapes, types and input membership (0.569584ms)
+✔ algorithm API: authentication, staff boundary, schema and standalone agreement (136.9985ms)
+✔ worker failures, timeout, concurrency, cancellation and recovery are bounded (183.740708ms)
+✔ worker protocol rejects incomplete objects, nonzero exit and oversized output (87.127792ms)
+✔ malformed worker results return 502 through the authenticated HTTP route (40.164791ms)
+✔ EDF heap orders overdue, tied and absent deadlines; inputs and outputs are isolated (0.551125ms)
+✔ EDF randomized mixed workloads agree with sorted reference including position updates (111.364875ms)
+✔ EDF heap rejects invalid/duplicate IDs and handles absent updates (0.20625ms)
+✔ deadlines require real calendar instants in explicit UTC (0.754875ms)
+✔ researcher profile persists permitted edits without changing account identity (78.08775ms)
+✔ consultation retry returns one ticket after concurrent sends (11.837792ms)
+✔ trigram typo retrieval, normalization, metadata filters and draft privacy (18.4705ms)
+✔ researcher workspace lists and updates only the owner’s drafts (11.076209ms)
+✔ EDF queue uses deadline, submission and ID ties; claim is durable and audited (33.383667ms)
+✔ ticket scope, version conflicts, reschedule, cancel and resolve permissions (19.02875ms)
+✔ 16 concurrent claimers never assign a ticket twice; empty queue returns 204 (31.01325ms)
+✔ ticket mutation rolls back if audit insertion fails (3.683792ms)
+✔ migration backfills existing titles, preserves visibility and is repeatable (8.219ms)
+✔ locked earliest ticket is skipped and becomes eligible again after rollback (7.64175ms)
+✔ search threshold is transaction-local and does not leak pooled session settings (4.276375ms)
+✔ native RLS fails closed, isolates profiles and prevents pooled identity leaks (99.103625ms)
+✔ assigned reviewer allowed, unrelated staff/faculty denied; membership grants and revokes access (20.938792ms)
+✔ internal feedback cannot cross researcher/API/database boundaries (10.575583ms)
+✔ audit history is append-only with actor/target/IP and no private content (13.009958ms)
+✔ Argon2id salts, malformed hashes, Unicode, legacy verification and upgrade (83.331792ms)
+✔ temporary activation is staff-provisioned, expiring, hashed and single-use (49.003959ms)
+✔ shared failed-login window is atomic across workers and expires individually (55.456667ms)
+✔ atomic token bucket cannot overshoot and refills elapsed capacity (1.335333ms)
+✔ PDF/document validation rejects spoofing, encrypted archives and oversized buffers (2.312333ms)
+✔ private upload/download checks membership and assignment; failed scanner leaves no object (191.867084ms)
+✔ baseline: anonymous private research denied before record access (12.396333ms)
+✔ baseline: researcher denied staff audit endpoint (3.169167ms)
+✔ baseline: private research lookup binds identity in parameterized API predicate (2.538792ms)
+✔ baseline: dependency failure returns sanitized JSON (2.404667ms)
+✔ baseline: malformed and oversized JSON rejected (5.640333ms)
+✔ baseline: legacy opaque tokens rejected before session lookup (3.394541ms)
+✔ DOCX validates container and rejects macros, missing parts and expansion limits (128.873916ms)
+✔ ClamAV scanner protocol accepts clean response and rejects malware (5.476584ms)
+✔ encrypted backups roundtrip; modified bytes/wrong key and weak key-file permissions fail (5.608ms)
+✔ public cache catalogue has stable ETag and checksummed blank template (6.928375ms)
+✔ production database refuses plaintext/unverified configuration (0.1345ms)
+✔ real SDK presigner binds private key and ten-minute expiry without cloud calls (7.2235ms)
+✔ persisted lifecycle keeps independent outcomes and enforces scope/version (105.405333ms)
+✔ revisions preserve prior bytes/checksums and reject stale predecessors (215.691708ms)
+✔ audit verifier detects content changes, missing tails, and rollback-safe appends (15.598459ms)
+✔ researcher account becomes usable after verification in a local SMTP inbox (133.162583ms)
+✔ SEC-01 public search returns only approved records; exact SQL injection is neutralized (64.141542ms)
+✔ authentication rejects missing, invalid, expired and revoked tokens (34.436083ms)
+✔ SEC-02 own record succeeds; another student record hidden; staff allowed (8.301834ms)
+✔ record creation binds ownership; blocks privilege fields; logs changes (9.084791ms)
+✔ consent: optional choices can both be false; identity/time cannot be supplied (6.649625ms)
+✔ SEC-11 runtime database role cannot alter schema or modify audit history (5.334208ms)
+✔ deletion requires staff review; cascades personal data and invalidates sessions (18.126042ms)
+✔ unknown routes deny by default; malformed/oversized JSON handled (2.179292ms)
+✔ login throttles repeated attempts with HTTP 429 (55.354208ms)
+✔ SEC-09 public search caps large synthetic result sets at 100 (16.047958ms)
+✔ JWT sessions authenticate, expire at 15 minutes and reject tampering (0.739125ms)
+✔ signed claims still require intended issuer, audience, lifetime and subject (0.254833ms)
+✔ production refuses missing or malformed signing keys (0.1105ms)
+✔ interactive session lease expires exactly at thirty minutes (0.074792ms)
+✔ skill admission rejects drift, unregistered skills, capabilities and symlinks (32.129916ms)
+✔ registry directory uses validated descending cursor and retains authorization (15.305583ms)
+✔ progress directory uses validated descending cursor and retains authorization (4.574334ms)
+✔ saved evidence and task completion drive readiness and remaining critical path (72.667208ms)
+✔ cycles and inconsistent completed dependencies are rejected by the Python engine (35.975333ms)
+✔ planning requires the complete saved milestone set and does not invent durations (0.25125ms)
+ℹ tests 66
+ℹ suites 0
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3766.3925
+```
+
+</details>
+
+### Appendix C. Coordinated draft status and assistance disclosure
+
+The [revised Terms](TERMS_AND_CONDITIONS_FINAL_DRAFT.md) were reviewed alongside this policy for account access, public/private boundaries, research lifecycle outcomes, uploads, deletion, local storage, privacy, provider disclosures and remedies. Both now use the supplied v6 requirements and identify the same upload implementation discrepancy, stage-vocabulary reconciliation and shared-record release blocker. The previously missing current-requirements source is no longer a limitation. They remain **coordinated proposed academic drafts with unresolved release conditions**; neither is an adopted or deployment-ready institutional policy. The original policy and Terms remain unchanged for comparison.
+
+**AI-assistance disclosure:** OpenAI Codex assisted with source inspection, comparison of supplied materials, drafting, restructuring and local verification commands. The project team remains responsible for checking accuracy, legal and institutional interpretation, source completeness and the final submission. No independent lawyer, university official, DPO or another team member is represented as having approved this revision.
+
+Relative Markdown file links and local section links were checked from `docs/policies/` after placement. Links outside the repository remain subject to the official sites' access restrictions recorded in section 14; this review does not claim every external page was retrievable. If these drafts are relocated or exported, links must be rechecked for that destination.
