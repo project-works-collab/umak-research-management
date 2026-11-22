@@ -41,13 +41,15 @@ public final class BottomSheet {
         }
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(panel);
-        dialog.show();
         Window window = dialog.getWindow();
         if (window != null) {
+            window.setWindowAnimations(android.R.style.Animation_InputMethod);
             window.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
             window.setGravity(Gravity.BOTTOM);
             window.setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
+        dialog.show();
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(panel, 220, 24);
     }
 }

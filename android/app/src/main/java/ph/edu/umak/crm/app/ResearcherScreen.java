@@ -69,6 +69,7 @@ final class ResearcherScreen extends LinearLayout {
     private final ScrollView scroll;
     private final SaveSnackbar snackbar;
     private String tab;
+    private int tabSlideDirection = 0;
     private String detail = "";
     private String detailParent = "";
     private JSONArray studies;
@@ -254,6 +255,26 @@ final class ResearcherScreen extends LinearLayout {
         return true;
     }
 
+    private int tabIndex(String name) {
+        for (int i = 0; i < TABS.length; i++) {
+            if (TABS[i].equals(name)) return i;
+        }
+        return -1;
+    }
+
+    private void selectFromNavBar(String selected) {
+        int prevIndex = tabIndex(tab);
+        int nextIndex = tabIndex(selected);
+        if (nextIndex > prevIndex) {
+            tabSlideDirection = 1;
+        } else if (nextIndex < prevIndex) {
+            tabSlideDirection = -1;
+        } else {
+            tabSlideDirection = 0;
+        }
+        select(selected);
+    }
+
     private void select(String selected) {
         returningRequestFilters = null;
         requestPreview = false;
@@ -298,38 +319,48 @@ final class ResearcherScreen extends LinearLayout {
         documentLabels.clear();
         drawNavigation();
         scroll.scrollTo(0, 0);
-        switch (detail) {
-            case "announcements": announcements(); return;
-            case "guidelines": guidelines(); return;
-            case "service_detail": renderServiceDetail(); return;
-            case "external_submission": renderExternalSubmission(); return;
-            case "app_navigation": renderAppNavigation(); return;
-            case "request": renderSubmitRequest(); return;
-            case "live_service_request": renderLiveServiceRequest(); return;
-            case "live_correction": renderLiveCorrection(); return;
-            case "request_detail": renderRequestDetail(); return;
-            case "request_receipt": renderRequestReceipt(); return;
-            case "correct_request": renderCorrectRequest(); return;
-            case "notifications": renderNotifications(); return;
-            case "edit_profile": renderEditProfile(); return;
-            case "registration_confirmation": renderRegistrationConfirmation(); return;
-            case "registered_studies": renderRegisteredStudies(); return;
-            case "registered_study": renderRegisteredStudy(); return;
-            case "research_progress": renderResearchProgress(); return;
-            case "manuscript": manuscript(); return;
-            case "registration": registration(); return;
-            case "review": reviewManuscript(); return;
-            case "consultation": consultation(); return;
-            default: break;
+        if (!detail.isEmpty()) {
+            switch (detail) {
+                case "announcements": announcements(); break;
+                case "guidelines": guidelines(); break;
+                case "service_detail": renderServiceDetail(); break;
+                case "external_submission": renderExternalSubmission(); break;
+                case "app_navigation": renderAppNavigation(); break;
+                case "request": renderSubmitRequest(); break;
+                case "live_service_request": renderLiveServiceRequest(); break;
+                case "live_correction": renderLiveCorrection(); break;
+                case "request_detail": renderRequestDetail(); break;
+                case "request_receipt": renderRequestReceipt(); break;
+                case "correct_request": renderCorrectRequest(); break;
+                case "notifications": renderNotifications(); break;
+                case "edit_profile": renderEditProfile(); break;
+                case "registration_confirmation": renderRegistrationConfirmation(); break;
+                case "registered_studies": renderRegisteredStudies(); break;
+                case "registered_study": renderRegisteredStudy(); break;
+                case "research_progress": renderResearchProgress(); break;
+                case "manuscript": manuscript(); break;
+                case "registration": registration(); break;
+                case "review": reviewManuscript(); break;
+                case "consultation": consultation(); break;
+                default: break;
+            }
+        } else {
+            switch (tab) {
+                case "Services": services(); break;
+                case "Requests": requests(); break;
+                case "Research": archive(); break;
+                case "Profile": profile(); break;
+                default:
+                    if (isSignedIn()) dashboard();
+                    else landing();
+                    break;
+            }
         }
-        switch (tab) {
-            case "Services": services(); break;
-            case "Requests": requests(); break;
-            case "Research": archive(); break;
-            case "Profile": profile(); break;
-            default:
-                if (isSignedIn()) dashboard();
-                else landing();
+        if (tabSlideDirection != 0) {
+            ph.edu.umak.crm.app.common.animation.UiMotion.slideHorizontal(body, tabSlideDirection);
+            tabSlideDirection = 0;
+        } else {
+            ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(body);
         }
     }
 
@@ -343,7 +374,7 @@ final class ResearcherScreen extends LinearLayout {
             item.setMinimumHeight(dp(64));
             item.setContentDescription(name);
             item.setSelected(selected);
-            item.setOnClickListener(view -> select(name));
+            item.setOnClickListener(view -> selectFromNavBar(name));
             ImageView icon = new ImageView(activity);
             icon.setImageResource(ICONS[index]);
             icon.setColorFilter(selected ? NAVY : MUTED);
@@ -2036,11 +2067,13 @@ final class ResearcherScreen extends LinearLayout {
         LinearLayout intro = hero("Research Archive", "Browse research studies from across all UMak colleges. All works are archived by the Center for Research Management.", true);
         tintText((TextView) intro.getChildAt(0), "Archive", YELLOW);
         LinearLayout filters = section(WHITE);
-        EditText query = input(filters, "Search", "Search by title", false);
-        query.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
+        EditText title = input(filters, "Title", "Search by title (e.g. Impact of AI)", false);
+        title.setFilters(new InputFilter[]{new InputFilter.LengthFilter(200)});
+        EditText author = input(filters, "Author", "Search by author / proponent", false);
+        author.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
         EditText department = input(filters, "College", "All Colleges", false);
         department.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
-        EditText year = input(filters, "Year", "All Years", false);
+        EditText year = input(filters, "Year", "All Years (e.g. 2026)", false);
         year.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         year.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4)});
         LinearLayout results = column();
@@ -2052,44 +2085,107 @@ final class ResearcherScreen extends LinearLayout {
                 year.setError("Enter a year from 1900 onward.");
                 return;
             }
-            searchArchive(results, query.getText().toString(), department.getText().toString().trim(), selectedYear);
+            searchArchive(results, title.getText().toString(), author.getText().toString().trim(),
+                    department.getText().toString().trim(), selectedYear);
         });
         LinearLayout area = section(PAPER);
         area.addView(results);
-        searchArchive(results, "", "", 0);
+        searchArchive(results, "", "", "", 0);
         LinearLayout journal = hero("UNIVERSITY", "The UMak Research Journal", true);
         paragraph(journal, "The official peer-reviewed academic journal of the University of Makati.", 13, WHITE, regular);
     }
 
-    private void searchArchive(LinearLayout results, String query, String department, int year) {
+    private void searchArchive(LinearLayout results, String titleQuery, String authorQuery, String department, int year) {
         int generation = ++searchGeneration;
         results.removeAllViews();
         TextView state = paragraph(results, "Searching the archive…", 13, MUTED, regular);
-        JSONObject filters = json("keyword", query);
+
+        // Logical search parsing (support search: title: "..." and author: "..." syntax)
+        String parsedTitle = titleQuery.trim();
+        String parsedAuthor = authorQuery.trim();
+        int parsedYear = year;
+
+        if (parsedTitle.toLowerCase(java.util.Locale.ROOT).contains("author:") || parsedTitle.toLowerCase(java.util.Locale.ROOT).contains("title:")) {
+            java.util.regex.Matcher tm = java.util.regex.Pattern.compile("title:\\s*\"?([^\"]+?)\"?(?:\\s+author:|\\s+year:|$)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(parsedTitle);
+            if (tm.find()) parsedTitle = tm.group(1).trim();
+            java.util.regex.Matcher am = java.util.regex.Pattern.compile("author:\\s*\"?([^\"]+?)\"?(?:\\s+title:|\\s+year:|$)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(titleQuery);
+            if (am.find() && am.group(1) != null) parsedAuthor = am.group(1).trim();
+            java.util.regex.Matcher ym = java.util.regex.Pattern.compile("year:\\s*(\\d{4})", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(titleQuery);
+            if (ym.find() && ym.group(1) != null) parsedYear = Integer.parseInt(ym.group(1));
+        }
+
+        JSONObject filters = json("keyword", parsedTitle);
         put(filters, "limit", 50);
         if (!department.isEmpty()) put(filters, "department", department);
-        if (year != 0) put(filters, "year", year);
+        if (parsedYear != 0) put(filters, "year", parsedYear);
+
+        final String finalAuthor = parsedAuthor.toLowerCase(java.util.Locale.ROOT);
+        final int finalYear = parsedYear;
+        final String finalTitle = parsedTitle.toLowerCase(java.util.Locale.ROOT);
+
         activity.researcherRequest(this, "/api/v1/research/search", filters, false, (data, error) -> {
             if (generation != searchGeneration) return;
             if (error != null) {
+                if (activity.isResearcherPreview()) {
+                    showPreviewArchiveResults(results, state, finalTitle, finalAuthor, department, finalYear);
+                    return;
+                }
                 state.setText(error);
                 return;
             }
             try {
                 JSONArray records = new JSONArray(data);
-                state.setText(records.length() == 0 ? "No results found." : records.length() + " results shown");
+                java.util.List<JSONObject> matching = new java.util.ArrayList<>();
                 for (int index = 0; index < records.length(); index++) {
                     JSONObject record = records.getJSONObject(index);
+                    if (!finalAuthor.isEmpty()) {
+                        String authors = record.optString("authors", record.optString("author", record.optString("proponent", ""))).toLowerCase(java.util.Locale.ROOT);
+                        String abstractText = record.optString("abstract", "").toLowerCase(java.util.Locale.ROOT);
+                        if (!authors.contains(finalAuthor) && !abstractText.contains(finalAuthor)) {
+                            continue;
+                        }
+                    }
+                    matching.add(record);
+                }
+                state.setText(matching.isEmpty() ? "No results found." : matching.size() + (matching.size() == 1 ? " result shown" : " results shown"));
+                for (JSONObject record : matching) {
                     LinearLayout item = card(results);
                     paragraph(item, record.optString("department") + "  ·  AY " + record.optString("research_year"), 11, MUTED, bold);
                     paragraph(item, record.optString("status"), 11, NAVY, bold);
                     paragraph(item, record.optString("title"), 18, ACCENT, serif);
+                    String authorText = record.optString("authors", record.optString("author", ""));
+                    if (!authorText.isEmpty()) {
+                        paragraph(item, "Author: " + authorText, 12, NAVY, regular);
+                    }
                     paragraph(item, record.optString("abstract"), 12, MUTED, regular);
                 }
             } catch (JSONException invalid) {
                 state.setText("CRM results could not be read.");
             }
         });
+    }
+
+    private void showPreviewArchiveResults(LinearLayout results, TextView state, String title, String author, String department, int year) {
+        java.util.List<ph.edu.umak.crm.app.staff.registry.StaffRegistryData.RegistryRecordItem> mockRecords =
+                ph.edu.umak.crm.app.staff.registry.StaffRegistryData.getMockRecords();
+        java.util.List<ph.edu.umak.crm.app.staff.registry.StaffRegistryData.RegistryRecordItem> matched = new java.util.ArrayList<>();
+        for (var rec : mockRecords) {
+            if (!title.isEmpty() && !rec.title.toLowerCase(java.util.Locale.ROOT).contains(title)) continue;
+            if (!author.isEmpty() && !rec.authorsDisplay.toLowerCase(java.util.Locale.ROOT).contains(author)
+                    && (rec.facultyAdviser == null || !rec.facultyAdviser.toLowerCase(java.util.Locale.ROOT).contains(author))) continue;
+            if (!department.isEmpty() && !rec.college.toLowerCase(java.util.Locale.ROOT).contains(department.toLowerCase(java.util.Locale.ROOT))) continue;
+            if (year > 0 && !rec.academicPeriod.contains(String.valueOf(year))) continue;
+            matched.add(rec);
+        }
+        state.setText(matched.isEmpty() ? "No results found." : matched.size() + (matched.size() == 1 ? " result shown" : " results shown"));
+        for (var rec : matched) {
+            LinearLayout item = card(results);
+            paragraph(item, rec.college + "  ·  " + rec.academicPeriod, 11, MUTED, bold);
+            paragraph(item, rec.stage, 11, NAVY, bold);
+            paragraph(item, rec.title, 18, ACCENT, serif);
+            paragraph(item, "Author: " + rec.authorsDisplay, 12, NAVY, regular);
+            paragraph(item, "Registration ID: " + rec.id, 12, MUTED, regular);
+        }
     }
 
     private void profile() {

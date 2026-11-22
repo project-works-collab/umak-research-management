@@ -54,6 +54,10 @@ public final class MyRequestsView {
     private String currentSearchQuery = "";
     private boolean isAccountEmptyPreview = false;
     private String loadMessage;
+    private String currentScope = "All"; // "Active", "History", "All"
+    private Button activeTabBtn;
+    private Button historyTabBtn;
+    private Button allTabBtn;
 
     public MyRequestsView(Context context, Listener listener, boolean preview) {
         this.context = context;
@@ -70,7 +74,26 @@ public final class MyRequestsView {
         int pad = UiTheme.dp(context, 16);
         layout.setPadding(pad, pad, pad, pad);
 
-        addSpacing(context, layout, 12);
+        // Segmented Scope Bar: Active | History (Completed only) | All
+        LinearLayout scopeRow = new LinearLayout(context);
+        scopeRow.setOrientation(LinearLayout.HORIZONTAL);
+        scopeRow.setBackground(UiTheme.shape(context, 0xffe2e8f0, 8, 0));
+        int sPad = UiTheme.dp(context, 3);
+        scopeRow.setPadding(sPad, sPad, sPad, sPad);
+        LinearLayout.LayoutParams scopeLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 48));
+        scopeLp.bottomMargin = UiTheme.dp(context, 10);
+
+        activeTabBtn = createScopeTabButton("Active Requests", "Active", () -> setScope("Active"));
+        historyTabBtn = createScopeTabButton("Request History", "History", () -> setScope("History"));
+        allTabBtn = createScopeTabButton("All", "All", () -> setScope("All"));
+
+        scopeRow.addView(activeTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        scopeRow.addView(historyTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.1f));
+        scopeRow.addView(allTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.7f));
+        layout.addView(scopeRow, scopeLp);
+        updateScopeButtons();
+
+        addSpacing(context, layout, 4);
 
         // Search & Filter Row
         LinearLayout searchRow = new LinearLayout(context);
@@ -180,6 +203,35 @@ public final class MyRequestsView {
         renderList();
     }
 
+    private Button createScopeTabButton(String label, String scopeKey, Runnable onClick) {
+        Button btn = new Button(context, null, android.R.attr.borderlessButtonStyle);
+        btn.setText(label);
+        btn.setContentDescription(label);
+        btn.setAllCaps(false);
+        ScreenTypography.apply(btn, 13);
+        btn.setOnClickListener(v -> onClick.run());
+        return btn;
+    }
+
+    private void updateScopeButtons() {
+        styleScopeBtn(activeTabBtn, "Active".equalsIgnoreCase(currentScope));
+        styleScopeBtn(historyTabBtn, "History".equalsIgnoreCase(currentScope));
+        styleScopeBtn(allTabBtn, "All".equalsIgnoreCase(currentScope));
+    }
+
+    private void styleScopeBtn(Button btn, boolean selected) {
+        if (btn == null) return;
+        btn.setTypeface(selected ? UiTheme.boldFont(context) : UiTheme.bodyFont(context));
+        btn.setTextColor(selected ? 0xff082d50 : 0xff586b83);
+        btn.setBackground(selected ? UiTheme.shape(context, UiTheme.WHITE, 6, 0) : null);
+    }
+
+    public void setScope(String scope) {
+        this.currentScope = scope;
+        updateScopeButtons();
+        applyFilters();
+    }
+
     public Filters filters() {
         return new Filters(searchInput.getText().toString(), currentStatusFilter,
                 currentFromDate, currentToDate);
@@ -189,6 +241,10 @@ public final class MyRequestsView {
         currentStatusFilter = filters.status();
         currentFromDate = filters.fromDate();
         currentToDate = filters.toDate();
+        if ("Completed".equalsIgnoreCase(currentStatusFilter)) {
+            currentScope = "History";
+        }
+        updateScopeButtons();
         searchInput.setText(filters.query());
     }
 
@@ -216,6 +272,10 @@ public final class MyRequestsView {
                 currentStatusFilter = status;
                 currentFromDate = fromDate;
                 currentToDate = toDate;
+                if ("Completed".equalsIgnoreCase(status)) {
+                    currentScope = "History";
+                    updateScopeButtons();
+                }
                 applyFilters();
             }
 
@@ -228,6 +288,8 @@ public final class MyRequestsView {
     }
 
     public void clearAllFilters() {
+        currentScope = "All";
+        updateScopeButtons();
         currentStatusFilter = "All";
         currentFromDate = "";
         currentToDate = "";
@@ -338,6 +400,13 @@ public final class MyRequestsView {
         List<RequestData.RequestItem> filtered = new ArrayList<>();
         String query = currentSearchQuery.toLowerCase(Locale.ROOT);
         for (RequestData.RequestItem item : allRequests) {
+            boolean isCompleted = "Completed".equalsIgnoreCase(item.status);
+            if ("History".equalsIgnoreCase(currentScope) && !isCompleted) {
+                continue;
+            }
+            if ("Active".equalsIgnoreCase(currentScope) && isCompleted) {
+                continue;
+            }
             boolean matchesStatus = "All".equalsIgnoreCase(currentStatusFilter) || item.status.equalsIgnoreCase(currentStatusFilter);
             boolean matchesSearch = query.isEmpty()
                     || item.id.toLowerCase(Locale.ROOT).contains(query)
@@ -347,7 +416,10 @@ public final class MyRequestsView {
             }
         }
 
-        counterText.setText(filtered.size() + (filtered.size() == 1 ? " request" : " requests"));
+        String countSuffix = "History".equalsIgnoreCase(currentScope)
+                ? (filtered.size() == 1 ? " completed request in history" : " completed requests in history")
+                : (filtered.size() == 1 ? " request" : " requests");
+        counterText.setText(filtered.size() + countSuffix);
 
         if (filtered.isEmpty()) {
             renderEmptySearch();
@@ -505,23 +577,28 @@ public final class MyRequestsView {
         emptyContainer.setPadding(0, UiTheme.dp(context, 32), 0, UiTheme.dp(context, 32));
 
         TextView emptyTitle = new TextView(context);
-        emptyTitle.setText("No matching requests");
         emptyTitle.setTextColor(0xff082d50);
         emptyTitle.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(emptyTitle, 18);
         emptyTitle.setGravity(Gravity.CENTER);
-        emptyContainer.addView(emptyTitle);
-
-        addSpacing(context, emptyContainer, 6);
 
         TextView emptySubtitle = new TextView(context);
-        emptySubtitle.setText("Try adjusting your search terms or filters.");
         emptySubtitle.setTextColor(0xff586b83);
         emptySubtitle.setTypeface(UiTheme.bodyFont(context));
         ScreenTypography.apply(emptySubtitle, 14);
         emptySubtitle.setGravity(Gravity.CENTER);
-        emptyContainer.addView(emptySubtitle);
 
+        if ("History".equalsIgnoreCase(currentScope)) {
+            emptyTitle.setText("No completed requests in history");
+            emptySubtitle.setText("Only past completed requests are recorded here.");
+        } else {
+            emptyTitle.setText("No matching requests");
+            emptySubtitle.setText("Try adjusting your search terms or filters.");
+        }
+
+        emptyContainer.addView(emptyTitle);
+        addSpacing(context, emptyContainer, 6);
+        emptyContainer.addView(emptySubtitle);
         addSpacing(context, emptyContainer, 16);
 
         Button clearBtn = new Button(context);

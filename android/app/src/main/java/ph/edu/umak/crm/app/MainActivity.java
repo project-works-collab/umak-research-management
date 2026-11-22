@@ -119,17 +119,23 @@ public class MainActivity extends Activity {
             staffTab = state.getString("staff_tab", "Dashboard");
             emailAddress = state.getString("email_address", "");
         }
-        switch (state == null ? "welcome" : state.getString("access_page", "welcome")) {
-            case "sign-in": showSignIn(); break;
-            case "create-account": showCreateAccount(); break;
-            case "email-verify": showEmailVerification(emailAddress); break;
-            case "support": displayAccess("support", ResearcherScreen.support(this)); break;
-            case "activation": showActivation(); break;
-            case "updated": showPasswordUpdated(); break;
-            case "public": showPublicScreen(); break;
-            case "guest": showGuest(); break;
-            case "account": startAccess(); break;
-            default: showWelcome();
+        boolean restored = false;
+        if (state == null || "welcome".equals(state.getString("access_page", "welcome"))) {
+            restored = restoreSavedSessionIfLoggedIn();
+        }
+        if (!restored) {
+            switch (state == null ? "welcome" : state.getString("access_page", "welcome")) {
+                case "sign-in": showSignIn(); break;
+                case "create-account": showCreateAccount(); break;
+                case "email-verify": showEmailVerification(emailAddress); break;
+                case "support": displayAccess("support", ResearcherScreen.support(this)); break;
+                case "activation": showActivation(); break;
+                case "updated": showPasswordUpdated(); break;
+                case "public": showPublicScreen(); break;
+                case "guest": showGuest(); break;
+                case "account": startAccess(); break;
+                default: showWelcome();
+            }
         }
         updatePublicRefreshSchedule();
     }
@@ -172,23 +178,42 @@ public class MainActivity extends Activity {
         displayAccess("welcome", access.welcome());
     }
 
-    void startAccess() {
-        showSignIn();
-        int generation = accountGeneration;
-        executor.execute(() -> {
-            try {
-                JSONObject saved = session();
-                if (saved != null) openAccount(saved, generation);
-            } catch (IOException error) {
-                runOnUiThread(() -> {
-                    if (!isDestroyed() && generation == accountGeneration && "sign-in".equals(page)) {
-                        access.feedback("Unable to restore the saved session. Check your connection.");
-                    }
-                });
-            } catch (Exception error) {
-                message("Saved session unavailable. Sign in again.");
+    private boolean restoreSavedSessionIfLoggedIn() {
+        try {
+            JSONObject saved = session();
+            if (saved == null) return false;
+            if (saved.has("account")) {
+                JSONObject account = saved.getJSONObject("account");
+                if (displayAccount(account)) {
+                    int generation = accountGeneration;
+                    executor.execute(() -> {
+                        try {
+                            openAccount(saved, generation);
+                        } catch (Exception ignored) {}
+                    });
+                    return true;
+                }
             }
-        });
+            int generation = accountGeneration;
+            executor.execute(() -> {
+                try {
+                    openAccount(saved, generation);
+                } catch (Exception error) {
+                    runOnUiThread(() -> {
+                        if (isDestroyed() || generation != accountGeneration) return;
+                        showWelcome();
+                    });
+                }
+            });
+            return true;
+        } catch (Exception error) {
+            return false;
+        }
+    }
+
+    void startAccess() {
+        if (restoreSavedSessionIfLoggedIn()) return;
+        showSignIn();
     }
 
     private String passwordChallenge;
@@ -337,6 +362,8 @@ public class MainActivity extends Activity {
         if (BuildConfig.HOSTED_DEMO) return content;
         FrameLayout root = new FrameLayout(this);
         root.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.setClipChildren(false);
+        root.setClipToPadding(false);
         root.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         // Floating Circular Preview FAB Button
@@ -345,8 +372,8 @@ public class MainActivity extends Activity {
         fab.setTextColor(UiTheme.YELLOW);
         fab.setTextSize(18);
         fab.setTypeface(UiTheme.boldFont(this));
-        fab.setBackground(UiTheme.ripple(UiTheme.shape(this, UiTheme.NAVY, 28, 0), 0x30ffffff));
-        fab.setElevation(UiTheme.dp(this, 6));
+        fab.setBackground(UiTheme.ripple(UiTheme.shape(this, UiTheme.NAVY, 28, UiTheme.BORDER), 0x30ffffff));
+        fab.setElevation(0);
 
         int fabSize = UiTheme.dp(this, 56);
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize);
@@ -448,6 +475,7 @@ public class MainActivity extends Activity {
         setContentView(wrapped);
         setLightSystemBars(!"welcome".equals(destination));
         view.requestApplyInsets();
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(view);
     }
 
     private Runnable lastPreviewMenu = null;
@@ -915,6 +943,7 @@ public class MainActivity extends Activity {
             applySystemInsets(staffScreen);
             setContentView(wrapWithFloatingPreview(staffScreen));
             staffScreen.requestApplyInsets();
+            ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(staffScreen, 260, 24);
         } else if (!"account".equals(page)) {
             showStaff();
         }
@@ -1453,6 +1482,10 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> expireAccount(generation));
             return;
         }
+        saved.put("account", account);
+        try {
+            vault.save(saved.toString());
+        } catch (Exception ignored) {}
         runOnUiThread(() -> {
             if (isDestroyed() || generation != accountGeneration) return;
             long remaining = expiresAt - System.currentTimeMillis();
@@ -1560,6 +1593,7 @@ public class MainActivity extends Activity {
         setLightSystemBars(true);
         setContentView(wrapWithFloatingPreview(researcherScreen));
         researcherScreen.requestApplyInsets();
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(researcherScreen, 260, 24);
     }
 
     void showSavedPublicResources() {
@@ -2043,6 +2077,7 @@ public class MainActivity extends Activity {
         }
         setContentView(wrapWithFloatingPreview(publicScreen));
         publicScreen.requestApplyInsets();
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(publicScreen, 260, 24);
     }
 
     void showStaff() {
@@ -2053,6 +2088,7 @@ public class MainActivity extends Activity {
         }
         setContentView(wrapWithFloatingPreview(staffScreen));
         staffScreen.requestApplyInsets();
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(staffScreen, 260, 24);
     }
 
     private void leaveAccount(String message) {
@@ -2063,14 +2099,16 @@ public class MainActivity extends Activity {
         pickingField = null;
         researcherTab = "Dashboard";
         staffTab = "Dashboard";
-        showSignIn();
-        access.feedback(message);
+        showWelcome();
+        if (message != null && !message.isEmpty()) {
+            access.feedback(message);
+        }
     }
 
     private void showSessionExpired() {
         leaveAccount("");
         access.dialog("Session Expired", "Your session has ended. Please sign in again to continue.",
-                "Sign In", null, null);
+                "Sign In", this::showSignIn, null);
     }
 
     boolean isResearcherPreview() { return false; }

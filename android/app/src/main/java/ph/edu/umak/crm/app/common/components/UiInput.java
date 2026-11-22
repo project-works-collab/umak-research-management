@@ -9,7 +9,6 @@ import android.text.InputType;
 import android.text.method.PasswordTransformationMethod;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -17,6 +16,7 @@ import android.widget.TextView;
 import java.util.Locale;
 import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
+import ph.edu.umak.crm.app.common.animation.UiMotion;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class UiInput {
@@ -83,17 +83,21 @@ public final class UiInput {
             box.addView(input, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
             if (secret) {
-                Button eye = new Button(context, null, android.R.attr.borderlessButtonStyle);
-                eye.setText("");
+                ImageView eye = new ImageView(context);
+                eye.setImageResource(R.drawable.ic_crm_eye_off);
+                eye.setColorFilter(0xff586b83);
+                eye.setScaleType(ImageView.ScaleType.CENTER);
                 eye.setContentDescription("Show password");
-                eye.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_shared_visibility, 0, 0, 0);
-                eye.setPadding(UiTheme.dp(context, 12), 0, 0, 0);
-                eye.setBackgroundColor(Color.TRANSPARENT);
+                eye.setBackground(UiTheme.ripple(null, 0x20395072));
+                eye.setFocusable(true);
+                eye.setClickable(true);
                 eye.setOnClickListener(view -> {
                     boolean reveal = input.getTransformationMethod() instanceof PasswordTransformationMethod;
                     input.setTransformationMethod(reveal ? null : PasswordTransformationMethod.getInstance());
                     input.setSelection(input.length());
+                    eye.setImageResource(reveal ? R.drawable.ic_crm_eye : R.drawable.ic_crm_eye_off);
                     eye.setContentDescription((reveal ? "Hide " : "Show ") + "password");
+                    UiMotion.bounceIcon(eye);
                 });
                 box.addView(eye, new LinearLayout.LayoutParams(UiTheme.dp(context, 48), UiTheme.dp(context, 48)));
             }
@@ -216,18 +220,22 @@ public final class UiInput {
         row.addView(input, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
         if (secret) {
-            Button eye = new Button(context, null, android.R.attr.borderlessButtonStyle);
-            eye.setText("");
+            ImageView eye = new ImageView(context);
             String labelStr = label != null ? label.toString().toLowerCase(Locale.ROOT) : "password";
+            eye.setImageResource(R.drawable.ic_crm_eye_off);
+            eye.setColorFilter(0xff586b83);
+            eye.setScaleType(ImageView.ScaleType.CENTER);
             eye.setContentDescription("Show " + labelStr);
-            eye.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_shared_visibility, 0, 0, 0);
-            eye.setPadding(UiTheme.dp(context, 12), 0, 0, 0);
-            eye.setBackgroundColor(Color.TRANSPARENT);
+            eye.setBackground(UiTheme.ripple(null, 0x20395072));
+            eye.setFocusable(true);
+            eye.setClickable(true);
             eye.setOnClickListener(view -> {
                 boolean reveal = input.getTransformationMethod() instanceof PasswordTransformationMethod;
                 input.setTransformationMethod(reveal ? null : PasswordTransformationMethod.getInstance());
                 input.setSelection(input.length());
+                eye.setImageResource(reveal ? R.drawable.ic_crm_eye : R.drawable.ic_crm_eye_off);
                 eye.setContentDescription((reveal ? "Hide " : "Show ") + labelStr);
+                UiMotion.bounceIcon(eye);
             });
             row.addView(eye, new LinearLayout.LayoutParams(UiTheme.dp(context, 48), UiTheme.dp(context, 48)));
         }

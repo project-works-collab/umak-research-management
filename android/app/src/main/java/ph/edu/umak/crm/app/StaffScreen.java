@@ -89,6 +89,7 @@ final class StaffScreen extends LinearLayout {
     private final ScrollView scroll;
     private final SaveSnackbar snackbar;
     private String tab;
+    private int tabSlideDirection = 0;
     private JSONArray consultations;
     private String consultationMessage;
     private LinearLayout requestResults;
@@ -203,6 +204,26 @@ final class StaffScreen extends LinearLayout {
         ||liveCatalogView!=null&&liveCatalogView.isSaving()||liveAccountsView!=null&&liveAccountsView.isSaving()
         ||liveRegistryView!=null&&liveRegistryView.isSaving()||liveProgressView!=null&&liveProgressView.isSaving();}
 
+    private int tabIndex(String name) {
+        for (int i = 0; i < TABS.length; i++) {
+            if (TABS[i].equals(name)) return i;
+        }
+        return -1;
+    }
+
+    private void navigateFromNavBar(String destination) {
+        int prev = tabIndex(tab);
+        int next = tabIndex(destination);
+        if (next > prev) {
+            tabSlideDirection = 1;
+        } else if (next < prev) {
+            tabSlideDirection = -1;
+        } else {
+            tabSlideDirection = 0;
+        }
+        navigate(destination);
+    }
+
     private void navigate(String destination) {
         if (hasPendingWrite()) return;
         if(previewManage){manageSubPage="hub";previewManage=false;}
@@ -249,7 +270,7 @@ final class StaffScreen extends LinearLayout {
             if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
             if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
             boolean selected = name.equals(tab);
-            Button item = button(name, () -> navigate(name));
+            Button item = button(name, () -> navigateFromNavBar(name));
             ScreenTypography.apply(item, 11);
             item.setMinWidth(0);
             item.setMinimumWidth(0);
@@ -286,6 +307,12 @@ final class StaffScreen extends LinearLayout {
                 throw new IllegalArgumentException("Unknown staff tab");
         }
         scroll.scrollTo(0, 0);
+        if (tabSlideDirection != 0) {
+            ph.edu.umak.crm.app.common.animation.UiMotion.slideHorizontal(content, tabSlideDirection);
+            tabSlideDirection = 0;
+        } else {
+            ph.edu.umak.crm.app.common.animation.UiMotion.animateEntrance(content);
+        }
     }
 
     private void addBanner() {

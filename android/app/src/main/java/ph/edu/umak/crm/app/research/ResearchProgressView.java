@@ -118,90 +118,9 @@ public final class ResearchProgressView {
 
         addSpacing(context, layout, 12);
 
-        // 2. Stage History Card (Stepper)
-        LinearLayout historyCard = new LinearLayout(context);
-        historyCard.setOrientation(LinearLayout.VERTICAL);
-        historyCard.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
-        historyCard.setPadding(pad, pad, pad, pad);
-
-        TextView histHdr = new TextView(context);
-        histHdr.setText("Stage history");
-        histHdr.setTextColor(0xff082d50);
-        histHdr.setTypeface(bold);
-        ScreenTypography.apply(histHdr, 16);
-        historyCard.addView(histHdr);
-
-        addSpacing(context, historyCard, 10);
-
-        int totalStages = progressData.stageHistory.size();
-        for (int i = 0; i < totalStages; i++) {
-            ResearchData.StageHistoryItem item = progressData.stageHistory.get(i);
-            boolean isLast = (i == totalStages - 1);
-
-            LinearLayout stepRow = new LinearLayout(context);
-            stepRow.setOrientation(LinearLayout.HORIZONTAL);
-            stepRow.setGravity(Gravity.TOP);
-
-            // Left column: Dot + vertical line
-            LinearLayout indicatorCol = new LinearLayout(context);
-            indicatorCol.setOrientation(LinearLayout.VERTICAL);
-            indicatorCol.setGravity(Gravity.CENTER_HORIZONTAL);
-            indicatorCol.setLayoutParams(new LinearLayout.LayoutParams(UiTheme.dp(context, 20), ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            View dot = new View(context);
-            int dotSize = UiTheme.dp(context, 14);
-            if (isLast) {
-                dot.setBackground(UiTheme.shape(context, UiTheme.WHITE, dotSize / 2, 0xff185d9d));
-            } else {
-                dot.setBackground(UiTheme.shape(context, 0xff185d9d, dotSize / 2, 0));
-            }
-            indicatorCol.addView(dot, new LinearLayout.LayoutParams(dotSize, dotSize));
-
-            if (!isLast) {
-                View line = new View(context);
-                line.setBackgroundColor(0xffcbd5e1);
-                LinearLayout.LayoutParams lineLp = new LinearLayout.LayoutParams(UiTheme.dp(context, 2), UiTheme.dp(context, 24));
-                indicatorCol.addView(line, lineLp);
-            }
-            stepRow.addView(indicatorCol);
-
-            // Right column: Stage pill + Date
-            LinearLayout contentCol = new LinearLayout(context);
-            contentCol.setOrientation(LinearLayout.HORIZONTAL);
-            contentCol.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams cLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            cLp.setMarginStart(UiTheme.dp(context, 10));
-            if (!isLast) cLp.bottomMargin = UiTheme.dp(context, 12);
-            contentCol.setLayoutParams(cLp);
-
-            TextView pill = new TextView(context);
-            pill.setText(item.stage);
-            pill.setTypeface(bold);
-            ScreenTypography.apply(pill, 12);
-            pill.setPadding(px, py, px, py);
-            if ("Completed".equalsIgnoreCase(item.stage)) {
-                pill.setBackground(UiTheme.shape(context, 0xffdcfce7, 4, 0));
-                pill.setTextColor(0xff16a34a);
-            } else {
-                pill.setBackground(UiTheme.shape(context, 0xffe5edf7, 4, 0));
-                pill.setTextColor(0xff185d9d);
-            }
-            contentCol.addView(pill);
-
-            TextView dText = new TextView(context);
-            dText.setText(item.date);
-            dText.setTextColor(0xff586b83);
-            dText.setTypeface(regular);
-            ScreenTypography.apply(dText, 13);
-            dText.setGravity(Gravity.END);
-            LinearLayout.LayoutParams dLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            contentCol.addView(dText, dLp);
-
-            stepRow.addView(contentCol);
-            historyCard.addView(stepRow);
-        }
-
-        layout.addView(historyCard);
+        // 2. Interactive Numbered Lifecycle Timeline Card (1 to 4 with clickable stages)
+        View timelineCard = RegisteredProgressView.createLifecycleTimeline(context, progressData);
+        layout.addView(timelineCard);
 
         addSpacing(context, layout, 12);
 
