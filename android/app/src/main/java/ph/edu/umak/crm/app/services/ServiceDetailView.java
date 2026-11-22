@@ -402,14 +402,18 @@ public final class ServiceDetailView {
 
         purposeText.setText(item.purpose);
 
-        // Who can apply tags
+        // Who can apply tags (exclude redundant Student/Faculty tags)
         whoCanApplyTagsContainer.removeAllViews();
         for (String tag : item.whoCanApplyTags) {
+            if ("Student".equalsIgnoreCase(tag) || "Faculty".equalsIgnoreCase(tag)) {
+                continue;
+            }
             TextView tagPill = createBadge(context, tag, 0xffe5edf7, 0xff185d9d, UiTheme.boldFont(context));
             LinearLayout.LayoutParams tagLp = new LinearLayout.LayoutParams(-2, -2);
             tagLp.rightMargin = UiTheme.dp(context, 6);
             whoCanApplyTagsContainer.addView(tagPill, tagLp);
         }
+        whoCanApplyTagsContainer.setVisibility(whoCanApplyTagsContainer.getChildCount() > 0 ? View.VISIBLE : View.GONE);
         whoCanApplyText.setText(item.whoCanApplyText);
 
         responsibleContactText.setText(item.responsibleContact);

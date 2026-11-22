@@ -65,8 +65,10 @@ public final class UiDialog {
 
         dialog.show();
         if (dialog.getWindow() != null) {
+            dialog.getWindow().setWindowAnimations(android.R.style.Animation_Dialog);
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateDialog(card);
     }
 
     public static void alert(Context context, String title, String message) {

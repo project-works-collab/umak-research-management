@@ -372,12 +372,17 @@ public final class ServiceDirectoryView {
         headerRow.addView(titleCol, titleColLp);
         card.addView(headerRow);
 
-        // Tags row directly below title
+        // Tags row directly below title (exclude redundant Student/Faculty tags)
         LinearLayout tagsRow = new LinearLayout(ctx);
         tagsRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams tagsRowLp = new LinearLayout.LayoutParams(-1, -2);
         tagsRowLp.topMargin = UiTheme.dp(ctx, 6);
+        int tagCount = 0;
         for (String tag : item.tags) {
+            if ("Student".equalsIgnoreCase(tag) || "Faculty".equalsIgnoreCase(tag)) {
+                continue;
+            }
+            tagCount++;
             TextView tagPill = new TextView(ctx);
             tagPill.setText(tag);
             tagPill.setTextColor(0xff185d9d);
@@ -390,7 +395,9 @@ public final class ServiceDirectoryView {
             tagLp.rightMargin = UiTheme.dp(ctx, 6);
             tagsRow.addView(tagPill, tagLp);
         }
-        card.addView(tagsRow, tagsRowLp);
+        if (tagCount > 0) {
+            card.addView(tagsRow, tagsRowLp);
+        }
 
         // Description
         TextView descView = new TextView(ctx);

@@ -401,13 +401,32 @@ public class ResearchRegistryView {
             if (periodFilterActive && !record.academicPeriod.equalsIgnoreCase(selectedPeriod)) {
                 continue;
             }
-            // Check search query
+            // Check search query with logical search support
             if (!live && !TextUtils.isEmpty(searchQuery)) {
                 String q = searchQuery.toLowerCase();
-                boolean matches = record.id.toLowerCase().contains(q)
-                        || record.title.toLowerCase().contains(q)
-                        || record.authorsDisplay.toLowerCase().contains(q)
-                        || (record.facultyAdviser != null && record.facultyAdviser.toLowerCase().contains(q));
+                boolean matches;
+                if (q.contains("title:") || q.contains("author:") || q.contains("year:")) {
+                    String titleFilter = "";
+                    String authorFilter = "";
+                    String yearFilter = "";
+                    java.util.regex.Matcher tm = java.util.regex.Pattern.compile("title:\\s*\"?([^\"]+?)\"?(?:\\s+author:|\\s+year:|$)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(searchQuery);
+                    if (tm.find()) titleFilter = tm.group(1).trim().toLowerCase();
+                    java.util.regex.Matcher am = java.util.regex.Pattern.compile("author:\\s*\"?([^\"]+?)\"?(?:\\s+title:|\\s+year:|$)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(searchQuery);
+                    if (am.find()) authorFilter = am.group(1).trim().toLowerCase();
+                    java.util.regex.Matcher ym = java.util.regex.Pattern.compile("year:\\s*(\\d{4})", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(searchQuery);
+                    if (ym.find()) yearFilter = ym.group(1).trim();
+
+                    boolean matchT = titleFilter.isEmpty() || record.title.toLowerCase().contains(titleFilter);
+                    boolean matchA = authorFilter.isEmpty() || record.authorsDisplay.toLowerCase().contains(authorFilter)
+                            || (record.facultyAdviser != null && record.facultyAdviser.toLowerCase().contains(authorFilter));
+                    boolean matchY = yearFilter.isEmpty() || record.academicPeriod.contains(yearFilter);
+                    matches = matchT && matchA && matchY;
+                } else {
+                    matches = record.id.toLowerCase().contains(q)
+                            || record.title.toLowerCase().contains(q)
+                            || record.authorsDisplay.toLowerCase().contains(q)
+                            || (record.facultyAdviser != null && record.facultyAdviser.toLowerCase().contains(q));
+                }
                 if (!matches) {
                     continue;
                 }

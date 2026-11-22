@@ -13,7 +13,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Switch;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 
@@ -22,6 +21,7 @@ import java.util.Map;
 import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
 import ph.edu.umak.crm.app.common.components.UiButton;
+import ph.edu.umak.crm.app.common.components.UiSwitch;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.StaffData;
 import ph.edu.umak.crm.app.staff.StaffDialogs;
@@ -103,11 +103,28 @@ public class AccountDetailsView {
         var page=new ph.edu.umak.crm.app.staff.common.StaffDesignPage(context,"Account access",null,null);
         var card=page.section("CRM Staff".equals(account.role)?"Permissions":"Researcher category");
         if("CRM Staff".equals(account.role)){
-            java.util.List<Switch> toggles=new java.util.ArrayList<>();
+            java.util.List<UiSwitch> toggles=new java.util.ArrayList<>();
             for(var entry:account.permissions.entrySet()){
-                Switch toggle=new Switch(context);toggle.setText(entry.getKey().replace('_',' '));toggle.setTag(entry.getKey());toggle.setChecked(Boolean.TRUE.equals(entry.getValue()));toggle.setMinHeight(UiTheme.dp(context,48));card.addView(toggle);toggles.add(toggle);
+                LinearLayout permRow = new LinearLayout(context);
+                permRow.setOrientation(LinearLayout.HORIZONTAL);
+                permRow.setGravity(Gravity.CENTER_VERTICAL);
+                permRow.setMinimumHeight(UiTheme.dp(context, 44));
+                permRow.setPadding(0, UiTheme.dp(context, 4), 0, UiTheme.dp(context, 4));
+
+                TextView label = new TextView(context);
+                label.setText(entry.getKey().replace('_', ' '));
+                label.setTextColor(UiTheme.NAVY);
+                label.setTypeface(UiTheme.bodyFont(context));
+                ScreenTypography.apply(label, 14);
+                permRow.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+                UiSwitch toggle = new UiSwitch(context, Boolean.TRUE.equals(entry.getValue()));
+                toggle.setTag(entry.getKey());
+                permRow.addView(toggle);
+                card.addView(permRow);
+                toggles.add(toggle);
             }
-            card.addView(UiButton.primary(context,"Save permissions",()->{org.json.JSONArray selected=new org.json.JSONArray();for(Switch toggle:toggles)if(toggle.isChecked())selected.put(toggle.getTag().toString());actions.permissions(selected);}));
+            card.addView(UiButton.primary(context,"Save permissions",()->{org.json.JSONArray selected=new org.json.JSONArray();for(UiSwitch toggle:toggles)if(toggle.isChecked())selected.put(toggle.getTag().toString());actions.permissions(selected);}));
         }else{
             RadioGroup category=new RadioGroup(context);category.setOrientation(LinearLayout.VERTICAL);
             String[] selected={"Faculty".equals(account.category)?"faculty":"student"};
@@ -458,26 +475,12 @@ public class AccountDetailsView {
             toggleLabel.setPadding(0, 0, UiTheme.dp(context, 8), 0);
             row.addView(toggleLabel);
 
-            // Toggle switch pill visual
-            FrameLayout switchPill = new FrameLayout(context);
-            int pillWidth = UiTheme.dp(context, 36);
-            int pillHeight = UiTheme.dp(context, 20);
-            switchPill.setLayoutParams(new LinearLayout.LayoutParams(pillWidth, pillHeight));
-
-            View pillBg = new View(context);
-            pillBg.setBackground(UiTheme.shape(context, isOn ? 0xff082d50 : 0xffcbd5e1, pillHeight / 2, 0));
-            switchPill.addView(pillBg, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-            View thumb = new View(context);
-            int thumbSize = UiTheme.dp(context, 16);
-            thumb.setBackground(UiTheme.shape(context, 0xffffffff, thumbSize / 2, 0));
-            FrameLayout.LayoutParams tLp = new FrameLayout.LayoutParams(thumbSize, thumbSize);
-            tLp.gravity = (isOn ? Gravity.END : Gravity.START) | Gravity.CENTER_VERTICAL;
-            int margin = UiTheme.dp(context, 2);
-            tLp.setMargins(margin, margin, margin, margin);
-            switchPill.addView(thumb, tLp);
-
-            row.addView(switchPill);
+            UiSwitch switchView = new UiSwitch(context, isOn);
+            switchView.setOnCheckedChangeListener((sw, checked) -> {
+                toggleLabel.setText(checked ? "On" : "Off");
+                toggleLabel.setTextColor(checked ? 0xff082d50 : 0xff64748b);
+            });
+            row.addView(switchView);
 
             card.addView(row);
         }

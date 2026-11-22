@@ -52,6 +52,7 @@ public final class CenteredActionDialog {
                 .create();
 
         if (dialog.getWindow() != null) {
+            dialog.getWindow().setWindowAnimations(android.R.style.Animation_Dialog);
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
 
@@ -89,5 +90,6 @@ public final class CenteredActionDialog {
             });
         }
         dialog.show();
+        ph.edu.umak.crm.app.common.animation.UiMotion.animateDialog(content);
     }
 }
