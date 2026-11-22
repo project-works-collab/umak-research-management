@@ -41,3 +41,32 @@ def test_scoring_matches_sklearn_and_rejects_stale_records(monkeypatch):
     assert np.allclose([row['score'] for row in response.json()['scores']], expected)
     payload['candidates'][0]['abstract'] = 'changed after retrieval'
     assert client.post('/score', json=payload, headers=headers).status_code == 503
+
+
+def test_readiness_and_refresh_follow_archive_updates(monkeypatch):
+    rows = [(1, 'Campus water sensors', 'rainwater harvesting dashboard')]
+
+    class Archive(FakeDatabase):
+        def fetchall(self):
+            return list(rows)
+
+    @contextmanager
+    def archive_connection():
+        yield Archive()
+
+    monkeypatch.setenv('TFIDF_SERVICE_TOKEN', 'test-secret')
+    monkeypatch.setattr(service, 'connection', archive_connection)
+    monkeypatch.setattr(service, '_snapshot', None)
+    client = TestClient(service.app)
+    before = client.get('/ready')
+    assert before.status_code == 200
+    rows[0] = (1, 'Campus water sensors', 'updated rainwater storage analysis')
+    payload = {'title': rows[0][1], 'abstract': rows[0][2],
+               'candidates': [{'id': 1, 'title': rows[0][1], 'abstract': rows[0][2]}]}
+    response = client.post('/score', json=payload, headers={'authorization': 'Bearer test-secret'})
+    assert response.status_code == 200
+    assert response.json()['model_version'] != before.json()['model_version']
+    assert np.isclose(response.json()['scores'][0]['score'], 1)
+    rows.clear()
+    monkeypatch.setattr(service, '_snapshot', None)
+    assert client.get('/ready').status_code == 503

@@ -359,7 +359,25 @@ public class MainActivity extends Activity {
         if (content.getParent() instanceof ViewGroup) {
             ((ViewGroup) content.getParent()).removeView(content);
         }
-        if (BuildConfig.HOSTED_DEMO) return content;
+        if (BuildConfig.SERVER_SWITCH) {
+            LinearLayout wrapper = new LinearLayout(this);
+            wrapper.setOrientation(LinearLayout.VERTICAL);
+            Button toggle = new Button(this);
+            toggle.setAllCaps(false);
+            boolean local = BuildConfig.LOCAL_SERVER_URL.equals(preferences.getString("server", ""));
+            toggle.setText(local ? "Local Demo • Switch to Cloud" : "Cloud • Switch to Local Demo");
+            toggle.setContentDescription("Switch demo server");
+            toggle.setMinHeight(UiTheme.dp(this,48));
+            toggle.setOnClickListener(view -> new AlertDialog.Builder(this)
+                .setTitle(local ? "Switch to Cloud?" : "Switch to Local Demo?")
+                .setMessage("You will sign in again. Each server has separate accounts and records. Unsaved form edits will be discarded.")
+                .setNegativeButton("Cancel",null)
+                .setPositiveButton("Switch",(dialog,which) -> switchDemoServer(local ? BuildConfig.CLOUD_SERVER_URL : BuildConfig.LOCAL_SERVER_URL)).show());
+            wrapper.addView(toggle,new LinearLayout.LayoutParams(-1,-2));
+            wrapper.addView(content,new LinearLayout.LayoutParams(-1,0,1));
+            return wrapper;
+        }
+        if (!BuildConfig.DESIGN_PREVIEWS) return content;
         FrameLayout root = new FrameLayout(this);
         root.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         root.setClipChildren(false);
@@ -1143,6 +1161,29 @@ public class MainActivity extends Activity {
 
     void showAccessHelp() {
         displayAccess("support", ResearcherScreen.support(this));
+    }
+
+    private void switchDemoServer(String target) {
+        if (!BuildConfig.SERVER_SWITCH || !(target.equals(BuildConfig.CLOUD_SERVER_URL) || target.equals(BuildConfig.LOCAL_SERVER_URL))) return;
+        accountGeneration++;
+        handler.removeCallbacks(expire);
+        staffScreen=null;researcherScreen=null;
+        TextView pending=new TextView(this);pending.setText("Switching server…");setContentView(pending);
+        executor.execute(() -> {
+            try {
+                vault.clear();
+                PublicSync.cancelSchedule(this);
+                WorkManager.getInstance(this).cancelUniqueWork("crm-public-refresh").getResult().get();
+                if (!PublicSync.clearCache(this)) throw new IllegalStateException("Cache cleanup failed");
+                preferences.edit().putString("server",target).commit();
+                runOnUiThread(() -> {
+                    updatePublicRefreshSchedule();
+                    recreate();
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {leaveAccount("");showSignIn();message("Server switch failed. Please retry.");});
+            }
+        });
     }
 
     private void configureServer(Runnable onSaved) {

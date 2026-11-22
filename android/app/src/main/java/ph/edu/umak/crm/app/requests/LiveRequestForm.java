@@ -104,6 +104,7 @@ public final class LiveRequestForm {
     }
 
     public LinearLayout view() { return layout; }
+    public boolean isBusy() { return uploading || submitting; }
 
     public void loadStudies() {
         retryStudies.setVisibility(android.view.View.GONE);

@@ -33,6 +33,9 @@
     "acceptance:synthetic": "node scripts/synthetic-acceptance.js",
     "acceptance:android": "node scripts/android-synthetic-acceptance.js",
     "demo:manual": "node scripts/manual-demo.js",
+    "demo:tfidf:setup": "node scripts/setup-tfidf-demo.js",
+    "demo:tfidf:check": "node scripts/synthetic-acceptance.js --tfidf --smoke",
+    "demo:tfidf": "node scripts/synthetic-acceptance.js --umak-demo --tfidf",
     "start:demo": "node --env-file-if-exists=.env demo/render-server.js",
     "test:demo:hosted": "node scripts/synthetic-acceptance.js --hosted-smoke"
   },

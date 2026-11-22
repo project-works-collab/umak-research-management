@@ -79,6 +79,7 @@ final class ResearcherScreen extends LinearLayout {
     private int registrationStep;
     private int searchGeneration;
     private JSONObject reviewStudy;
+    private LiveRequestForm liveRequestForm;
 
     private ServiceDirectoryView serviceDirectoryView;
     private ServiceDetailView serviceDetailView;
@@ -578,10 +579,10 @@ final class ResearcherScreen extends LinearLayout {
             public void onSubmitRequest(ServiceData.ServiceItem item) {
                 if (!isSignedIn()) {
                     SignInGateDialog.show(activity, activity::showSignIn, activity::showCreateAccount);
-                } else if (item.revisionId > 0) {
-                    openDetail("live_service_request");
                 } else if ("SVC-05".equals(item.code)) {
                     openDetail("consultation");
+                } else if (item.revisionId > 0) {
+                    openDetail("live_service_request");
                 } else {
                     ph.edu.umak.crm.app.common.dialogs.UiDialog.alert(activity,
                             "Online submission unavailable", "Contact CRM for help submitting this service request.");
@@ -1441,6 +1442,10 @@ final class ResearcherScreen extends LinearLayout {
     }
 
     private void manuscript() {
+        if (!activity.isResearcherPreview()) {
+            liveManuscriptSubmission();
+            return;
+        }
         hero("Upload Manuscript", "Submit a manuscript and supporting files for review.", true);
         LinearLayout form = card(section(PAPER));
         heading(form, "Manuscript submission");
@@ -1455,6 +1460,53 @@ final class ResearcherScreen extends LinearLayout {
         check(form, "This work is original and has been approved by all listed authors.");
         TextView feedback = paragraph(form, "", 12, MUTED, regular);
         action(form, "Upload", NAVY, WHITE, () -> feedback.setText("Online manuscript submission is currently unavailable."));
+    }
+
+    private void liveManuscriptSubmission() {
+        hero("Upload Manuscript", "Submit a manuscript through a published CRM service.", true);
+        LinearLayout container = section(PAPER);
+        PendingStatus pending = new PendingStatus(activity);
+        container.addView(pending);
+        pending.working("Loading manuscript services…");
+        activity.researcherRequest(this, "/api/v1/public/services", null, false, (data, error) -> {
+            if (!"manuscript".equals(detail) || !container.isAttachedToWindow()) return;
+            if (error != null) {
+                pending.result("Unable to load manuscript services. Please retry.", true);
+                outline(container, "Retry", () -> openDetail("manuscript"));
+                return;
+            }
+            try {
+                JSONArray rows = new JSONArray(data);
+                java.util.List<ServiceData.ServiceItem> services = new java.util.ArrayList<>();
+                for (int i = 0; i < rows.length(); i++) {
+                    ServiceData.ServiceItem service = ServiceData.fromPublished(rows.getJSONObject(i));
+                    if ("Submit in app".equals(service.channel) && ("SVC-07".equals(service.code)
+                            || service.name.toLowerCase(java.util.Locale.ROOT).contains("manuscript"))) services.add(service);
+                }
+                pending.clear();
+                if (services.isEmpty()) {
+                    paragraph(container, "CRM has not published an in-app manuscript service. Browse the current services for other submission channels.", 14, MUTED, regular);
+                    outline(container, "Browse Services", () -> select("Services"));
+                    return;
+                }
+                LinearLayout formContainer = card(container);
+                java.util.function.Consumer<ServiceData.ServiceItem> open = service -> {
+                    if (liveRequestForm != null && liveRequestForm.isBusy()) return;
+                    formContainer.removeAllViews();
+                    heading(formContainer, service.name);
+                    paragraph(formContainer, service.purpose, 13, MUTED, regular);
+                    liveRequestForm = new LiveRequestForm(activity, service, liveRequestActions(), saved -> openLiveReceipt(saved, false));
+                    formContainer.addView(liveRequestForm.view());
+                    liveRequestForm.loadStudies();
+                };
+                if (services.size() > 1) for (ServiceData.ServiceItem service : services)
+                    outline(container, service.name, () -> open.accept(service));
+                open.accept(services.get(0));
+            } catch (JSONException invalid) {
+                pending.result("CRM returned invalid manuscript services. Please retry.", true);
+                outline(container, "Retry", () -> openDetail("manuscript"));
+            }
+        });
     }
 
     private void reviewManuscript() {
@@ -1510,7 +1562,8 @@ final class ResearcherScreen extends LinearLayout {
 
     private String localDraftKey() {
         int id = account == null ? 0 : account.optInt("id");
-        return id > 0 && !activity.isResearcherPreview() ? String.valueOf(id) : null;
+        String server=activity.getSharedPreferences("crm-settings",android.content.Context.MODE_PRIVATE).getString("server","");
+        return id > 0 && !activity.isResearcherPreview() ? (BuildConfig.SERVER_SWITCH ? server+"|"+id : String.valueOf(id)) : null;
     }
 
     private void autosaveRegistration() {

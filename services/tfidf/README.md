@@ -10,4 +10,44 @@ The Python service checks the archive on a scoring or readiness request when its
 
 Run `pytest services/tfidf/test_app.py` with this service's requirements installed.
 
+## Local presentation demo
+
+From the repository root:
+
+```sh
+npm run demo:tfidf:setup
+npm run demo:tfidf:check
+JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home npm run demo:manual
+```
+
+Setup installs a private Python 3.12 environment under `.private/tfidf-venv`.
+The manual launcher requires a running Android emulator and JDK 21. It starts an
+isolated PostgreSQL database, provisions the restricted scorer role, starts the
+real Python service on localhost, waits for archive readiness, and verifies the
+staff API before installing the demo app. Keep the launcher running during the
+presentation. No deployment credentials or project `.env` database are used.
+`TFIDF_PYTHON` can override the scorer interpreter.
+
+Open `outputs/manual-demo/DEMO-ACCESS.md` for the generated credentials and scenario.
+Sign in as `demo.registry@umak.edu.ph`, open **Registry → Registered research →
+Add Research Entry**, and enter the title and abstract in
+`outputs/manual-demo/tfidf-scenario.json`. Tap **Review duplicates**. The identical
+study should score `1.000`; the same-title study with an unrelated abstract stays
+below the pilot threshold. Tap **Back to entry** to try different text without
+saving. A no-match result applies only to the trigram title shortlist.
+
+For API-only presentation, run `npm run demo:tfidf` and use the printed fixture
+directory for credentials and scenario JSON. Each restart creates fresh data.
+
+The real Android HTTPS journey can be checked with:
+
+```sh
+JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home \
+CRM_TFIDF_DEMO=true \
+CRM_ANDROID_TEST_CLASS='ph.edu.umak.crm.app.CatalogHttpsTest#registryStaffReviewsRealTfidfMatches' \
+npm run acceptance:android
+```
+
+This local setup does not configure the hosted Render deployment.
+
 After migration 022, the database administrator must set a strong password and enable login for `crm_tfidf` with `ALTER ROLE crm_tfidf LOGIN PASSWORD ...`. Store the resulting URL only in Render environment variables. The role has column-limited SELECT rights and its own archive read policy.

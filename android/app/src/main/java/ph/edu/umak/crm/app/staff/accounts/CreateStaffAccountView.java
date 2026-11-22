@@ -63,7 +63,16 @@ public class CreateStaffAccountView {
         nameInput.setText("");
         emailInput.setText("");
         nameInput.setContentDescription("Name");
-        collegeText.setContentDescription("College or unit");
+        collegeBox.removeAllViews();
+        EditText unitInput = new EditText(context);
+        unitInput.setText(collegeText.getText());
+        unitInput.setContentDescription("College or unit");
+        unitInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(100)});
+        ph.edu.umak.crm.app.staff.common.StaffDesignPage.style(unitInput,false);
+        collegeText = unitInput;
+        collegeBox.setMinimumHeight(UiTheme.dp(context,48));
+        collegeBox.setLayoutParams(new LinearLayout.LayoutParams(-1,-2));
+        collegeBox.addView(unitInput,new FrameLayout.LayoutParams(-1,-2));
         emailInput.setContentDescription("Institutional email");
     }
     public void setPermissionOptions(java.util.List<android.widget.CheckBox> choices){

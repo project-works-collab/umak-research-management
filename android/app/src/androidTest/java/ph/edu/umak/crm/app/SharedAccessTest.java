@@ -48,6 +48,7 @@ public final class SharedAccessTest {
                     View resume = find(activity.getWindow().getDecorView(), "Resume local draft");
                     click(activity, resume == null ? "Start a draft" : "Resume local draft");
                     assertNotNull(find(activity.getWindow().getDecorView(), "Step 1 of 3: General Information"));
+                    clearTitle(activity.getWindow().getDecorView());
                     click(activity, "Continue");
                     assertNotNull(find(activity.getWindow().getDecorView(), "Please enter the research title."));
                     click(activity, "Back to Profile");
@@ -62,6 +63,11 @@ public final class SharedAccessTest {
         assertNotNull(label, target);
         if (!target.isClickable() && target.getParent() instanceof View) target = (View) target.getParent();
         target.performClick();
+    }
+
+    private static void clearTitle(View root) {
+        if (root instanceof android.widget.EditText field && "Enter the complete research title".contentEquals(field.getHint())) field.setText("");
+        if (root instanceof ViewGroup group) for (int i = 0; i < group.getChildCount(); i++) clearTitle(group.getChildAt(i));
     }
 
     private static View find(View root, String label) {

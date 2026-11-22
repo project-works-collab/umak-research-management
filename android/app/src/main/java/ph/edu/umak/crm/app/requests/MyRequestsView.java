@@ -80,16 +80,16 @@ public final class MyRequestsView {
         scopeRow.setBackground(UiTheme.shape(context, 0xffe2e8f0, 8, 0));
         int sPad = UiTheme.dp(context, 3);
         scopeRow.setPadding(sPad, sPad, sPad, sPad);
-        LinearLayout.LayoutParams scopeLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 48));
+        LinearLayout.LayoutParams scopeLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         scopeLp.bottomMargin = UiTheme.dp(context, 10);
 
         activeTabBtn = createScopeTabButton("Active Requests", "Active", () -> setScope("Active"));
         historyTabBtn = createScopeTabButton("Request History", "History", () -> setScope("History"));
         allTabBtn = createScopeTabButton("All", "All", () -> setScope("All"));
 
-        scopeRow.addView(activeTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        scopeRow.addView(historyTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.1f));
-        scopeRow.addView(allTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.7f));
+        scopeRow.addView(activeTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        scopeRow.addView(historyTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.1f));
+        scopeRow.addView(allTabBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 0.7f));
         layout.addView(scopeRow, scopeLp);
         updateScopeButtons();
 
@@ -122,11 +122,16 @@ public final class MyRequestsView {
         ScreenTypography.apply(searchInput, 14);
         searchInput.setBackgroundColor(0);
         searchInput.setSingleLine(true);
+        searchInput.setMinHeight(UiTheme.dp(context, 48));
         searchInput.setPadding(UiTheme.dp(context, 8), 0, UiTheme.dp(context, 8), 0);
         searchBox.addView(searchInput, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView clearSearchBtn = new TextView(context);
         clearSearchBtn.setText("×");
+        clearSearchBtn.setContentDescription("Clear search");
+        clearSearchBtn.setMinHeight(UiTheme.dp(context, 48));
+        clearSearchBtn.setMinWidth(UiTheme.dp(context, 48));
+        clearSearchBtn.setGravity(Gravity.CENTER);
         clearSearchBtn.setTextColor(0xff586b83);
         clearSearchBtn.setTypeface(bold);
         clearSearchBtn.setTextSize(18);
@@ -146,7 +151,7 @@ public final class MyRequestsView {
         ScreenTypography.apply(filterBtn, 14);
         filterBtn.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1));
         filterBtn.setPadding(UiTheme.dp(context, 16), 0, UiTheme.dp(context, 16), 0);
-        filterBtn.setHeight(UiTheme.dp(context, 46));
+        filterBtn.setMinHeight(UiTheme.dp(context, 48));
         filterBtn.setOnClickListener(v -> openFilterDialog());
         searchRow.addView(filterBtn);
 
@@ -208,6 +213,7 @@ public final class MyRequestsView {
         btn.setText(label);
         btn.setContentDescription(label);
         btn.setAllCaps(false);
+        btn.setMinHeight(UiTheme.dp(context,48));
         ScreenTypography.apply(btn, 13);
         btn.setOnClickListener(v -> onClick.run());
         return btn;
@@ -304,8 +310,7 @@ public final class MyRequestsView {
         boolean hasFilter = false;
 
         LinearLayout chipsRow = new LinearLayout(context);
-        chipsRow.setOrientation(LinearLayout.HORIZONTAL);
-        chipsRow.setGravity(Gravity.CENTER_VERTICAL);
+        chipsRow.setOrientation(LinearLayout.VERTICAL);
 
         if (!"All".equalsIgnoreCase(currentStatusFilter)) {
             hasFilter = true;
@@ -330,6 +335,7 @@ public final class MyRequestsView {
         if (hasFilter) {
             Button clearBtn = new Button(context);
             clearBtn.setText("Clear filters");
+            clearBtn.setMinHeight(UiTheme.dp(context, 48));
             clearBtn.setTextColor(0xff185d9d);
             clearBtn.setTypeface(UiTheme.boldFont(context));
             ScreenTypography.apply(clearBtn, 12);
@@ -350,12 +356,14 @@ public final class MyRequestsView {
     private View createFilterChip(String label, Runnable onRemove) {
         LinearLayout chip = new LinearLayout(context);
         chip.setOrientation(LinearLayout.HORIZONTAL);
+        chip.setContentDescription("Remove filter: " + label);
+        chip.setMinimumHeight(UiTheme.dp(context, 48));
         chip.setGravity(Gravity.CENTER_VERTICAL);
         chip.setBackground(UiTheme.shape(context, 0xffe5edf7, 12, 0));
         int px = UiTheme.dp(context, 10);
         int py = UiTheme.dp(context, 4);
         chip.setPadding(px, py, px, py);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.rightMargin = UiTheme.dp(context, 8);
         chip.setLayoutParams(lp);
 
@@ -364,7 +372,7 @@ public final class MyRequestsView {
         text.setTextColor(0xff185d9d);
         text.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(text, 12);
-        chip.addView(text);
+        chip.addView(text, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView close = new TextView(context);
         close.setText(" ×");
@@ -563,6 +571,7 @@ public final class MyRequestsView {
 
         Button submitBtn = new Button(context);
         submitBtn.setText("Submit request");
+        submitBtn.setMinHeight(UiTheme.dp(context, 48));
         submitBtn.setTextColor(0xffffffff);
         submitBtn.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(submitBtn, 15);
@@ -570,7 +579,7 @@ public final class MyRequestsView {
         submitBtn.setOnClickListener(v -> {
             if (listener != null) listener.onSubmitNewRequest();
         });
-        emptyContainer.addView(submitBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
+        emptyContainer.addView(submitBtn, new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     private void renderEmptySearch() {
@@ -603,12 +612,13 @@ public final class MyRequestsView {
 
         Button clearBtn = new Button(context);
         clearBtn.setText("Clear filters");
+        clearBtn.setMinHeight(UiTheme.dp(context, 48));
         clearBtn.setTextColor(0xff082d50);
         clearBtn.setTypeface(UiTheme.boldFont(context));
         ScreenTypography.apply(clearBtn, 14);
         clearBtn.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffcbd5e1));
         clearBtn.setOnClickListener(v -> clearAllFilters());
-        emptyContainer.addView(clearBtn, new LinearLayout.LayoutParams(-1, UiTheme.dp(context, 46)));
+        emptyContainer.addView(clearBtn, new LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     public void setPreviewState(String state) {

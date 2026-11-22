@@ -368,6 +368,7 @@ public class ResearchReportView {
         // Export Button
         Button exportBtn = new Button(activity);
         exportBtn.setText("⇪ Export");
+        exportBtn.setContentDescription("Export");
         exportBtn.setAllCaps(false);
         exportBtn.setMinHeight(dp(48));
         exportBtn.setTextColor(UiTheme.WHITE);

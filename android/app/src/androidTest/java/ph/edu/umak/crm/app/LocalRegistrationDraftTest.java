@@ -32,7 +32,7 @@ public final class LocalRegistrationDraftTest {
                     assertNotNull(title);
                     title.setText("Locally saved, unfinished draft");
                     assertNotNull(find(first, "Saved on this device"));
-                    assertNotNull(find(first, "Save to CRM"));
+                    assertNotNull(find(first, "Save as Draft"));
 
                     ResearcherScreen reopened = new ResearcherScreen(activity, owner, "Profile");
                     reopened.openInitialTab();

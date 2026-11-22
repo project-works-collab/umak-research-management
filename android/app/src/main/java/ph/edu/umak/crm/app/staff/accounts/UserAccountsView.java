@@ -68,6 +68,7 @@ public class UserAccountsView {
         // 1. + Create Staff Account Button
         Button createBtn = new Button(context, null, android.R.attr.borderlessButtonStyle);
         createBtn.setText("+ Create Staff Account");
+        createBtn.setContentDescription("Create Staff Account");
         createBtn.setAllCaps(false);
         createBtn.setTextColor(0xffffffff);
         createBtn.setTypeface(bold);

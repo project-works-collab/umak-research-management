@@ -751,6 +751,9 @@ final class StaffScreen extends LinearLayout {
     private ph.edu.umak.crm.app.staff.registry.LiveRegistryRecordView liveRegistryRecord() {
         if(liveRegistryView==null)liveRegistryView = new ph.edu.umak.crm.app.staff.registry.LiveRegistryRecordView(activity,
                 new ph.edu.umak.crm.app.staff.registry.LiveRegistryRecordView.Actions() {
+            public void reviewDuplicates(JSONObject body, java.util.function.BiConsumer<String, String> result) {
+                activity.staffRequest(StaffScreen.this, "/api/v1/research/duplicate-review", body, result);
+            }
             public void request(String path, JSONObject body, java.util.function.BiConsumer<String, String> result) {
                 activity.staffRequest(StaffScreen.this, "/api/v1/staff/registry" + path, body, result);
             }

@@ -126,6 +126,50 @@ test('atomic token bucket cannot overshoot and refills elapsed capacity',async()
   await admin.query("UPDATE rate_buckets SET updated_at=clock_timestamp()-interval '2 seconds' WHERE key=$1",[key]);
   assert.equal((await take()).rows[0].allowed,true);
 });
+test('activation and password-change attempts do not exhaust unrelated token allowances',async()=>{
+  const application=createApp(pool);application.set('trust proxy',true);
+  for(const [path,key,extra] of [
+    ['/api/v1/auth/activate','token',{}],
+    ['/api/v1/auth/replace-temporary-password','challenge',{confirmation:'Different demo password 123!'}]
+  ]){
+    await admin.query('TRUNCATE login_attempts,rate_buckets');
+    const send=(token,ip)=>request(application).post(path).set('X-Forwarded-For',ip)
+      .send({[key]:token,password:'Different demo password 123!',...extra});
+    // Five invalid attempts exhaust only this token and originating IP.
+    for(let i=0;i<5;i++)await send('a'.repeat(64),'192.0.2.10').expect(400);
+    await send('b'.repeat(64),'192.0.2.11').expect(400);
+    await send('a'.repeat(64),'192.0.2.12').expect(429);
+    await send('c'.repeat(64),'192.0.2.10').expect(429);
+  }
+  await admin.query('TRUNCATE login_attempts,rate_buckets');
+});
+test('legacy membership changes wait for registration and reject the newly registered record',async()=>{
+  for(const operation of ['add','remove']){
+    const created=await auth(request(app).post('/api/v1/research')).send({title:'Registration race '+operation}).expect(201);
+    const study=created.body.id;studies.push(study);
+    if(operation==='remove')await admin.query('INSERT INTO study_members VALUES($1,$2)',[study,faculty]);
+    const lock=await admin.connect();
+    let pending;
+    try{
+      await lock.query('BEGIN');
+      await lock.query('UPDATE research_records SET is_registered=true WHERE id=$1',[study]);
+      const call=operation==='add'
+        ?auth(request(app).post(`/api/v1/research/${study}/members`)).send({user_id:faculty})
+        :auth(request(app).delete(`/api/v1/research/${study}/members/${faculty}`));
+      pending=call.then(response=>response);
+      let waiting=false;
+      for(let i=0;i<100&&!waiting;i++){
+        waiting=(await admin.query("SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'WITH eligible AS MATERIALIZED%'" )).rowCount>0;
+        if(!waiting)await new Promise(resolve=>setTimeout(resolve,10));
+      }
+      assert.ok(waiting,'Membership mutation must acquire the same research row lock as registration');
+      await lock.query('COMMIT');
+      assert.equal((await pending).status,404);
+      const membership=await admin.query('SELECT 1 FROM study_members WHERE study_id=$1 AND user_id=$2',[study,faculty]);
+      assert.equal(membership.rowCount,operation==='add'?0:1);
+    }finally{await lock.query('ROLLBACK');lock.release();await pending;}
+  }
+});
 test('PDF/document validation rejects spoofing, encrypted archives and oversized buffers',async()=>{
   assert.equal(await validateDocument(pdf,'research.pdf'),'application/pdf');
   for(const [bytes,name] of [[Buffer.from('MZ fake executable'),'fake.pdf'],[pdf,'../escape.pdf'],[pdf,'research.docx'],[Buffer.alloc(MAX_DOCUMENT_BYTES+1),'large.pdf']])await assert.rejects(validateDocument(bytes,name));

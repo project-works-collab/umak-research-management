@@ -336,6 +336,71 @@ public final class CatalogHttpsTest {
         });
     }
 
+    @Test public void registryStaffReviewsRealTfidfMatches() throws Exception {
+        String title = "Campus Rainwater Harvesting Monitoring System";
+        String abstractText = "This study designs a campus rainwater harvesting monitoring system using water level sensors and a dashboard to measure tank storage and reduce freshwater consumption.";
+        withIdentity("demo.registry@example.test", scenario -> {
+            scenario.onActivity(activity -> { click(activity, "Registry"); click(activity, "Registered research"); });
+            waitFor(scenario, "Add Research Entry");
+            scenario.onActivity(activity -> {
+                click(activity, "Add Research Entry");
+                View root = activity.getWindow().getDecorView();
+                findEditor(root, "Research title").setText(title);
+                findEditor(root, "Abstract").setText(abstractText);
+                click(activity, "Review duplicates");
+            });
+            boolean[] opened = {false};
+            for (int attempt = 0; attempt < 50 && !opened[0]; attempt++) {
+                scenario.onActivity(activity -> opened[0] = find(activeRoot(activity), "Back to entry") != null);
+                if (!opened[0]) SystemClock.sleep(300);
+            }
+            assertTrue("Real TF-IDF review dialog opened", opened[0]);
+            scenario.onActivity(activity -> {
+                TextView message = activeRoot(activity).findViewById(android.R.id.message);
+                assertNotNull(message);
+                String content = message.getText().toString();
+                assertTrue(content, content.contains(title));
+                assertTrue(content, content.contains("1.000 — review suggested"));
+                assertTrue(content, content.contains("below pilot threshold"));
+                assertTrue(content, content.contains("Synthetic pilot threshold"));
+            });
+            captureLiveScreen("tfidf-live-review");
+            scenario.onActivity(activity -> click(activity, "Back to entry"));
+            scenario.onActivity(activity -> {
+                View root = activity.getWindow().getDecorView();
+                assertTrue(abstractText.contentEquals(findEditor(root, "Abstract").getText()));
+                findEditor(root, "Research title").setText("Zyzzyva xenolith quasar");
+                click(activity, "Review duplicates");
+            });
+            opened[0] = false;
+            for (int attempt = 0; attempt < 50 && !opened[0]; attempt++) {
+                scenario.onActivity(activity -> opened[0] = find(activeRoot(activity), "Back to entry") != null);
+                if (!opened[0]) SystemClock.sleep(300);
+            }
+            assertTrue("Empty shortlist review opened", opened[0]);
+            scenario.onActivity(activity -> {
+                TextView message = activeRoot(activity).findViewById(android.R.id.message);
+                assertTrue(message.getText().toString().contains("No matches found in the current title shortlist"));
+                click(activity, "Back to entry");
+            });
+        });
+    }
+
+    @Test public void researcherManuscriptShortcutOpensPublishedSubmission() throws Exception {
+        withIdentity("demo.student@example.test", scenario -> {
+            scenario.onActivity(activity -> click(activity, "Upload Manuscript"));
+            waitFor(scenario, "Manuscript Revision Processing");
+            scenario.onActivity(activity -> {
+                View root = activity.getWindow().getDecorView();
+                assertNotNull(find(root, "Request subject"));
+                assertNotNull(find(root, "Submit request"));
+                assertNotNull(find(root, "Choose file for Revised manuscript · Required"));
+                assertNull(find(root, "Online manuscript submission is currently unavailable."));
+            });
+            captureLiveScreen("researcher-live-manuscript");
+        });
+    }
+
     @Test public void registryStaffCreatesAndCorrectsRealDesignedRecord() throws Exception {
         String title="Staff encoded "+Long.toString(System.nanoTime(),36);
         withIdentity("demo.registry@example.test",scenario->{
@@ -486,7 +551,7 @@ public final class CatalogHttpsTest {
         try {
             withSyntheticApi(scenario -> {
                 scenario.onActivity(activity -> signIn(activity, email, password));
-                waitFor(scenario, "Manage");
+                waitFor(scenario, "Profile");
                 journey.run(scenario);
             });
         } finally { vault.clear(); if (previous != null) vault.save(previous); }
