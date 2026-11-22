@@ -1,4 +1,4 @@
-import {parseSearch,searchResearch} from './research/search.js';
+import {parseSearch,searchResearch,duplicateCandidates} from './research/search.js';
 import {consultationRouter} from './consultations/routes.js';
 import {createAlgorithmRunner} from './algorithm.js';
 import express from 'express';
@@ -7,7 +7,7 @@ import { randomBytes,randomUUID } from 'node:crypto';
 import {verifyPassword,hashPassword,needsRehash,tokenHash} from './crypto.js';
 import {scopedDatabase} from './security/context.js';
 import {requestLimiter,reserveLogin} from './security/limiter.js';
-import {z,id,login,research,feedback,member,validate,search,consent,empty,algorithm} from './security/validation.js';
+import {z,id,login,research,feedback,member,validate,search,duplicateReview,consent,empty,algorithm} from './security/validation.js';
 import {documentRouter} from './storage/routes.js';
 import {publicContentRouter} from './public-content.js';
 import {createSessionTokens} from './security/session-tokens.js';
@@ -210,6 +210,30 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     const args=parseSearch(req.body,{duplicates:true});
     if(!args)return res.status(400).json({error:'Invalid duplicate search parameters'});
     res.json(await searchResearch(db,args,{duplicates:true}));
+  });
+  app.post('/api/v1/research/duplicate-review',auth,staff,validate(duplicateReview),async(req,res)=>{
+    if(process.env.TFIDF_REVIEW_ENABLED!=='true')return res.status(503).json({error:'Duplicate review unavailable'});
+    const serviceUrl=process.env.TFIDF_SERVICE_URL;
+    const serviceToken=process.env.TFIDF_SERVICE_TOKEN;
+    if(!serviceUrl||!serviceToken)return res.status(503).json({error:'Duplicate review unavailable'});
+    const input=req.validated.body;
+    const candidates=await duplicateCandidates(db,input);
+    try {
+      const response=await fetch(new URL('/score',serviceUrl),{
+        method:'POST',signal:AbortSignal.timeout(5000),
+        headers:{'content-type':'application/json',authorization:`Bearer ${serviceToken}`},
+        body:JSON.stringify({title:input.title,abstract:input.abstract,candidates:candidates.map(({id,title,abstract})=>({id,title,abstract:abstract??''}))})
+      });
+      if(!response.ok)throw new Error(`Scoring service returned ${response.status}`);
+      const result=await response.json();
+      if(!Array.isArray(result.scores)||result.scores.length!==candidates.length)throw new Error('Invalid scoring response');
+      const scores=new Map(result.scores.map(item=>[item.id,item.score]));
+      if(scores.size!==candidates.length||candidates.some(item=>!Number.isFinite(scores.get(item.id))))throw new Error('Invalid scores');
+      const threshold=0.754922674938459;
+      const matches=candidates.map(item=>({...item,tfidf_score:scores.get(item.id),alert:scores.get(item.id)>=threshold,abstract_unavailable:!item.abstract}))
+        .sort((a,b)=>Number(b.exact_title)-Number(a.exact_title)||b.tfidf_score-a.tfidf_score||a.id-b.id).slice(0,5);
+      res.json({matches,model_version:result.model_version,threshold,threshold_version:'synthetic-benchmark-v1',threshold_status:'synthetic_benchmark_pilot'});
+    } catch(error){res.status(503).json({error:'Duplicate review scoring unavailable'});}
   });
   app.get('/api/v1/research/:id',auth,async(req,res)=>{
     if (!isId(req.params.id)) return res.status(400).json({error:'Invalid ID'});

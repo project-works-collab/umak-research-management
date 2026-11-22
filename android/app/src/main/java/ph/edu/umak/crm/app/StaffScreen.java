@@ -852,6 +852,17 @@ final class StaffScreen extends LinearLayout {
         if (addResearchEntryView == null) {
             addResearchEntryView = new AddResearchEntryView(activity, new AddResearchEntryView.Callbacks() {
                 @Override
+                public void onReviewDuplicates(String title, String abstractText, java.util.function.BiConsumer<String,String> result) {
+                    try {
+                        JSONObject body = new JSONObject();
+                        body.put("title", title);
+                        body.put("abstract", abstractText);
+                        activity.staffRequest(StaffScreen.this, "/api/v1/research/duplicate-review", body, result);
+                    } catch (org.json.JSONException error) {
+                        result.accept(null, "Unable to prepare duplicate review");
+                    }
+                }
+                @Override
                 public void onSaveEntry(StaffRegistryData.RegistryRecordItem record) {
                     selectedRegistryRecord = record;
                     openRegistrySubPage("detail");
