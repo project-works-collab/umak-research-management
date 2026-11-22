@@ -38,6 +38,7 @@ try{
     {stdio:['pipe','inherit','inherit'],input:await readFile(join(fixtures,'demo-password.txt'))});
   const der=execFileSync('openssl',['x509','-in',cert,'-outform','DER']);
   run('./gradlew',[':app:connectedDebugAndroidTest',':app:lintDebug',
+    ...(process.env.CRM_ANDROID_TEST_CLASS?['-Pandroid.testInstrumentationRunnerArguments.class='+process.env.CRM_ANDROID_TEST_CLASS]:[]),
     '-Pandroid.testInstrumentationRunnerArguments.catalogOrigin='+origin,
     '-Pandroid.testInstrumentationRunnerArguments.catalogCert='+der.toString('base64')],{cwd:'android'});
 }finally{

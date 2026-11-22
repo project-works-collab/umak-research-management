@@ -114,13 +114,14 @@ export function researchRegistrationRoutes(app,db,auth){
     next();
   });
   registry.get('/',validate(z.strictObject({keyword:text(200).default(''),college:text(100).default(''),
-    academic_period:text(40).default('')}),'query'),async(req,res)=>{
-    const {keyword,college,academic_period}=req.validated.query;
+    academic_period:text(40).default(''),before:id.optional()}),'query'),async(req,res)=>{
+    const {keyword,college,academic_period,before}=req.validated.query;
     const {rows}=await db.query(`SELECT * FROM crm_registrations_for_registry() r
       WHERE ($1='' OR strpos(lower(concat_ws(' ', 'REG-'||r.id,r.title,r.registrant_name,r.adviser)),lower($1))>0
         OR EXISTS(SELECT 1 FROM crm_registration_team(r.id) t WHERE strpos(lower(t.name),lower($1))>0))
         AND ($2='' OR r.department=$2) AND ($3='' OR r.academic_period=$3)
-      ORDER BY r.registered_at DESC,r.id DESC LIMIT 100`,[keyword,college,academic_period]);
+        AND ($4::int IS NULL OR r.id<$4)
+      ORDER BY r.id DESC LIMIT 100`,[keyword,college,academic_period,before??null]);
     res.json(rows.map(row=>({...row,research_id:'REG-'+row.id})));
   });
   registry.get('/:id',validate(z.strictObject({id}),'params'),async(req,res)=>{

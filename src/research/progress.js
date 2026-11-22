@@ -77,7 +77,8 @@ export function registeredProgressRoutes(app,db,auth,run){
     res.set('Cache-Control','no-store');
     next();
   });
-  staff.get('/',async(_req,res)=>res.json((await db.query('SELECT * FROM crm_progress_studies() LIMIT 100')).rows));
+  staff.get('/',validate(z.strictObject({before:id.optional()}),'query'),async(req,res)=>res.json((await db.query(
+    'SELECT * FROM crm_progress_studies() WHERE ($1::int IS NULL OR id<$1) ORDER BY id DESC LIMIT 100',[req.validated.query.before??null])).rows));
   staff.get('/:id',params,async(req,res)=>{
     const result=await view(req.validated.params.id,true);
     if(!result)return res.status(404).json({error:'Research record not found.'});
