@@ -37,6 +37,7 @@ public class AddResearchEntryView {
     public interface Callbacks {
         void onSaveEntry(StaffRegistryData.RegistryRecordItem record);
         void onCancel();
+        void onReviewDuplicates(String title, String abstractText, java.util.function.BiConsumer<String,String> result);
     }
 
     private final Activity activity;
@@ -46,11 +47,13 @@ public class AddResearchEntryView {
     private boolean isStaleConflict = false;
     private boolean showDuplicateWarning = false;
     private boolean duplicateReasonError = false;
+    private boolean reviewInProgress = false;
     private String teamErrorType = "none"; // "none", "already_member", "no_such_account"
 
     private FrameLayout rootContainer;
     private LinearLayout rootLayout;
     private EditText titleInput;
+    private EditText abstractInput;
     private Spinner collegeSpinner;
     private Spinner academicYearSpinner;
     private EditText adviserInput;
@@ -495,7 +498,13 @@ public class AddResearchEntryView {
         // Research title *
         addFormFieldLabel(card, "Research title *");
         titleInput = createStyledInput("Impact of AI on Student Engagement");
+        titleInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
         card.addView(titleInput);
+        addFormFieldLabel(card, "Abstract *");
+        abstractInput = createStyledInput("Describe the study for duplicate review");
+        abstractInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(4000)});
+        abstractInput.setMinLines(3);
+        card.addView(abstractInput);
 
         // College or institute *
         addFormFieldLabel(card, "College or institute *");
@@ -927,11 +936,45 @@ public class AddResearchEntryView {
                 return;
             }
         } else if (!isEditMode) {
-            // Trigger Wireframe 7.4 duplicate detection on initial Save
-            showPreview7_4_PossibleDuplicate();
+            String title = titleInput.getText().toString().trim();
+            String abstractText = abstractInput.getText().toString().trim();
+            if (title.isEmpty() || abstractText.isEmpty()) {
+                new android.app.AlertDialog.Builder(activity).setMessage("Enter a title and abstract before duplicate review.").setPositiveButton("OK", null).show();
+                return;
+            }
+            if (reviewInProgress || callbacks == null) return;
+            reviewInProgress = true;
+            callbacks.onReviewDuplicates(title, abstractText, (data, error) -> {
+                reviewInProgress = false;
+                if (error != null || data == null) {
+                    new android.app.AlertDialog.Builder(activity).setMessage("Duplicate review is unavailable. Please try again.").setPositiveButton("OK", null).show();
+                    return;
+                }
+                try {
+                    org.json.JSONArray matches = new org.json.JSONObject(data).getJSONArray("matches");
+                    StringBuilder message = new StringBuilder("Possible matches for staff review:\n\n");
+                    if (matches.length() == 0) message.append("No matches found in the current shortlist.");
+                    for (int i = 0; i < matches.length(); i++) {
+                        org.json.JSONObject match = matches.getJSONObject(i);
+                        message.append(i + 1).append(". ").append(match.optString("title"))
+                                .append(" (score ").append(String.format(java.util.Locale.ROOT, "%.3f", match.getDouble("tfidf_score"))).append(")");
+                        if (match.optBoolean("alert")) message.append(" — review suggested");
+                        message.append("\n");
+                    }
+                    new android.app.AlertDialog.Builder(activity).setTitle("Duplicate review")
+                            .setMessage(message.toString()).setNegativeButton("Back", null)
+                            .setPositiveButton("Continue", (dialog, which) -> saveEntry()).show();
+                } catch (org.json.JSONException invalid) {
+                    new android.app.AlertDialog.Builder(activity).setMessage("Duplicate review is unavailable. Please try again.").setPositiveButton("OK", null).show();
+                }
+            });
             return;
         }
 
+        saveEntry();
+    }
+
+    private void saveEntry() {
         if (callbacks != null) {
             StaffRegistryData.RegistryRecordItem item = editingRecord != null ? editingRecord :
                     new StaffRegistryData.RegistryRecordItem(

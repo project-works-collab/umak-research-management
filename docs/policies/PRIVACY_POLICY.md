@@ -1,167 +1,149 @@
 # UMak-RMLIS Privacy Policy
 
-**University of Makati — Center for Research Management**  
-**Research Management and Library Information System (UMak-RMLIS / CRM Application)**
+**Final academic submission — proposed policy pending institutional adoption.**
 
 Prepared: 21 November 2026. Effective date: **[pending institutional approval]**.
 
-The University of Makati (UMak), a higher education institution established and fully owned by the City Government of Makati operating under Makati City Ordinance 2020-059 (Revised UMak Charter), recognizes its responsibility under **Republic Act No. 10173**, also known as the **Data Privacy Act of 2012 (DPA)**, its Implementing Rules and Regulations (IRR), and the issuances of the National Privacy Commission (NPC).
-
-This Privacy Policy describes how personal information and sensitive personal information are collected, used, processed, retained, shared, and protected in the **University of Makati Research Management and Library Information System (UMak-RMLIS)**, also referred to as the CRM application. It applies to student researchers, faculty researchers, review committee members, and CRM administrative staff.
-
-The **University of Makati** acts as the **Personal Information Controller (PIC)** for all personal data processed within the system, operating through the **Center for Research Management (CRM)** under the Office of the Vice President for Research and Extensions, in administrative and technical coordination with the **Center for Data Protection and Records Management Services (CDPRMS)** and the **Information Technology Center (ITC)**.
+This policy describes the proposed handling of personal information in the **University of Makati Research Management and Lifecycle Information System (UMak-RMLIS)**, also referred to as the CRM application. It covers student researchers, faculty researchers, review committee members, and CRM administrative staff. The proposed operator and Personal Information Controller (PIC) is the **University of Makati (UMak)** through its Center for Research Management (CRM); **[the authorized legal entity, responsible office, and approval authority must be confirmed]**. The current repository is a synthetic-data teaching implementation, not an operational university service.
 
 ---
 
-## 1. Information Collected and Its Specific Purposes
+## 1. Information Used and Its Purposes
 
-Pursuant to the principles of **Transparency, Legitimate Purpose, and Proportionality** (RA 10173, Section 11), UMak-RMLIS collects only personal data that is necessary for the administration of university research, library services, and statutory reporting:
+Pursuant to the principles of **Transparency, Legitimate Purpose, and Proportionality** under Republic Act No. 10173 (Data Privacy Act of 2012), UMak-RMLIS is designed to handle only information necessary for academic research administration:
 
-| Information Category | Specific Data Elements | Institutional Purpose |
+| Information Category | Specific Data Elements | System / Administrative Purpose |
 | --- | --- | --- |
-| **Account & Authentication** | Institutional email address (`@umak.edu.ph`), full name, user account identifier, system role (student researcher, faculty researcher, reviewer, staff), encrypted credentials, and active session tokens. | Establish and authenticate user accounts, enforce role-based access control (RBAC), verify academic eligibility, and secure platform sessions. |
-| **Research Registry & Metadata** | Research titles, abstracts, keywords, academic year, college/department, authors/ownership, coauthor team memberships, research adviser, and assigned review panelists. | Maintain the institutional research registry, track research productivity, facilitate peer evaluation, and generate academic statistics and CHED/institutional reports. |
-| **Submitted Manuscripts & Documents** | Uploaded research proposals, manuscripts, approval sheets, revision drafts, and file metadata (file size, MIME type, upload timestamps). | Receive, store, and manage research manuscripts for authorized evaluation, format checking, and archival preservation. |
-| **Evaluation Feedback & Internal Notes** | Reviewer scores, structured evaluation criteria, researcher-visible review comments, and separate internal CRM administrative notes. | Communicate formal evaluation results to research teams while maintaining restricted administrative deliberation and quality-assurance records. |
-| **Consultation & Service Queue** | Service category (statistical consultation, ethics review coordination, manuscript formatting), urgency/deadlines, service status, assigned consultant, and scheduling timestamps. | Process research service requests, prioritize consultation queues, track delivery milestones, and coordinate advisor appointments. |
-| **Privacy Preferences & Consent Records** | Consent choices for optional processing (e.g., optional email notifications, institutional research analytics), policy version acknowledged, and timestamped audit logs. | Maintain an auditable history of user consent, policy acknowledgments, and privacy choices pursuant to NPC accountability mandates. |
-| **Deletion & Erasure Records** | Formal account deletion requests, stated justifications, administrative review determinations, and deletion audit ledger entries. | Process, evaluate, and record lawful account deletion or record blocking requests subject to institutional retention rules. |
-| **Technical Security & Audit Metadata** | Actor identifiers, action performed, entity identifiers, HTTP request identifiers, client IP addresses, user agent strings, and system event timestamps. | Safeguard system integrity, detect and investigate unauthorized access or cyber incidents, maintain non-repudiation, and ensure accountability under RA 10175. |
+| **Account & Authentication** | Institutional email address (`@umak.edu.ph`), display name, college affiliation, account identifier, system role (student researcher, faculty researcher, reviewer, staff), password hashes, email verification records, and session tokens. | Establish and authenticate accounts, enforce role-based access control (RBAC), verify academic eligibility, and secure active sessions. |
+| **Research Registry & Metadata** | Research titles, abstracts, keywords, academic year, department/college, author ownership, coauthor team memberships, research adviser, and assigned reviewer panelists. | Maintain the institutional research registry, track research lifecycle progress, coordinate peer evaluations, and support academic reporting. |
+| **Submitted Manuscripts & Documents** | Uploaded research proposals, draft manuscripts, revision documents, and document metadata (filename, file size, media type, SHA-256 digest, upload timestamp). | Receive, store, and manage research materials for authorized evaluation, format checking, and archival preservation. |
+| **Evaluation Feedback & Internal Notes** | Reviewer scores, structured criteria feedback, researcher-visible review comments, and separate internal CRM administrative notes. | Communicate evaluation outcomes to research teams while maintaining restricted administrative deliberation records. |
+| **Consultation & Service Queue** | Service category (e.g., statistical consultation, ethics coordination, formatting), optional requested deadline, status, assigned consultant, and scheduling timestamps. | Process service requests, organize the staff consultation queue, track delivery milestones, and coordinate advising sessions. |
+| **Privacy Preferences & Consent Records** | Consent choices for optional processing (e.g., optional email notifications, institutional research analytics), policy version acknowledged (`2026-10-v1`), and server-recorded timestamps. | Record user preferences and maintain an auditable consent history pursuant to NPC accountability standards. |
+| **Deletion Requests & Review Records** | Formal account deletion requests, review status (`confirm_review`), administrative determinations, and deletion audit ledger entries. | Process, evaluate, and record eligible account deletion requests subject to academic holds and archival retention rules. |
+| **Technical Security & Audit Metadata** | Actor identifiers, target entity identifiers, action performed, request identifiers, client IP addresses, and event timestamps. | Protect system integrity, investigate security incidents, enforce rate limits, and maintain accountability under RA 10175. |
 
 ### Data Minimization and Research Ethics
-Users must submit only the information necessary for legitimate research administration. Manuscripts and research documents submitted to the platform must exclude unnecessary personal information, sensitive personal data, or privileged information regarding research subjects and human participants. Authors must obtain institutional research ethics clearance from the **UMak Research Ethics Committee (UMak-REC)** and secure prior informed consent before submitting data originating from human research participants.
+Users must submit only information needed for legitimate research administration. Uploaded manuscripts and service requests must exclude unnecessary personal information, sensitive personal data, or privileged information regarding human research participants. Authors must obtain institutional research ethics clearance from the **UMak Research Ethics Committee (UMak-REC)** and secure prior informed consent before submitting data derived from research participants.
 
-### No Behavioral Advertising or Third-Party Commercial Tracking
-The UMak-RMLIS system is dedicated exclusively to academic and institutional research administration. The platform does not incorporate commercial advertising networks, third-party behavioral trackers, or external monetization services.
+### No Commercial Tracking or Behavioral Advertising
+The verified implementation does not include commercial advertising networks, third-party behavioral analytics, or marketing delivery mechanisms. Recording an optional preference does not mean that an external analytics or notification service is active.
 
 ---
 
-## 2. Lawful Bases for Processing and Consent
+## 2. Lawful Processing, Account Access, and Optional Choices
 
-In accordance with Sections 12 and 13 of the Data Privacy Act of 2012, processing of personal data within UMak-RMLIS is grounded on specific lawful criteria:
+### Account Access and Self-Registration
+Account access is structured around specific university roles:
+* **Researcher Self-Registration:** Student and faculty researchers self-register using their active institutional email address (`@umak.edu.ph`). Identity ownership is verified through a one-time verification code sent to that address.
+* **Staff and Administrator Accounts:** Staff and administrative accounts cannot be self-registered. They are provisioned and assigned specific granular permissions (`content_management`, `request_processing`, `registry_management`, `progress_updates`, `reporting`, `account_administration`) exclusively by authorized CRM account administrators.
+* **Public Browsing:** Approved catalogue information (research title, abstract, keywords, academic year, department, authors) is accessible for public browsing and search without requiring an account or signing in.
 
-1. **Compliance with Legal and Statutory Obligations:** Processing is necessary to fulfill university mandates under Makati City Ordinance 2020-059 (Revised UMak Charter), the Education Act of 1982 (B.P. Blg. 232), the National Archives of the Philippines Act of 2007 (RA 9470), and Commission on Higher Education (CHED) regulatory reporting standards.
-2. **Contractual and Academic Relationship:** Processing is required to facilitate enrollment, thesis/dissertation completion, faculty research fulfillment, and institutional clearance as part of the academic and employment relationship with UMak.
-3. **Legitimate Institutional Interests:** Processing supports university research governance, academic integrity preservation, institutional ranking analysis, and system security management.
-4. **Consent for Optional Features:** Where processing relies on consent (such as optional research digest emails or institutional research analytics), consent is explicitly requested, freely given, specific, and informed.
+### Lawful Bases for Processing
+Before real use, the institution must review and approve the specific lawful basis for each processing purpose under **Sections 12 and 13 of Republic Act No. 10173**:
+1. **General Personal Information (Section 12):** Processing for account management, research registry administration, and evaluation is grounded on compliance with legal obligations under the Revised UMak Charter (Makati City Ordinance 2020-059) and the Education Act of 1982 (B.P. Blg. 232), contractual/academic relationship fulfillment, and legitimate educational interests.
+2. **Sensitive Personal Information (Section 13):** Academic evaluations and disciplinary records containing sensitive personal data require strict adherence to Section 13 criteria (such as explicit consent, specific statutory authority, or necessity for the protection of lawful rights). **[Approved purpose-by-purpose lawful bases are pending institutional review.]**
 
 ### Optional Choices and Withdrawal of Consent
-Core research administration, manuscript review, and consultation services are never made conditional upon consent to optional features. Users may decline or withdraw consent for optional processing at any time through their account settings without affecting their academic standing or core system access. Submitting optional preferences does not constitute agreement to extraneous terms.
+Where processing relies on consent (such as optional research digest emails or institutional research analytics), the choice must be specific, voluntary, and informed. Core research administration and consultation services are never conditioned upon consent to optional features. Users may decline or withdraw consent at any time through their account settings without affecting their academic standing. Submitting preferences is not acceptance of the Terms and Conditions.
 
 ---
 
 ## 3. Public Information vs. Restricted Academic Records
 
-To protect intellectual property and confidentiality while supporting academic dissemination, UMak-RMLIS maintains strict boundaries between public catalogue data and confidential records:
-
-* **Approved Public Catalogue:** Only research metadata approved by the CRM and authorized academic committees is accessible to public catalogue search: research title, abstract, keywords, academic year, authors, and college/department. Abstract submissions must be vetted by authors to ensure no proprietary, confidential, or sensitive participant information is disclosed.
-* **Restricted Manuscripts and Drafts:** Full manuscripts, proposals, and working drafts are strictly restricted to authorized research team members, assigned advisers, designated reviewers, and authorized CRM administrators. Staff status within UMak does not grant universal access to private manuscripts.
+* **Approved Public Catalogue:** Only approved catalogue information is intended for public search: research title, abstract, keywords, academic year, authors, and college/department. Authors must ensure that submitted abstracts contain no confidential, proprietary, or participant-identifying personal data. **[The publication approval procedure and authority must be confirmed.]**
+* **Restricted Manuscripts and Drafts:** Unpublished manuscripts, proposals, and working drafts are restricted to authorized research team members, assigned advisers, designated reviewers, and authorized CRM staff. Staff status within UMak does not grant universal access to private studies.
 * **Confidentiality of School Records:** In compliance with B.P. Blg. 232 (Section 9, Item 4), student academic records and evaluative submissions are maintained with strict confidentiality.
-* **Separate Administrative Notes:** Internal administrative notes and reviewer deliberations are segregated from researcher-facing evaluation comments and are accessible only to authorized review coordinators.
-* **Secure Document Access:** Manuscript downloads utilize short-lived, signed access URLs. Users are prohibited from sharing or redistributing temporary access links to unauthorized parties.
+* **Segregation of Administrative Notes:** Internal administrative notes and reviewer coordination remarks are segregated from researcher-facing evaluation comments and are accessible only to authorized staff.
+* **Temporary Document Access:** Manuscript downloads, where enabled, utilize short-lived, signed access URLs. Recipients must not share or publish these temporary links.
 
 ---
 
-## 4. Data Recipients, Data Sharing, and Third Parties
+## 4. Recipients, Sharing, and External Transfers
 
-Personal information processed in UMak-RMLIS is disclosed only to authorized recipients on a strict need-to-know basis:
-
-* **Internal Authorized Personnel:** Authorized members of the research team, assigned faculty advisers, peer reviewers, CRM administrators, and designated systems engineers of the UMak Information Technology Center (ITC).
-* **Institutional Governance Offices:** When mandated for official university business, records may be coordinated with the Office of the University Registrar (OUR), Center for Integrative Communications (CIC), or Human Resource Management Office (HRMO), in accordance with UMak institutional policies.
-* **Government Regulatory Bodies:** Necessary data may be reported to the Commission on Higher Education (CHED), Department of Science and Technology (DOST), the City Government of Makati, or judicial and law enforcement authorities when strictly required by valid legal mandates, subpoenas, or statutory reporting obligations.
-* **Third-Party Service Providers:** Cloud hosting, object storage, and technical infrastructure partners operate under written agreements enforcing strict technical and organizational safeguards.
-* **Data Sharing Agreements (DSA):** Any inter-agency data transfer or external institutional collaboration is governed by a formal Data Sharing Agreement (DSA) pursuant to NPC Circular 16-02, guaranteeing transparency, purpose specification, and data subject protection.
-* **Cross-Border Transfers:** The university does not transfer personal data outside the Philippines without prior privacy assessment, appropriate institutional authorization, and binding contractual safeguards ensuring an equivalent standard of protection.
+Personal data may be handled by authorized research team members, assigned advisers, designated reviewers, CRM administrative staff, and authorized systems personnel:
+* **Institutional Offices:** Coordination with the Office of the University Registrar (OUR) or Center for Integrative Communications (CIC) occurs only for authorized academic and graduation verification.
+* **Regulatory Disclosures:** Disclosures to government agencies (e.g., CHED, DOST) or law enforcement must be legally mandated, assessed for necessity, and restricted to what the law requires.
+* **Third-Party Providers & Data Sharing:** Contracted infrastructure or storage providers operate under written agreements enforcing confidentiality and security safeguards. External inter-agency transfers require formal Data Sharing Agreements (DSA) pursuant to NPC regulations.
+* **Cross-Border Transfers:** The prototype code supports private object storage, but no specific cloud provider or overseas transfer has been approved. Any foreign hosting or transfer requires prior privacy impact assessment, institutional review, and binding safeguards. **[Actual providers, storage locations, and safeguards must be confirmed before deployment.]**
 
 ---
 
-## 5. Retention, Archival Preservation, and Account Deletion
+## 5. File Upload Thresholds and Technical Capacities
 
-Personal data and institutional research records are retained in compliance with the **National Archives of the Philippines Act of 2007 (RA 9470)**, general public records schedules, and UMak institutional records retention policies:
-
-1. **Research Registry and Published Metadata:** Approved research titles, abstracts, and graduation-cleared catalogue entries form part of the permanent academic records and heritage of the University of Makati and are preserved accordingly.
-2. **Evaluation Records and Drafts:** Evaluative forms, consultation tickets, and superseded drafts are retained for the prescribed academic verification cycle (minimum of five years following study completion or graduation) to resolve academic inquiries, disputes, or accreditation audits.
-3. **Audit and Security Logs:** Security metadata, access logs, and transaction records are preserved for a minimum of one (1) year to support forensic readiness and incident investigation under RA 10175.
-4. **Account Deletion Requests:** Student and faculty researchers may submit a formal request for account deletion. Deletion requests undergo administrative review by the CRM and CDPRMS to verify that:
-   - No outstanding academic holds, integrity investigations, or university clearance requirements exist;
-   - Coauthored research records and joint ownership rights are appropriately preserved for continuing coauthors;
-   - Statutory archival requirements under RA 9470 are fully satisfied.
-5. **Backups and Disaster Recovery:** Deletion of an active account removes live operational records. Backup snapshots and encrypted archives are purged pursuant to automated retention rotation schedules. If disaster recovery restores archival data, recorded deletion ledger entries are re-applied to prevent resurrecting deleted accounts.
+To balance service availability with storage governance, UMak-RMLIS applies the following technical constraints:
+* **Service Request Attachments (Intake Forms):** Up to **10 MB per file**, with a maximum of **five (5) files per service request** (PDF or DOCX), as specified in Requirements Engineering and implemented in client request forms.
+* **Manuscript Document Repository Uploads:** Up to **25,000,000 bytes (~25 MB) per document file** (PDF or DOCX), as enforced by backend document storage validation.
+* **Reconciliation Note:** **[Institutional confirmation is required to harmonize and establish unified storage limits across all intake channels.]**
+* **Inspection:** Files undergo format verification, MIME-type checks, and security scanning. Corrupted files, password-protected archives, and disguised executables are rejected.
 
 ---
 
-## 6. Rights of the Data Subject
+## 6. Retention, Backups, and Account Deletion
 
-Under Section 16 of the Data Privacy Act of 2012, all registered users and data subjects are entitled to exercise the following rights:
-
-1. **Right to be Informed:** The right to know whether personal data pertaining to you is being processed, the sources, purposes, recipients, and security measures in place (provided via this Privacy Policy and just-in-time notices).
-2. **Right to Reasonable Access:** The right to obtain reasonable access, upon demand, to your personal data held in the system.
-3. **Right to Rectification:** The right to dispute any inaccuracy or error in your personal information and have the university correct it expeditiously.
-4. **Right to Erasure or Blocking:** The right to request the suspension, withdrawal, blocking, or removal of your personal data from the system when it is incomplete, outdated, false, unlawfully obtained, or no longer necessary for its original purpose, subject to university archival obligations under RA 9470.
-5. **Right to Object:** The right to object to the processing of your personal data, particularly where processing is based on consent or optional research analytics.
-6. **Right to Data Portability:** The right to obtain an electronic copy of your research submission metadata and profile in a structured, commonly used format.
-7. **Right to Damages:** The right to be indemnified for any damages sustained due to inaccurate, incomplete, outdated, false, unlawfully obtained, or unauthorized use of personal data.
-8. **Right to File a Complaint:** The right to lodge a formal complaint with the university privacy office or with the National Privacy Commission (NPC) if your rights as a data subject have been violated.
-
-### Contact Channels for Privacy Inquiries and Requests
-To exercise your rights, submit privacy inquiries, or lodge concerns, please contact the designated university offices:
-
-* **Center for Data Protection and Records Management Services (CDPRMS):**  
-  Data Protection Officer (DPO)  
-  University of Makati, Administrative Building  
-  J.P. Rizal Ext., West Rembo, Makati City  
-  Email: **dprms@umak.edu.ph**  
-  Official NPC Information Portal: [https://privacy.gov.ph/](https://privacy.gov.ph/)
-
-* **Center for Research Management (CRM):**  
-  Office of the Vice President for Research and Extensions  
-  University of Makati  
-  Email: **research@umak.edu.ph**
+Information should be retained only for approved purposes and applicable legal, academic, or records-management requirements under the **National Archives of the Philippines Act of 2007 (RA 9470)**:
+* **Retention Schedules:** **[Retention periods and their starting events for accounts, research registry records, evaluation files, logs, and document versions remain subject to institutional approval.]**
+* **Reviewed Account Deletion:** Student and faculty researchers may submit an account deletion request for staff review. Deletion review must verify that no active academic holds, integrity proceedings, or coauthor rights are compromised.
+* **Deletion Scope and Backups:** Approved deletion removes live database records and queues document removal. Requesting deletion does not promise instantaneous erasure from historical disaster-recovery backups or older object versions. Restored backups must be reconciled against deletion audit records before service resumes. Per-person cryptographic shredding is not implemented.
+* **Application Removal:** Uninstalling a mobile client or discontinuing web access does not delete records already held by the institution.
 
 ---
 
-## 7. Security Safeguards, Mobile Offline Library, and Incident Management
+## 7. Rights of the Data Subject and Contact Channels
 
-### Organizational, Physical, and Technical Safeguards
-In compliance with Rule VI of the DPA IRR and NPC guidelines, UMak implements comprehensive defense-in-depth measures administered by the Information Technology Center (ITC):
-* **Technical Safeguards:** Role-based access control, cryptographic hashing for credentials, encrypted data transmission (TLS 1.3), firewall protection, Disastor Recovery as a Service (DRaaS), and secure cloud storage configurations.
-* **Physical Safeguards:** Enterprise data center access restrictions, environmental controls, and locked archival filing for physical documentary submissions.
-* **Organizational Safeguards:** Mandatory privacy training for university personnel, confidentiality agreements for review committees, and strict separation between reviewer identities and researcher submissions during double-blind evaluations.
+Under Section 16 of Republic Act No. 10173, registered users and data subjects are entitled to:
+1. **Right to be Informed:** Understand how personal data is collected, processed, and safeguarded.
+2. **Right to Reasonable Access:** Request reasonable access to personal data held in the system.
+3. **Right to Rectification:** Dispute inaccuracies or errors and request prompt correction.
+4. **Right to Erasure or Blocking:** Request suspension, withdrawal, or removal of personal data when outdated, false, unlawfully obtained, or no longer necessary, subject to university archival obligations under RA 9470.
+5. **Right to Object:** Object to processing based on consent or optional research analytics.
+6. **Right to Data Portability:** Request an electronic copy of submitted research metadata in a structured format.
+7. **Right to File a Complaint:** File a complaint with the institution or the National Privacy Commission (NPC).
 
-### Mobile Offline Library and Client Storage
-The UMak-RMLIS mobile component provides local offline caching for approved public catalogue records and encrypted storage for user session tokens:
-* Private manuscripts, unpublished drafts, and internal administrative notes are excluded from offline mobile caches.
-* Users are responsible for maintaining device security (e.g., biometric authentication, lock screen passcodes) on smartphones or tablets running the mobile application.
+### Institutional Privacy Contacts
+Proposed research-office contact supplied for coursework: **research@umak.edu.ph**. **[Confirm that this mailbox accepts privacy requests; insert the authorized DPO contact, postal address, and secure request channel before adoption.]**
 
-### Security Incident and Breach Management
-The university maintains an Incident Response Team (IRT) under the CDPRMS and ITC. In the event of a security incident or personal data breach involving sensitive personal information or circumstances creating a real risk of serious harm:
-* The university will contain the incident, initiate technical forensics, and notify the **National Privacy Commission (NPC)** within **seventy-two (72) hours** of knowledge, in accordance with NPC Circular 16-03;
-* Affected data subjects will be notified promptly with guidance on mitigating potential risks.
+* **University Data Protection Office:** Center for Data Protection and Records Management Services (CDPRMS), University of Makati, J.P. Rizal Ext., West Rembo, Makati City. Email: **dprms@umak.edu.ph**.
+* **National Privacy Commission:** Official portal: [https://privacy.gov.ph/](https://privacy.gov.ph/).
 
----
-
-## 8. User Responsibilities and Policy Amendments
-
-### Obligation to Provide Accurate and Authorized Data
-In accordance with UMak institutional policy, data subjects are obligated to provide true, accurate, and up-to-date information. Any willful misrepresentation, submission of fraudulent data, or unauthorized uploading of copyrighted or confidential third-party research constitutes an academic integrity violation and may result in disciplinary action under the UMak Student Handbook, Faculty Code, Civil Service Rules, and applicable Philippine laws.
-
-### Amendments to this Policy
-The University of Makati reserves the right to amend or update this Privacy Policy to reflect evolving institutional regulations, technological advancements, or NPC directives. Material amendments will be communicated through official university email notifications, institutional bulletin announcements, and in-system notices prior to their effective date.
+Do not transmit passwords, government identity cards, or sensitive manuscripts through unconfirmed email channels.
 
 ---
 
-## Reviewer and Statutory Reference Appendix
+## 8. Security Safeguards, Mobile Use, and Breach Notification
 
-- **System Implementation Baseline:** UMak-RMLIS repository commit `1a305391339b8258ab2f05737717aa0038fd3d97`; see [technical privacy handoff](../implementation/PRIVACY.md) and [system implementation guide](../implementation/IAS_IMPLEMENTATION.md).
-- **Statutory and Regulatory Framework:**
-  1. **Republic Act No. 10173 (Data Privacy Act of 2012)** and its 2016 Implementing Rules and Regulations (IRR).
-  2. **National Privacy Commission Issuances:** NPC Circular 16-01 (DPO registration), NPC Circular 16-02 (Data Sharing Agreements), NPC Circular 16-03 (Personal Data Breach Management), and NPC Circular 2020-01.
-  3. **Republic Act No. 9470 (National Archives of the Philippines Act of 2007):** Public records management, archival retention schedules, and lawful disposal standards.
-  4. **Batas Pambansa Blg. 232 (Education Act of 1982):** Chapter 2, Section 9(4) on students' rights to confidential maintenance and preservation of educational records.
-  5. **Republic Act No. 10175 (Cybercrime Prevention Act of 2012):** Protection against illegal access, data interference, and system interference.
-  6. **Republic Act No. 6713 (Code of Conduct and Ethical Standards for Public Officials and Employees):** Institutional ethics and transparency for university personnel.
-  7. **Republic Act No. 11032 (Ease of Doing Business and Efficient Government Service Delivery Act of 2018):** Streamlined administrative processing of university service requests.
-  8. **Makati City Ordinance 2020-059 (Revised UMak Charter):** Municipal institutional charter and University Board of Regents resolutions.
-  9. **Official Source Document:** *University of Makati Data Privacy Policy Statement*, Center for Data Protection and Records Management Services (CDPRMS), UMak official publication.
+### Security Safeguards
+The application is designed to restrict access through RBAC, hash credentials, protect sessions, validate document payloads, and record security audit events. The repository includes code for local database transactions and object storage adapters. However, production infrastructure controls (such as live cloud configurations, hardware firewalls, and enterprise disaster recovery) require operational implementation and verification. No multi-factor authentication (2FA) is currently implemented; authentication relies on institutional email verification and password credentials.
+
+### Mobile Offline Library
+The mobile library supports local caching for approved public catalogue information and protected session storage. It is an educational library, not a fully released standalone app. Private manuscripts and internal notes are excluded from offline caches. Users remain responsible for securing their personal mobile devices.
+
+### Mandatory Breach Notification (NPC and Data Subjects)
+In accordance with **Section 20(f) of Republic Act No. 10173**, **NPC Circular No. 16-03**, and **NPC Circular No. 2024-01**:
+1. When sensitive personal information or information enabling identity fraud is reasonably believed to have been acquired by an unauthorized person, and the PIC or Commission believes such acquisition is likely to give rise to a real risk of serious harm, the institution shall notify **both the National Privacy Commission and affected data subjects within seventy-two (72) hours** of knowledge or reasonable belief of the breach.
+2. Notification to affected data subjects may be postponed or exempted only if authorized by the NPC where notification would hinder a criminal investigation or is determined contrary to public interest.
+3. The institution must maintain an incident response procedure to contain breaches, assess impact, and mitigate harm.
+
+---
+
+## 9. Policy Amendments and Institutional Adoption
+
+**[Account eligibility, procedural rules for minors, and terms acceptance workflows must be approved by the university.]** The institution must publish an understandable notice with its approved version and effective date prior to operational adoption. The preparation date in this document reflects coursework completion and is not an institutional effective date.
+
+---
+
+## Reviewer and Technical Appendix
+
+- **System Baseline:** Pinned repository revision `1a305391339b8258ab2f05737717aa0038fd3d97`. See [technical privacy handoff](../implementation/PRIVACY.md) and [system implementation guide](../implementation/IAS_IMPLEMENTATION.md).
+- **Implementation Status:** Roles, password hashing, email verification, separate notes, consent recording, reviewed deletion transaction, document validation, and audit logging are implemented in source code. Cloud hosting, operational retention schedules, live DPO integration, and commercial services are pending institutional deployment.
+- **Legal References:**
+  1. Republic Act No. 10173 (Data Privacy Act of 2012) and its 2016 IRR (Rules IV–VI, VIII–IX).
+  2. NPC Circular No. 16-03 and NPC Circular No. 2024-01 (Personal Data Breach Management and Breach Investigations).
+  3. NPC Circular No. 2023-06 (Security of Personal Data in Government and Private Sector).
+  4. Republic Act No. 9470 (National Archives of the Philippines Act of 2007).
+  5. Batas Pambansa Blg. 232 (Education Act of 1982), Section 9(4).
+  6. Republic Act No. 10175 (Cybercrime Prevention Act of 2012), Section 4(a).
+  7. Makati City Ordinance 2020-059 (Revised UMak Charter).
+  8. University of Makati, *Data Privacy Policy Statement*, CDPRMS official publication.
 
 Related Document: [Terms and Conditions](TERMS_AND_CONDITIONS.md).
