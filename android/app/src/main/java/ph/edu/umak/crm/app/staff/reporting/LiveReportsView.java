@@ -34,7 +34,6 @@ public final class LiveReportsView extends LinearLayout {
     private LinearLayout filterBody;
     public LiveReportsView(Context context, Actions actions) {
         super(context); this.actions = actions; setOrientation(VERTICAL);
-        int padding = UiTheme.dp(context, 16); setPadding(padding, padding, padding, padding);
     }
 
     public boolean handleBack() {
