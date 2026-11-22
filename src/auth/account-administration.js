@@ -60,7 +60,7 @@ export function accountAdministrationRoutes(app,db,auth,{verification}){
     res.set('Cache-Control','no-store');
     const {challenge,password,confirmation}=req.validated.body;
     if(password!==confirmation)return res.status(400).json({error:'Passwords do not match.'});
-    if(!await reserveLogin(db,'temporary-password',req.ip,req.requestId))
+    if(!await reserveLogin(db,'temporary-password:'+tokenHash(challenge),req.ip,req.requestId))
       return res.status(429).json({error:'Too many attempts. Wait before trying again.'});
     const old=(await db.query('SELECT crm_challenge_password($1) AS hash',[tokenHash(challenge)])).rows[0].hash;
     if(!old)return res.status(400).json({error:'Temporary credential challenge expired. Sign in again.'});

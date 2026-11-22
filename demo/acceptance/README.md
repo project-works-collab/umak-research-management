@@ -41,11 +41,22 @@ The Android HTTPS suite can be run with `npm run acceptance:android` using JDK 2
 ## UMak-domain manual demo on the connected emulator
 
 ```sh
+npm run demo:tfidf:setup
 JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home npm run demo:manual
 ```
 
 This starts a fresh isolated fixture using `@umak.edu.ph`, checks signup/verification/sign-in, builds and installs the separate **UMak CRM Demo** Android variant, and opens it on the connected emulator. Keep this process running throughout the demo. Stop it with Ctrl+C. Restarting creates a fresh database and new seeded-account passwords.
 
+The launcher also starts the real TF-IDF scorer and checks its database/API integration.
+Sign in as `demo.registry@umak.edu.ph`, open **Registry → Registered research → Add
+Research Entry**, enter the title and abstract in `outputs/manual-demo/tfidf-scenario.json`,
+and tap **Review duplicates**. The matching record scores near `1.000`; an unrelated
+abstract with the same title stays below the pilot threshold. Use **Back to entry**
+to try changes without saving. See [TF-IDF setup and verification](../../services/tfidf/README.md#local-presentation-demo).
+
 Open `outputs/manual-demo/DEMO-ACCESS.md` for the current inbox URL, generated login password and persona list. New signup addresses are `student.demo01@umak.edu.ph`, `faculty.demo01@umak.edu.ph`, and other numbered variants. Seeded staff/researcher addresses begin `demo.`. Only these reserved patterns are accepted; real-looking UMak addresses are rejected. No mail leaves the local sink.
 
 The demo variant trusts only its generated local certificate for its local API origin. Its application ID is `ph.edu.umak.crm.app.demo`; the regular app is separate. The APK in `outputs/manual-demo` targets this Mac's connected emulator through ADB forwarding. Installing that APK on another phone does not provide a working shared backend. Shared staging remains a separate deployment step.
+
+For the demo app's **Cloud / Local Demo** switch, another laptop setup, and USB
+phone or emulator steps, follow the [complete presentation guide](../../docs/team/LOCAL_AND_CLOUD_DEMO_GUIDE.md).

@@ -16,7 +16,8 @@ export function documentRouter(db,auth,{objectStore,scanner}){
     if(uploads>=2)return res.status(503).json({error:'Document capacity exceeded'});
     if(req.get('content-type')!=='application/octet-stream')return res.status(415).json({error:'Send application/octet-stream'});
     uploads++;let done=false;
-    const release=()=>{if(!done){done=true;uploads--;}};
+    const release=()=>{if(!done){done=true;uploads--;req.removeListener('aborted',release);}};
+    req.once('aborted',release);
     req.releaseUpload=release;
     next();
   },(req,res,next)=>raw({type:'application/octet-stream',limit:MAX_DOCUMENT_BYTES})(req,res,error=>{

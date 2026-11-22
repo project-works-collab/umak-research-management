@@ -24,6 +24,7 @@ import ph.edu.umak.crm.app.research.RegisteredProgressView;
 public final class LiveRegistryRecordView extends LinearLayout {
     public interface Actions {
         void request(String path, JSONObject body, BiConsumer<String, String> result);
+        void reviewDuplicates(JSONObject body, BiConsumer<String, String> result);
         void choose(Runnable checking, BiConsumer<MainActivity.SelectedAttachment, String> result);
         void upload(MainActivity.SelectedAttachment file, int study, String previous, String token, BiConsumer<String, String> result);
         void download(String path, String name, String mime, Runnable failure);
@@ -96,6 +97,44 @@ public final class LiveRegistryRecordView extends LinearLayout {
         EditText period = input("Academic period (AY 2026-2027)", record == null ? "" : knownInput(record, "academic_period"));
         EditText adviser = input("Adviser", record == null ? "" : knownInput(record, "adviser"));
         EditText abstractText = input("Abstract", record == null ? "" : record.optString("abstract"));
+        title.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
+        abstractText.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(4000)});
+        line("Review similar titles and abstracts before creating a record. Scores are advisory; the alert threshold is a synthetic pilot.", false);
+        Button review = button("Review duplicates", null);
+        review.setOnClickListener(view -> {
+            if (saving) return;
+            if (value(title).isEmpty()) { title.setError("Enter a research title."); return; }
+            if (value(abstractText).isEmpty()) { abstractText.setError("Enter an abstract for duplicate review."); return; }
+            try {
+                JSONObject query = new JSONObject().put("title", value(title)).put("abstract", value(abstractText));
+                if (record != null) query.put("exclude_id", record.optInt("id"));
+                saving = true;
+                Runnable restore = ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(this.body);
+                PendingStatus current = status; current.working("Reviewing titles and abstracts…");
+                actions.reviewDuplicates(query, (data, error) -> {
+                    saving = false; restore.run();
+                    if (current != status) return;
+                    if (error != null) { current.result("Duplicate review unavailable. Please try again.", true); return; }
+                    try {
+                        JSONArray matches = new JSONObject(data).getJSONArray("matches");
+                        StringBuilder message = new StringBuilder();
+                        if (matches.length() == 0) message.append("No matches found in the current title shortlist. This does not prove originality.\n");
+                        for (int i = 0; i < matches.length(); i++) {
+                            JSONObject match = matches.getJSONObject(i);
+                            message.append(i + 1).append(". ").append(match.getString("title"))
+                                .append("\nTF-IDF similarity: ").append(String.format(java.util.Locale.ROOT, "%.3f", match.getDouble("tfidf_score")))
+                                .append(match.optBoolean("alert") ? " — review suggested" : " — below pilot threshold");
+                            if (match.optBoolean("abstract_unavailable")) message.append("\nArchive abstract unavailable");
+                            message.append("\n\n");
+                        }
+                        message.append("Synthetic pilot threshold. Staff decide whether records are duplicates; scores do not determine plagiarism.");
+                        current.clear();
+                        new AlertDialog.Builder(getContext()).setTitle("Duplicate review")
+                            .setMessage(message.toString()).setPositiveButton("Back to entry", null).show();
+                    } catch (JSONException invalid) { current.result("CRM returned invalid duplicate review results. Please retry.", true); }
+                });
+            } catch (JSONException invalid) { status.result("Review the title and abstract.", true); }
+        });
         CheckBox historical = new CheckBox(getContext()); historical.setText("Historical entry");
         historical.setChecked(record != null && record.optBoolean("historical")); body.addView(historical);
         EditText source = input("Source reference", record == null ? "" : knownInput(record, "source_reference"));

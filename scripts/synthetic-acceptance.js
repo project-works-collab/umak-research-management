@@ -18,9 +18,12 @@ import {createApp} from '../src/app.js';
 import {configuredVerification} from '../src/auth/verification-mail.js';
 import {hashPassword,tokenHash} from '../src/crypto.js';
 import {testInbox} from '../test/support/smtp-inbox.js';
+import {startTfidfDemo,seedTfidfDemo,checkTfidfDemo,tfidfScenario} from './tfidf-demo.js';
+import {seedShowcaseServices} from './showcase-fixtures.js';
 
 const fixture=JSON.parse(await readFile(new URL('../demo/acceptance/fixtures.json',import.meta.url),'utf8'));
 const umakDemo=process.argv.includes('--umak-demo');
+const tfidfEnabled=process.argv.includes('--tfidf');
 if(umakDemo){
   for(const person of fixture.identity.people)person.email=person.email.replace('@example.test','@umak.edu.ph');
   fixture.identity.domain='umak.edu.ph';
@@ -33,9 +36,9 @@ const directory=await mkdtemp(join(tmpdir(),'crm-synthetic-'));
 const data=join(directory,'postgres');
 const dbPassword=randomBytes(24).toString('hex');
 const ownerPassword=randomBytes(24).toString('hex');
-const demoPassword=randomBytes(18).toString('hex');
+const demoPassword=umakDemo?'password1234':randomBytes(18).toString('hex');
 const servers=[];
-let running=false,db,admin;
+let running=false,db,admin,tfidf;
 
 async function listen(server){
   await new Promise((resolve,reject)=>{
@@ -171,6 +174,12 @@ try{
     break work;
   }
   const {mapping,invitationCode}=await seed();
+  let tfidfIds;
+  if(tfidfEnabled){
+    tfidfIds=await seedTfidfDemo(admin);
+    tfidf=await startTfidfDemo(admin,ownerUrl);
+    await writeFile(join(directory,'tfidf-scenario.json'),JSON.stringify(tfidfScenario,null,2));
+  }
   db=new pg.Pool({connectionString:appUrl,max:10});
   await writeFile(join(directory,'fixture-ids.json'),JSON.stringify(mapping,null,2));
   await writeFile(join(directory,'demo-password.txt'),demoPassword+'\n',{mode:0o600});
@@ -192,6 +201,7 @@ try{
   servers.push(mailbox);
   const mailboxPort=await listen(mailbox);
   const app=createApp(db,{verification,scanner:async()=>true});
+  if(tfidfEnabled)await checkTfidfDemo(app,fixture.identity.people.find(person=>person.key==='registry').email,demoPassword,tfidfIds);
   const cert=process.env.CRM_SYNTHETIC_TLS_CERT;
   const key=process.env.CRM_SYNTHETIC_TLS_KEY;
   if(Boolean(cert)!==Boolean(key))throw Error('Provide both synthetic API TLS files together');
@@ -201,6 +211,7 @@ try{
   const apiUrl=`${cert?'https':'http'}://${host}:${apiPort}`;
   const {rows:[contentManager]}=await admin.query('SELECT id FROM users WHERE email=$1',[fixture.identity.people.find(person=>person.key==='content').email]);
   const syntheticForm=await readFile(join(directory,'demo-form.pdf'));
+  if(umakDemo||process.argv.includes('--showcase'))await seedShowcaseServices(admin,fixture.identity.sender,syntheticForm);
   for(const [key,state] of [['publishedInApp','published'],['publishedExternal','published'],
     ['publishedSimple','published'],['draft','draft'],['withdrawn','withdrawn']]){
     const sample=fixture.catalog[key];
@@ -356,6 +367,13 @@ try{
     const entryResponse=await jsonCall(registrar.access_token,registryPath,registryEntry);
     assert.equal(entryResponse.status,201,await entryResponse.clone().text());
     const entry=await entryResponse.json();
+    if(tfidfEnabled){
+      const review=await jsonCall(registrar.access_token,'/api/v1/research/duplicate-review',{
+        title:registryEntry.title,abstract:'Synthetic registered study for duplicate review.'});
+      assert.equal(review.status,200,await review.clone().text());
+      assert.ok((await review.json()).matches.some(match=>match.id===entry.id),
+        'Registry-created studies must be candidates without a separate reviewer assignment');
+    }
     const registryCorrection={...registryEntry,expected_version:entry.version,title:'Corrected synthetic registry study',reason:'Correct source title'};
     const registryCorrected=await jsonCall(registrar.access_token,registryPath+'/'+entry.id+'/corrections',registryCorrection);
     assert.equal(registryCorrected.status,200,await registryCorrected.clone().text());
@@ -663,6 +681,7 @@ try{
   }
   }
 }finally{
+  await tfidf?.stop();
   await Promise.all(servers.map(server=>new Promise(resolve=>{
     server.close(resolve);
     server.closeAllConnections?.();

@@ -15,7 +15,7 @@ try{
   run('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-days','1',
     '-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1,DNS:localhost'],{stdio:'ignore'});
   run('./gradlew',[':app:assembleDebug'],{cwd:'android'});
-  fixture=spawn(process.execPath,['scripts/synthetic-acceptance.js'],{
+  fixture=spawn(process.execPath,['scripts/synthetic-acceptance.js','--showcase',...(process.env.CRM_TFIDF_DEMO==='true'?['--tfidf']:[])],{
     env:{...process.env,CRM_SYNTHETIC_TLS_CERT:cert,CRM_SYNTHETIC_TLS_KEY:key},stdio:['ignore','pipe','inherit']});
   let output='';
   const ready=new Promise((resolve,reject)=>{

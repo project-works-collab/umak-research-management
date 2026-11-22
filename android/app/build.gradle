@@ -13,24 +13,35 @@ android {
         versionCode 1
         versionName '1.0'
         buildConfigField 'boolean', 'HOSTED_DEMO', 'false'
+        buildConfigField 'boolean', 'DESIGN_PREVIEWS', 'false'
+        buildConfigField 'boolean', 'SERVER_SWITCH', 'false'
+        buildConfigField 'String', 'CLOUD_SERVER_URL', '"https://umak-crm-api.onrender.com"'
+        buildConfigField 'String', 'LOCAL_SERVER_URL', '""'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         buildConfigField "String", "DEFAULT_SERVER_URL", "\"https://umak-crm-api.onrender.com\""
     }
     buildTypes {
+        debug {
+            buildConfigField 'boolean', 'DESIGN_PREVIEWS', 'true'
+        }
         renderDemo {
             initWith debug
             matchingFallbacks = ['debug']
             applicationIdSuffix '.renderdemo'
             versionNameSuffix '-render-demo'
             buildConfigField 'boolean', 'HOSTED_DEMO', 'true'
+            buildConfigField 'boolean', 'DESIGN_PREVIEWS', 'false'
         }
         demo {
             initWith debug
             matchingFallbacks = ['debug']
             applicationIdSuffix '.demo'
+            buildConfigField 'boolean', 'SERVER_SWITCH', 'true'
+            buildConfigField 'boolean', 'DESIGN_PREVIEWS', 'false'
             def demoOrigin = project.findProperty('demoOrigin') ?: 'https://127.0.0.1:3000'
             if (!(demoOrigin ==~ /https:\/\/127\.0\.0\.1:[0-9]+/)) throw new GradleException('Demo origin must be a local HTTPS server')
             buildConfigField "String", "DEFAULT_SERVER_URL", '"' + demoOrigin + '"'
+            buildConfigField "String", "LOCAL_SERVER_URL", '"' + demoOrigin + '"'
         }
     }
     sourceSets { demo.res.srcDir "$buildDir/generated/demoResources" }

@@ -1,6 +1,6 @@
 import express from 'express';
 import {id,validate,validationFields,z} from '../security/validation.js';
-import {validateDocument} from '../storage/validate.js';
+import {validateIsolated} from '../storage/isolated-validation.js';
 
 const text=max=>z.string().trim().min(1).max(max);
 const code=z.string().regex(/^[A-Z0-9][A-Z0-9-]{1,31}$/);
@@ -108,7 +108,7 @@ export function serviceCatalogRoutes(app,db,auth){
   staff.put('/:id/form',revisionId,express.raw({type:'application/octet-stream',limit}),async(req,res)=>{
     const name=req.get('X-Form-Name')??'';
     if(!Buffer.isBuffer(req.body)||req.body.length>limit) return res.status(400).json({error:'Provide a PDF or DOCX up to 10 MB'});
-    const mime=await validateDocument(req.body,name);
+    const mime=await validateIsolated(req.body,name);
     const revision=await transaction(db,async client=>{
       const result=await client.query(`UPDATE crm_service_revisions SET
         form_name=$2,form_mime=$3,form_bytes=$4,form_updated_at=clock_timestamp(),updated_at=clock_timestamp()

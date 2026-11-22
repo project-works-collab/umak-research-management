@@ -27,8 +27,9 @@ public final class LiveStaffDesignTest {
                 }
                 Api api=new Api();LiveAccountsView view=new LiveAccountsView(activity,api);activity.setContentView(view);view.load();click(view,"Create Staff Account");
                 EditText name=(EditText)find(view,"Name");assertEquals("",name.getText().toString());name.setText("Actual invited staff");
-                ((EditText)find(view,"College or unit")).setText("Actual College");((EditText)find(view,"Institutional email")).setText("actual@umak.edu.ph");((android.widget.CheckBox)find(view,"reporting")).setChecked(true);click(view,"Create Account");
-                assertTrue(view.isSaving());assertFalse(name.isEnabled());assertEquals("Actual invited staff",api.saved.optString("display_name"));assertEquals("reporting",api.saved.optJSONArray("permissions").optString(0));
+                ((EditText)find(view,"College or unit")).setText("Actual College");
+                ((EditText)find(view,"Institutional email")).setText("actual@umak.edu.ph");((android.widget.CheckBox)find(view,"reporting")).setChecked(true);click(view,"Create Account");
+                assertTrue(view.isSaving());assertFalse(name.isEnabled());assertEquals("Actual invited staff",api.saved.optString("display_name"));assertEquals("Actual College",api.saved.optString("college"));assertEquals("reporting",api.saved.optJSONArray("permissions").optString(0));
                 api.pending.accept(null,"This email already exists.");assertFalse(view.isSaving());assertTrue(name.isEnabled());assertEquals("Actual invited staff",name.getText().toString());assertNotNull(find(view,"This email already exists."));
             });
         }
@@ -62,6 +63,7 @@ public final class LiveStaffDesignTest {
         try(var scenario=ActivityScenario.launch(MainActivity.class)){scenario.onActivity(activity->{android.widget.LinearLayout group=new android.widget.LinearLayout(activity);EditText fixed=new EditText(activity),editable=new EditText(activity);fixed.setEnabled(false);group.addView(fixed);group.addView(editable);Runnable restore=StaffDesignPage.freeze(group);assertFalse(editable.isEnabled());restore.run();assertFalse(fixed.isEnabled());assertTrue(editable.isEnabled());});}
     }
     private static EditText editor(View root,String text){if(root instanceof EditText field&&text.equals(field.getContentDescription()))return field;if(root instanceof ViewGroup group)for(int i=0;i<group.getChildCount();i++){EditText found=editor(group.getChildAt(i),text);if(found!=null)return found;}return null;}
+    private static EditText findHint(View root,String hint){if(root instanceof EditText field&&hint.contentEquals(field.getHint()))return field;if(root instanceof ViewGroup group)for(int i=0;i<group.getChildCount();i++){EditText found=findHint(group.getChildAt(i),hint);if(found!=null)return found;}return null;}
     private static View find(View root,String text){if(text.equals(root.getContentDescription())||root instanceof TextView label&&text.contentEquals(label.getText()))return root;if(root instanceof ViewGroup group)for(int i=0;i<group.getChildCount();i++){View found=find(group.getChildAt(i),text);if(found!=null)return found;}return null;}
     private static void click(View root,String text){View view=find(root,text);assertNotNull(text,view);while(!view.isClickable()&&view.getParent() instanceof View parent)view=parent;assertTrue(text,view.performClick());}
 }

@@ -640,6 +640,7 @@ public final class RegistrationStep1View {
         if (title.isEmpty()) {
             titleInput.setBackground(UiTheme.shape(context, UiTheme.WHITE, 8, 0xffdc2626));
             titleError.setText("⚠ Please enter the research title.");
+            titleError.setContentDescription("Please enter the research title.");
             titleError.setVisibility(View.VISIBLE);
             hasError = true;
         } else {

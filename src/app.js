@@ -101,7 +101,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
   });
   app.post('/api/v1/auth/activate',validate(z.strictObject({token:z.string().regex(/^[a-f0-9]{64}$/),password:z.string().min(12).max(128)})),async(req,res)=>{
     const b=req.validated.body;
-    if(!await reserveLogin(db,'activation',req.ip,req.requestId)){res.set('Retry-After','900');return res.status(429).json({error:'Too many attempts'});}
+    if(!await reserveLogin(db,'activation:'+tokenHash(b.token),req.ip,req.requestId)){res.set('Retry-After','900');return res.status(429).json({error:'Too many attempts'});}
     const r=await db.query('SELECT crm_activate($1,$2) AS activated',[tokenHash(b.token),await hashPassword(b.password)]);
     if(!r.rows[0].activated)return res.status(400).json({error:'Invalid or expired activation'});
     await db.query('SELECT crm_finish_login($1)',[req.requestId]);res.sendStatus(204);
@@ -142,15 +142,22 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
   });
   app.post('/api/v1/research/:id/members',auth,validate(member),async(req,res)=>{
     if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
-    const r=await db.query('SELECT id FROM research_records WHERE id=$1 AND author_id=$2 AND NOT is_registered',[req.params.id,req.user.id]);
+    const r=await db.query(`WITH eligible AS MATERIALIZED (
+      SELECT id FROM research_records WHERE id=$1 AND author_id=$3 AND NOT is_registered FOR UPDATE
+    ), target AS MATERIALIZED (
+      SELECT crm_researcher_user($2) AS valid
+    ), inserted AS (
+      INSERT INTO study_members SELECT id,$2 FROM eligible,target WHERE valid ON CONFLICT DO NOTHING RETURNING study_id
+    ) SELECT id,valid FROM eligible,target`,[req.params.id,req.validated.body.user_id,req.user.id]);
     if(!r.rowCount)return res.status(404).json({error:'Record not found'});
-    const target=await db.query("SELECT 1 WHERE crm_researcher_user($1)",[req.validated.body.user_id]);
-    if(!target.rowCount)return res.status(400).json({error:'Invalid member'});
-    await db.query('INSERT INTO study_members VALUES($1,$2) ON CONFLICT DO NOTHING',[req.params.id,req.validated.body.user_id]);res.sendStatus(204);
+    if(!r.rows[0].valid)return res.status(400).json({error:'Invalid member'});
+    res.sendStatus(204);
   });
   app.delete('/api/v1/research/:id/members/:memberId',auth,async(req,res)=>{
     if(!isId(req.params.id)||!isId(req.params.memberId))return res.status(400).json({error:'Invalid ID'});
-    const r=await db.query('DELETE FROM study_members WHERE study_id=$1 AND user_id=$2 AND crm_owns_study(study_id) AND EXISTS(SELECT 1 FROM research_records WHERE id=study_id AND NOT is_registered) RETURNING user_id',[req.params.id,req.params.memberId]);
+    const r=await db.query(`WITH eligible AS MATERIALIZED (
+      SELECT id FROM research_records WHERE id=$1 AND author_id=$3 AND NOT is_registered FOR UPDATE
+    ) DELETE FROM study_members WHERE study_id IN(SELECT id FROM eligible) AND user_id=$2 RETURNING user_id`,[req.params.id,req.params.memberId,req.user.id]);
     if(!r.rowCount)return res.status(404).json({error:'Member not found'});res.sendStatus(204);
   });
   app.get('/api/v1/research/:id/feedback',auth,async(req,res)=>{
