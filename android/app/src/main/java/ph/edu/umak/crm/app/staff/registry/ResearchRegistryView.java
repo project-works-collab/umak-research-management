@@ -81,6 +81,16 @@ public class ResearchRegistryView {
     private boolean binding;
     private String[] colleges = COLLEGES;
     private String[] periods = PERIODS;
+    private ImageView filterIcon;
+    private static final String[] SORT_OPTIONS = {
+            "Newest first (Default)",
+            "Oldest first",
+            "Title (A–Z)",
+            "Title (Z–A)",
+            "Stage / Status",
+            "College / Unit"
+    };
+    private int currentSort = 0;
 
     public ResearchRegistryView(Activity activity, Callbacks callbacks) {
         this.activity = activity;
@@ -182,12 +192,19 @@ public class ResearchRegistryView {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         searchContainer.addView(searchInput, sInputLp);
 
-        ImageView filterIcon = new ImageView(activity);
+        filterIcon = new ImageView(activity);
         filterIcon.setImageResource(R.drawable.ic_crm_filter);
         filterIcon.setColorFilter(0xff64748b);
-        FrameLayout.LayoutParams fIconLp = new FrameLayout.LayoutParams(dp(18), dp(18));
+        filterIcon.setContentDescription("Sort records");
+        filterIcon.setFocusable(true);
+        filterIcon.setClickable(true);
+        filterIcon.setBackground(UiTheme.ripple(null, 0x20082d50));
+        int fPad = dp(9);
+        filterIcon.setPadding(fPad, fPad, fPad, fPad);
+        FrameLayout.LayoutParams fIconLp = new FrameLayout.LayoutParams(dp(38), dp(38));
         fIconLp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-        fIconLp.rightMargin = dp(12);
+        fIconLp.rightMargin = dp(4);
+        filterIcon.setOnClickListener(v -> showSortDialog());
         searchContainer.addView(filterIcon, fIconLp);
 
         rootLayout.addView(searchContainer);
@@ -385,12 +402,28 @@ public class ResearchRegistryView {
         return spinner;
     }
 
+    private void showSortDialog() {
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("Sort research records")
+                .setSingleChoiceItems(SORT_OPTIONS, currentSort, (dialog, which) -> {
+                    currentSort = which;
+                    applyFilterAndRender();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     public void applyFilterAndRender() {
         if(live&&!binding&&callbacks!=null)callbacks.onFiltersChanged(searchQuery,"All colleges".equals(selectedCollege)?"":selectedCollege,"All academic periods".equals(selectedPeriod)?"":selectedPeriod);
+        if (filterIcon != null) {
+            filterIcon.setColorFilter(currentSort != 0 ? 0xff185d9d : 0xff64748b);
+        }
         List<StaffRegistryData.RegistryRecordItem> filtered = new ArrayList<>();
         boolean collegeFilterActive = !"All colleges".equalsIgnoreCase(selectedCollege);
         boolean periodFilterActive = !"All academic periods".equalsIgnoreCase(selectedPeriod);
-        boolean hasActiveFilter = collegeFilterActive || periodFilterActive;
+        boolean sortFilterActive = currentSort != 0;
+        boolean hasActiveFilter = collegeFilterActive || periodFilterActive || sortFilterActive;
 
         for (StaffRegistryData.RegistryRecordItem record : allRecords) {
             // Check college
@@ -434,6 +467,34 @@ public class ResearchRegistryView {
             filtered.add(record);
         }
 
+        switch (currentSort) {
+            case 1:
+                filtered.sort((a, b) -> {
+                    int cmp = Integer.compare(a.serverId, b.serverId);
+                    return cmp != 0 ? cmp : a.id.compareToIgnoreCase(b.id);
+                });
+                break;
+            case 2:
+                filtered.sort((a, b) -> a.title.compareToIgnoreCase(b.title));
+                break;
+            case 3:
+                filtered.sort((a, b) -> b.title.compareToIgnoreCase(a.title));
+                break;
+            case 4:
+                filtered.sort((a, b) -> a.stage.compareToIgnoreCase(b.stage));
+                break;
+            case 5:
+                filtered.sort((a, b) -> a.college.compareToIgnoreCase(b.college));
+                break;
+            case 0:
+            default:
+                filtered.sort((a, b) -> {
+                    int cmp = Integer.compare(b.serverId, a.serverId);
+                    return cmp != 0 ? cmp : b.id.compareToIgnoreCase(a.id);
+                });
+                break;
+        }
+
         displayedRecords = filtered;
         renderActiveFilterPills(hasActiveFilter);
 
@@ -473,6 +534,13 @@ public class ResearchRegistryView {
 
         if (!"All academic periods".equalsIgnoreCase(selectedPeriod)) {
             pillsRow.addView(createFilterPill(selectedPeriod, () -> periodSpinner.setSelection(0)));
+        }
+
+        if (currentSort != 0) {
+            pillsRow.addView(createFilterPill("Sort: " + SORT_OPTIONS[currentSort], () -> {
+                currentSort = 0;
+                applyFilterAndRender();
+            }));
         }
 
         // Clear filters action text
@@ -663,6 +731,7 @@ public class ResearchRegistryView {
     }
 
     public void resetFilters() {
+        currentSort = 0;
         searchQuery = "";
         searchInput.setText("");
         collegeSpinner.setSelection(0);

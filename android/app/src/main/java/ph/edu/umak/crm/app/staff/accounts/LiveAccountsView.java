@@ -43,8 +43,6 @@ public final class LiveAccountsView extends LinearLayout {
         super(context);
         this.actions = actions;
         setOrientation(VERTICAL);
-        int padding = UiTheme.dp(context, 16);
-        setPadding(padding, padding, padding, padding);
     }
 
     public void load() {

@@ -14,6 +14,7 @@ import java.util.Locale;
 
 import ph.edu.umak.crm.app.R;
 import ph.edu.umak.crm.app.ScreenTypography;
+import ph.edu.umak.crm.app.common.components.PageTitle;
 import ph.edu.umak.crm.app.common.util.UiTheme;
 
 public final class ProfileView {
@@ -29,6 +30,7 @@ public final class ProfileView {
     private final Listener listener;
     private final ResearchData.UserProfile userProfile;
     private boolean showSnackbar = false;
+    private LinearLayout pageWrapper;
 
     public ProfileView(Context context, ResearchData.UserProfile profile, Listener listener) {
         this.context = context;
@@ -426,9 +428,12 @@ public final class ProfileView {
     }
 
     public View getContentLayout() {
-        if (layout.getParent() instanceof ViewGroup) {
-            ((ViewGroup) layout.getParent()).removeView(layout);
+        if (pageWrapper == null) {
+            pageWrapper = PageTitle.wrap(layout, "Profile", null, false);
         }
-        return layout;
+        if (pageWrapper.getParent() instanceof ViewGroup) {
+            ((ViewGroup) pageWrapper.getParent()).removeView(pageWrapper);
+        }
+        return pageWrapper;
     }
 }

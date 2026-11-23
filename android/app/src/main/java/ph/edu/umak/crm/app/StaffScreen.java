@@ -28,6 +28,7 @@ import org.json.JSONObject;
 
 import ph.edu.umak.crm.app.common.dialogs.CenteredActionDialog;
 import ph.edu.umak.crm.app.common.components.SaveSnackbar;
+import ph.edu.umak.crm.app.common.util.UiTheme;
 import ph.edu.umak.crm.app.staff.ManageHubView;
 import ph.edu.umak.crm.app.staff.StaffData;
 import ph.edu.umak.crm.app.staff.StaffDialogs;
@@ -230,6 +231,10 @@ final class StaffScreen extends LinearLayout {
         if(previewRegistry){registrySubPage="list";previewRegistry=false;}
         previewRequests = false;
         if ("Requests".equals(destination) && reviewQueueView != null) reviewQueueView.endPreview();
+        if ("Registry".equals(destination) && liveWorkspace && "list".equals(registrySubPage)) {
+            if (hasPermission("registry_management")) registrySubPage = "registered_live";
+            else if (hasPermission("progress_updates")) registrySubPage = "progress_live";
+        }
         select(destination);
         loadTabData();
     }
@@ -257,18 +262,10 @@ final class StaffScreen extends LinearLayout {
 
     private boolean hasPermission(String permission) { return !liveWorkspace || permissions.contains(permission); }
 
-    private void select(String destination) {
-        snackbar.clear();
-        if (!"Registry".equals(destination) && "completion_correction".equals(registrySubPage)) {
-            registrySubPage = "lifecycle";
-            completionCorrectionView = null;
-        }
-        tab = destination;
+    private void updateNavigation() {
         navigation.removeAllViews();
         for (int index = 0; index < TABS.length; index++) {
             String name = TABS[index];
-            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
-            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
             boolean selected = name.equals(tab);
             Button item = button(name, () -> navigateFromNavBar(name));
             ScreenTypography.apply(item, 11);
@@ -284,6 +281,16 @@ final class StaffScreen extends LinearLayout {
             item.setBackground(ripple(selected ? rounded(PALE_BLUE) : rounded(WHITE)));
             navigation.addView(item, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
         }
+    }
+
+    private void select(String destination) {
+        snackbar.clear();
+        if (!"Registry".equals(destination) && "completion_correction".equals(registrySubPage)) {
+            registrySubPage = "lifecycle";
+            completionCorrectionView = null;
+        }
+        tab = destination;
+        updateNavigation();
 
         content.removeAllViews();
         if (!"Profile".equals(tab) && !"Manage".equals(tab) && !"Requests".equals(tab)) addBanner();
@@ -337,12 +344,22 @@ final class StaffScreen extends LinearLayout {
         if (liveWorkspace) {
             content.removeAllViews();
             LinearLayout panel = card("Staff workspace");
-            panel.addView(text("Open an authorized workspace to view current CRM records.", 14, MUTED, bodyFont));
-            if (hasPermission("request_processing")) action(panel, "Service requests", () -> navigate("Requests"));
-            if (hasPermission("registry_management")) action(panel, "Research registry", () -> openRegistrySubPage("registered_live"));
-            if (hasPermission("progress_updates")) action(panel, "Research progress", () -> openRegistrySubPage("progress_live"));
-            if (hasPermission("reporting")) action(panel, "Reports", () -> openManageSubPage("live_reports"));
-            action(panel, "Manage authorized workspaces", () -> navigate("Manage"));
+            if (permissions.isEmpty()) {
+                panel.addView(text("Limited access staff account. No staff management permissions are currently assigned.", 14, MUTED, bodyFont));
+                action(panel, "Public resources", activity::showPublicResources);
+                action(panel, "View profile", () -> navigate("Profile"));
+            } else {
+                panel.addView(text("Open an authorized workspace to view current CRM records.", 14, MUTED, bodyFont));
+                if (hasPermission("request_processing")) action(panel, "Service requests", () -> navigate("Requests"));
+                if (hasPermission("registry_management")) action(panel, "Research registry", () -> openRegistrySubPage("registered_live"));
+                if (hasPermission("progress_updates")) action(panel, "Research progress", () -> openRegistrySubPage("progress_live"));
+                if (hasPermission("content_management")) action(panel, "Service catalog", () -> openManageSubPage("live_catalog"));
+                if (hasPermission("account_administration")) action(panel, "User accounts", () -> openManageSubPage("live_accounts"));
+                if (hasPermission("reporting")) action(panel, "Reports", () -> openManageSubPage("live_reports"));
+                if (hasPermission("content_management") || hasPermission("account_administration") || hasPermission("reporting")) {
+                    action(panel, "Manage authorized workspaces", () -> navigate("Manage"));
+                }
+            }
             return;
         }
         clearAfter(1);
@@ -394,6 +411,20 @@ final class StaffScreen extends LinearLayout {
     }
 
     private void showProfile() {
+        LinearLayout banner = new LinearLayout(activity);
+        banner.setOrientation(VERTICAL);
+        banner.setBackgroundColor(BLUE);
+        int pad = dp(16);
+        banner.setPadding(pad, pad, pad, pad);
+        TextView heading = new TextView(activity);
+        heading.setText("Profile");
+        heading.setTextColor(WHITE);
+        heading.setTypeface(UiTheme.headingFont(activity));
+        ScreenTypography.apply(heading, 24);
+        ScreenTypography.heading(heading);
+        banner.addView(heading);
+        content.addView(banner, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+
         LinearLayout profile = panel();
         profile.setPadding(0, 0, 0, 0);
         addPanel(profile);
@@ -649,6 +680,11 @@ final class StaffScreen extends LinearLayout {
         if (selectedRegistryRecord == null) {
             selectedRegistryRecord = StaffRegistryData.getMockRecords().get(0);
         }
+        if (liveWorkspace && !previewRegistry && !hasPermission("registry_management") && !hasPermission("progress_updates")) {
+            card("Access denied").addView(text("Registry management or progress updates permission is required.", 14, MUTED, bodyFont));
+            scroll.scrollTo(0, 0);
+            return;
+        }
         switch (registrySubPage) {
             case "progress_live":
                 showLiveResearchProgress();
@@ -700,8 +736,13 @@ final class StaffScreen extends LinearLayout {
             case "list":
             default:
                 if (liveWorkspace) {
-                    if (hasPermission("registry_management")) content.addView(button("Registered research", () -> openRegistrySubPage("registered_live")));
-                    if (hasPermission("progress_updates")) content.addView(button("Research progress", () -> openRegistrySubPage("progress_live")));
+                    if (hasPermission("registry_management")) {
+                        showRegisteredResearch();
+                    } else if (hasPermission("progress_updates")) {
+                        showLiveResearchProgress();
+                    } else {
+                        card("Access denied").addView(text("Registry management or progress updates permission is required.", 14, MUTED, bodyFont));
+                    }
                     break;
                 }
                 ensureResearchRegistryView();
@@ -712,6 +753,18 @@ final class StaffScreen extends LinearLayout {
     }
 
     private void showLiveResearchProgress() {
+        if (hasPermission("registry_management")) {
+            LinearLayout switchBar = new LinearLayout(activity);
+            switchBar.setOrientation(LinearLayout.HORIZONTAL);
+            switchBar.setPadding(dp(16), dp(8), dp(16), dp(4));
+            Button b1 = button("Registered research", () -> openRegistrySubPage("registered_live"));
+            b1.setTextColor(MUTED);
+            switchBar.addView(b1);
+            Button b2 = button("Research progress", () -> openRegistrySubPage("progress_live"));
+            b2.setTextColor(NAVY);
+            switchBar.addView(b2);
+            content.addView(switchBar);
+        }
         if(liveProgressView==null)liveProgressView = new ph.edu.umak.crm.app.staff.lifecycle.LiveResearchProgressEditor(activity,
                 new ph.edu.umak.crm.app.staff.lifecycle.LiveResearchProgressEditor.Actions() {
                     @Override
@@ -721,7 +774,7 @@ final class StaffScreen extends LinearLayout {
                     }
 
                     @Override
-                    public void back() { openRegistrySubPage("list"); }
+                    public void back() { openRegistrySubPage(hasPermission("registry_management") ? "registered_live" : "progress_live"); }
                 });
         ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(liveProgressView);
         content.addView(liveProgressView);
@@ -735,11 +788,23 @@ final class StaffScreen extends LinearLayout {
     private int registeredResearch;
 
     private void showRegisteredResearch(){
+        if (hasPermission("progress_updates")) {
+            LinearLayout switchBar = new LinearLayout(activity);
+            switchBar.setOrientation(LinearLayout.HORIZONTAL);
+            switchBar.setPadding(dp(16), dp(8), dp(16), dp(4));
+            Button b1 = button("Registered research", () -> openRegistrySubPage("registered_live"));
+            b1.setTextColor(NAVY);
+            switchBar.addView(b1);
+            Button b2 = button("Research progress", () -> openRegistrySubPage("progress_live"));
+            b2.setTextColor(MUTED);
+            switchBar.addView(b2);
+            content.addView(switchBar);
+        }
         if(liveRegistryDirectory==null)liveRegistryDirectory=new ph.edu.umak.crm.app.staff.registry.LiveRegistryDirectoryView(activity,new ph.edu.umak.crm.app.staff.registry.LiveRegistryDirectoryView.Actions(){
             public void request(String query,java.util.function.BiConsumer<String,String> result){activity.staffRequest(StaffScreen.this,REGISTRY_API+query,null,result);}
             public void open(int id){registeredResearch=id;openRegistrySubPage("registered_live_detail");}
             public void create(){openRegistrySubPage("registered_live_create");}
-            public void back(){openRegistrySubPage("list");}
+            public void back(){openRegistrySubPage("registered_live");}
         });
         ph.edu.umak.crm.app.staff.common.StaffDesignPage.detach(liveRegistryDirectory);content.addView(liveRegistryDirectory);liveRegistryDirectory.load();
     }
@@ -782,26 +847,7 @@ final class StaffScreen extends LinearLayout {
         this.registrySubPage = subPage;
         if (!"Registry".equals(tab)) {
             tab = "Registry";
-            navigation.removeAllViews();
-            for (int index = 0; index < TABS.length; index++) {
-                String name = TABS[index];
-            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
-            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
-                boolean selected = name.equals(tab);
-                Button item = button(name, () -> navigate(name));
-                ScreenTypography.apply(item, 11);
-                item.setMinWidth(0);
-                item.setMinimumWidth(0);
-                item.setTextColor(selected ? NAVY : MUTED);
-                item.setSelected(selected);
-                item.setPadding(0, dp(8), 0, dp(8));
-                Drawable icon = getResources().getDrawable(TAB_ICONS[index], null).mutate();
-                icon.setTint(selected ? NAVY : MUTED);
-                item.setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null);
-                item.setCompoundDrawablePadding(dp(4));
-                item.setBackground(ripple(selected ? rounded(PALE_BLUE) : rounded(WHITE)));
-                navigation.addView(item, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
-            }
+            updateNavigation();
         }
         showRegistry();
     }
@@ -1167,26 +1213,7 @@ final class StaffScreen extends LinearLayout {
         this.manageSubPage = subPage;
         if (!"Manage".equals(tab)) {
             tab = "Manage";
-            navigation.removeAllViews();
-            for (int index = 0; index < TABS.length; index++) {
-                String name = TABS[index];
-            if (liveWorkspace && "Requests".equals(name) && !hasPermission("request_processing")) continue;
-            if (liveWorkspace && "Registry".equals(name) && !hasPermission("registry_management") && !hasPermission("progress_updates")) continue;
-                boolean selected = name.equals(tab);
-                Button item = button(name, () -> navigate(name));
-                ScreenTypography.apply(item, 11);
-                item.setMinWidth(0);
-                item.setMinimumWidth(0);
-                item.setTextColor(selected ? NAVY : MUTED);
-                item.setSelected(selected);
-                item.setPadding(0, dp(8), 0, dp(8));
-                Drawable icon = getResources().getDrawable(TAB_ICONS[index], null).mutate();
-                icon.setTint(selected ? NAVY : MUTED);
-                item.setCompoundDrawablesWithIntrinsicBounds(null, icon, null, null);
-                item.setCompoundDrawablePadding(dp(4));
-                item.setBackground(ripple(selected ? rounded(PALE_BLUE) : rounded(WHITE)));
-                navigation.addView(item, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
-            }
+            updateNavigation();
         }
         showManage();
     }
@@ -1214,7 +1241,11 @@ final class StaffScreen extends LinearLayout {
         if(hasPermission("account_administration")){visible.add("User Accounts");visible.add("Audit History");}
         if(hasPermission("reporting"))visible.add("Analytics & Reporting");
         design.setVisibleActions(visible);content.addView(design.getContentLayout());
-        if(visible.isEmpty())content.addView(text("No staff management permissions assigned.",14,MUTED,bodyFont));
+        if(visible.isEmpty()){
+            LinearLayout emptyCard = card("Staff management");
+            emptyCard.addView(text("No staff management permissions assigned. Contact an administrator to manage services, accounts, or reports.", 14, MUTED, bodyFont));
+            action(emptyCard, "Public resources", activity::showPublicResources);
+        }
     }
 
     private void showLiveReports() {
