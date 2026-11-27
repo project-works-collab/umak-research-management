@@ -70,3 +70,34 @@ def test_readiness_and_refresh_follow_archive_updates(monkeypatch):
     rows.clear()
     monkeypatch.setattr(service, '_snapshot', None)
     assert client.get('/ready').status_code == 503
+
+
+def test_global_retrieval_finds_different_titles_and_enforces_scope(monkeypatch):
+    rows = [(1, 'Automated vision attendance', 'facial recognition campus attendance camera'),
+            (2, 'Smart roll call engine', 'facial recognition campus attendance camera'),
+            (3, 'Soil chemistry', 'agriculture nitrogen fertilizer')]
+
+    class Archive(FakeDatabase):
+        def fetchall(self):
+            return list(rows)
+
+    @contextmanager
+    def archive_connection():
+        yield Archive()
+
+    monkeypatch.setenv('TFIDF_SERVICE_TOKEN', 'test-secret')
+    monkeypatch.setattr(service, 'connection', archive_connection)
+    monkeypatch.setattr(service, '_snapshot', None)
+    client = TestClient(service.app)
+    payload = {'title': 'Smart roll call engine',
+               'abstract': 'facial recognition campus attendance camera', 'allowed_ids': [1, 3]}
+    assert client.post('/search', json=payload).status_code == 401
+    response = client.post('/search', json=payload, headers={'authorization': 'Bearer test-secret'})
+    assert response.status_code == 200
+    body = response.json()
+    assert body['scored_count'] == 2
+    assert [item['id'] for item in body['scores']] == [1, 3]
+    assert body['scores'][0]['score'] > body['scores'][1]['score']
+    assert 2 not in [item['id'] for item in body['scores']]
+    payload['allowed_ids'] = [999]
+    assert client.post('/search', json=payload, headers={'authorization': 'Bearer test-secret'}).status_code == 503

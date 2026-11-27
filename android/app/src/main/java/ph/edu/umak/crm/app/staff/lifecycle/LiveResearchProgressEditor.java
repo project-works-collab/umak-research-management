@@ -222,7 +222,8 @@ public final class LiveResearchProgressEditor extends LinearLayout {
     private void editStage(int id, int version, String current, JSONObject record) {
         reset("Update overall stage", "Back to research progress", () -> detail(id));
         String[] values = switch (current) {
-            case "Registered", "UnderReview" -> new String[]{"In-Progress"};
+            case "Registered" -> new String[]{"In-Progress"};
+            case "UnderReview" -> new String[]{"In-Progress", "Completed"};
             case "In-Progress" -> new String[]{"UnderReview", "Completed"};
             default -> new String[0];
         };

@@ -56,6 +56,7 @@ test('public cache catalogue has stable ETag and checksummed blank template',asy
 });
 test('production database refuses plaintext/unverified configuration',()=>{
   assert.throws(()=>databaseConfig({NODE_ENV:'production',DATABASE_URL:'postgresql://example.test/db'}));
+  assert.throws(()=>databaseConfig({NODE_ENV:'production',DATABASE_URL:'postgresql://example.test/db',ALLOW_UNVERIFIED_DB_TLS:'yes'}));
   assert.throws(()=>databaseConfig({NODE_ENV:'production',DATABASE_URL:'postgresql://example.test/db?sslmode=no-verify',DB_TLS_CA_FILE:'unused'}));
 });
 test('real SDK presigner binds private key and ten-minute expiry without cloud calls',async()=>{

@@ -106,7 +106,9 @@ export function serviceCatalogRoutes(app,db,auth){
   });
 
   staff.put('/:id/form',revisionId,express.raw({type:'application/octet-stream',limit}),async(req,res)=>{
-    const name=req.get('X-Form-Name')??'';
+    const parsedName=z.string().min(1).max(185).safeParse(req.get('X-Form-Name'));
+    if(!parsedName.success)return res.status(400).json({error:'Provide a PDF or DOCX filename'});
+    const name=parsedName.data;
     if(!Buffer.isBuffer(req.body)||req.body.length>limit) return res.status(400).json({error:'Provide a PDF or DOCX up to 10 MB'});
     const mime=await validateIsolated(req.body,name);
     const revision=await transaction(db,async client=>{

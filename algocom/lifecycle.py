@@ -4,13 +4,13 @@ No persistence or authorization is implied. Dates are supplied ISO calendar date
 from dataclasses import dataclass, replace
 from datetime import date
 
-STATES = ('Registered', 'In-Progress', 'UnderReview', 'Completed')
-TRANSITIONS = {
-    ('Registered', 'In-Progress'),
-    ('In-Progress', 'UnderReview'),
-    ('UnderReview', 'In-Progress'),
-    ('UnderReview', 'Completed'),
-}
+import json
+from pathlib import Path
+
+# The same transition policy is enforced by migration 024 for both live APIs.
+POLICY = json.loads(Path(__file__).with_name('lifecycle-policy.json').read_text())
+STATES = tuple(POLICY['regions']['lifecycle'])
+TRANSITIONS = {tuple(pair) for pair in POLICY['transitions']}
 
 @dataclass(frozen=True)
 class ResearchState:
@@ -18,6 +18,13 @@ class ResearchState:
     completed_at: str | None = None
     presented_at: str | None = None
     published_at: str | None = None
+
+    @property
+    def active_regions(self):
+        """Active leaf of each orthogonal region under the Research parent."""
+        return {'lifecycle': self.lifecycle,
+                'presentation': 'Presented' if self.presented_at else 'NotPresented',
+                'publication': 'Published' if self.published_at else 'NotPublished'}
 
 
 def apply(state, event, method='table'):
@@ -51,7 +58,7 @@ def apply(state, event, method='table'):
     else:
         allowed = (
             (state.lifecycle == 'Registered' and action == 'In-Progress') or
-            (state.lifecycle == 'In-Progress' and action == 'UnderReview') or
+            (state.lifecycle == 'In-Progress' and action in ('UnderReview', 'Completed')) or
             (state.lifecycle == 'UnderReview' and action in ('In-Progress', 'Completed'))
         )
     if not allowed:

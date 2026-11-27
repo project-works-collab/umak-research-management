@@ -4,10 +4,6 @@ export function databaseConfig(env=process.env){
   const config={connectionString:env.DATABASE_URL,max:10,connectionTimeoutMillis:5000,statement_timeout:10000};
   if(env.NODE_ENV==='production'){
     if(!env.DB_TLS_CA_FILE){
-      if(env.ALLOW_UNVERIFIED_DB_TLS==='yes'){
-        config.ssl={rejectUnauthorized:false};
-        return config;
-      }
       throw Error('Production database TLS CA is required');
     }
     const url=new URL(env.DATABASE_URL);

@@ -4,6 +4,20 @@ from lifecycle import ResearchState, STATES, TRANSITIONS, apply, replay
 from engine import solve
 
 class LifecycleTests(unittest.TestCase):
+    def test_parent_regions_and_both_supported_completion_paths(self):
+        state = ResearchState()
+        self.assertEqual(state.active_regions, {'lifecycle':'Registered',
+                         'presentation':'NotPresented', 'publication':'NotPublished'})
+        for actions in [('In-Progress', 'Completed'),
+                        ('In-Progress', 'UnderReview', 'Completed')]:
+            result, count = replay([(action, '2026-02-01') for action in actions])
+            self.assertEqual(count, len(actions))
+            published, ok = apply(result, ('Published', '2026-03-01'))
+            self.assertTrue(ok)
+            self.assertEqual(published.completed_at, '2026-02-01')
+            self.assertEqual(published.active_regions['publication'], 'Published')
+            self.assertEqual(published.active_regions['lifecycle'], 'Completed')
+
     def test_matrix(self):
         for source in STATES:
             for target in STATES:

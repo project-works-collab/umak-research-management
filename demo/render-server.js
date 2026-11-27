@@ -19,7 +19,7 @@ const db=new pg.Pool(databaseConfig());
 await db.query('SELECT 1');
 const demo=hostedDemo(db);
 if(!demo)throw Error("Set CRM_DEMO_MODE=umak for the hosted demo entry point");
-const app=createApp(db,{objectStore:configuredStore(),scanner:demo?.scanner??clamScanner(),verification:demo?.verification??configuredVerification(),demo});
+const app=createApp(db,{objectStore:configuredStore(),scanner:clamScanner()??demo?.scanner,verification:demo?.verification??configuredVerification(),demo});
 
 if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true' || process.env.RENDER || (!hasTlsFiles && isProduction)) {
   app.set('trust proxy', 1);

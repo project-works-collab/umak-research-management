@@ -1,4 +1,5 @@
-import {parseSearch,searchResearch,duplicateCandidates} from './research/search.js';
+import {reviewDuplicates} from './research/duplicate-review.js';
+import {parseSearch,searchResearch} from './research/search.js';
 import {consultationRouter} from './consultations/routes.js';
 import {createAlgorithmRunner} from './algorithm.js';
 import express from 'express';
@@ -7,7 +8,7 @@ import { randomBytes,randomUUID } from 'node:crypto';
 import {verifyPassword,hashPassword,needsRehash,tokenHash} from './crypto.js';
 import {scopedDatabase} from './security/context.js';
 import {requestLimiter,reserveLogin} from './security/limiter.js';
-import {z,id,login,research,feedback,member,validate,search,duplicateReview,consent,empty,algorithm} from './security/validation.js';
+import {z,id,login,research,feedback,member,validate,completeRequestValidation,search,duplicateReview,consent,empty,algorithm} from './security/validation.js';
 import {documentRouter} from './storage/routes.js';
 import {publicContentRouter} from './public-content.js';
 import {createSessionTokens} from './security/session-tokens.js';
@@ -20,7 +21,7 @@ import {accountAdministrationRoutes} from './auth/account-administration.js';
 import {reportingRoutes} from './reporting/reports.js';
 import {registryRoutes} from './research/registry.js';
 const dummyHash = await hashPassword('dummy-unusable-account-password');
-const isId=value=>id.safeParse(value).success;
+const recordParams=validate(z.strictObject({id}),'params');
 export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectStore=null,scanner=null,verification=null,demo=null,sessionTokens=createSessionTokens()}={}) {
   const {db,storage}=scopedDatabase(pool);
   const app = express();
@@ -134,14 +135,12 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
   app.patch('/api/v1/users/me',auth,validate(z.strictObject({email:z.email().max(254).transform(x=>x.toLowerCase())})),async(req,res)=>{
     res.status(403).json({error:'Email changes require CRM assistance'});
   });
-  app.patch('/api/v1/research/:id',auth,validate(research),async(req,res)=>{
-    if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
+  app.patch('/api/v1/research/:id',auth,recordParams,validate(research),async(req,res)=>{
     const b=req.validated.body;
     const r=await db.query('UPDATE research_records SET title=$1,abstract=$2,research_year=$3,department=$4 WHERE id=$5 AND crm_member(id) AND NOT is_registered RETURNING id,author_id,title,abstract,status,research_year,department',[b.title,b.abstract,b.research_year,b.department,req.params.id]);
     if(!r.rowCount)return res.status(404).json({error:'Record not found'});res.json(r.rows[0]);
   });
-  app.post('/api/v1/research/:id/members',auth,validate(member),async(req,res)=>{
-    if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
+  app.post('/api/v1/research/:id/members',auth,recordParams,validate(member),async(req,res)=>{
     const r=await db.query(`WITH eligible AS MATERIALIZED (
       SELECT id FROM research_records WHERE id=$1 AND author_id=$3 AND NOT is_registered FOR UPDATE
     ), target AS MATERIALIZED (
@@ -153,15 +152,13 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     if(!r.rows[0].valid)return res.status(400).json({error:'Invalid member'});
     res.sendStatus(204);
   });
-  app.delete('/api/v1/research/:id/members/:memberId',auth,async(req,res)=>{
-    if(!isId(req.params.id)||!isId(req.params.memberId))return res.status(400).json({error:'Invalid ID'});
+  app.delete('/api/v1/research/:id/members/:memberId',auth,validate(z.strictObject({id,memberId:id}),'params'),validate(empty),async(req,res)=>{
     const r=await db.query(`WITH eligible AS MATERIALIZED (
       SELECT id FROM research_records WHERE id=$1 AND author_id=$3 AND NOT is_registered FOR UPDATE
     ) DELETE FROM study_members WHERE study_id IN(SELECT id FROM eligible) AND user_id=$2 RETURNING user_id`,[req.params.id,req.params.memberId,req.user.id]);
     if(!r.rowCount)return res.status(404).json({error:'Member not found'});res.sendStatus(204);
   });
-  app.get('/api/v1/research/:id/feedback',auth,async(req,res)=>{
-    if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
+  app.get('/api/v1/research/:id/feedback',auth,recordParams,async(req,res)=>{
     const access=await db.query('SELECT id FROM research_records WHERE id=$1',[req.params.id]);
     if(!access.rowCount)return res.status(404).json({error:'Record not found'});
     const r=await db.query('SELECT researcher_visible_feedback,updated_at FROM research_feedback WHERE study_id=$1',[req.params.id]);
@@ -171,8 +168,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     }
     res.json(output);
   });
-  app.put('/api/v1/research/:id/feedback',auth,staff,validate(feedback),async(req,res)=>{
-    if(!isId(req.params.id))return res.status(400).json({error:'Invalid ID'});
+  app.put('/api/v1/research/:id/feedback',auth,staff,recordParams,validate(feedback),async(req,res)=>{
     const c=await db.connect();
     try{
       await c.query('BEGIN');
@@ -224,26 +220,11 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     const serviceToken=process.env.TFIDF_SERVICE_TOKEN;
     if(!serviceUrl||!serviceToken)return res.status(503).json({error:'Duplicate review unavailable'});
     const input=req.validated.body;
-    const candidates=await duplicateCandidates(db,input);
     try {
-      const response=await fetch(new URL('/score',serviceUrl),{
-        method:'POST',signal:AbortSignal.timeout(5000),
-        headers:{'content-type':'application/json',authorization:`Bearer ${serviceToken}`},
-        body:JSON.stringify({title:input.title,abstract:input.abstract,candidates:candidates.map(({id,title,abstract})=>({id,title,abstract:abstract??''}))})
-      });
-      if(!response.ok)throw new Error(`Scoring service returned ${response.status}`);
-      const result=await response.json();
-      if(!Array.isArray(result.scores)||result.scores.length!==candidates.length)throw new Error('Invalid scoring response');
-      const scores=new Map(result.scores.map(item=>[item.id,item.score]));
-      if(scores.size!==candidates.length||candidates.some(item=>!Number.isFinite(scores.get(item.id))))throw new Error('Invalid scores');
-      const threshold=0.754922674938459;
-      const matches=candidates.map(item=>({...item,tfidf_score:scores.get(item.id),alert:scores.get(item.id)>=threshold,abstract_unavailable:!item.abstract}))
-        .sort((a,b)=>Number(b.exact_title)-Number(a.exact_title)||b.tfidf_score-a.tfidf_score||a.id-b.id).slice(0,5);
-      res.json({matches,model_version:result.model_version,threshold,threshold_version:'synthetic-benchmark-v1',threshold_status:'synthetic_benchmark_pilot'});
+      res.json(await reviewDuplicates(db,input,{serviceUrl,serviceToken}));
     } catch(error){res.status(503).json({error:'Duplicate review scoring unavailable'});}
   });
-  app.get('/api/v1/research/:id',auth,async(req,res)=>{
-    if (!isId(req.params.id)) return res.status(400).json({error:'Invalid ID'});
+  app.get('/api/v1/research/:id',auth,recordParams,async(req,res)=>{
     const result=await db.query("SELECT id,author_id,title,abstract,status,research_year,department FROM research_records WHERE id=$1 AND (author_id=$2 OR crm_can_access(id))",[req.params.id,req.user.id]);
     if (!result.rowCount) return res.status(404).json({error:'Record not found'});
     res.json(result.rows[0]);
@@ -290,8 +271,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     if(Object.keys(req.body ?? {}).length) return res.status(400).json({error:'No personal data or user_id should be supplied'});
     const r=await db.query("INSERT INTO deletion_requests(user_id) VALUES($1) ON CONFLICT(user_id) WHERE status='pending' DO UPDATE SET user_id=EXCLUDED.user_id RETURNING id,status,requested_at",[req.user.id]);res.status(202).json(r.rows[0]);
   });
-  app.post('/api/v1/admin/deletion-requests/:id/complete',auth,staff,validate(z.strictObject({confirm_review:z.literal(true)})),async(req,res)=>{
-    if(!isId(req.params.id)||req.body?.confirm_review!==true||Object.keys(req.body ?? {}).some(k=>k!=='confirm_review')) return res.status(400).json({error:'Valid ID and confirm_review=true required'});
+  app.post('/api/v1/admin/deletion-requests/:id/complete',auth,staff,recordParams,validate(z.strictObject({confirm_review:z.literal(true)})),async(req,res)=>{
     const r=await db.query('SELECT crm_complete_deletion($1) AS completed',[req.params.id]);
     if(!r.rows[0].completed)return res.status(404).json({error:'Pending request not found'});
     res.json({status:'completed',backup_erasure:'Requires approved retention and deletion replay on restore'});
@@ -300,6 +280,7 @@ export function createApp(pool,{algorithmRunner=createAlgorithmRunner(),objectSt
     const r=await db.query('SELECT id,action,recorded_at FROM audit_logs ORDER BY id DESC LIMIT 100');res.json(r.rows);
   });
   demo?.mount(app);
+  completeRequestValidation(app);
   app.use((_req,res)=>res.status(404).json({error:'Route not found'}));
   app.use((err,_req,res,_next)=>{
     if(err.type==='entity.parse.failed') return res.status(400).json({error:'Invalid JSON'});
