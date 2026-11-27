@@ -26,6 +26,7 @@ public final class ManageHubView {
 
     private final Context context;
     private final LinearLayout layout;
+    private final LinearLayout card;
     private final Listener listener;
 
     public ManageHubView(Context context, Listener listener) {
@@ -44,7 +45,7 @@ public final class ManageHubView {
         addSpacing(context, layout, 14);
 
         // Staff Actions Single Container Card
-        LinearLayout card = new LinearLayout(context);
+        card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackground(UiTheme.shape(context, UiTheme.WHITE, 10, UiTheme.BORDER));
         card.setPadding(pad, pad, pad, pad);
@@ -119,15 +120,41 @@ public final class ManageHubView {
     }
 
     public void setVisibleActions(java.util.Set<String> names) {
-        for(int i=0;i<layout.getChildCount();i++) {
-            View child=layout.getChildAt(i);
-            if(child instanceof LinearLayout card && card.getChildCount()>0 && card.getChildAt(0) instanceof TextView title)
-                child.setVisibility(names.contains(title.getText().toString())?View.VISIBLE:View.GONE);
+        boolean anyVisible = false;
+        for (int i = 0; i < card.getChildCount(); i++) {
+            View child = card.getChildAt(i);
+            Object tag = child.getTag();
+            if (tag instanceof String title) {
+                boolean visible = names != null && names.contains(title);
+                child.setVisibility(visible ? View.VISIBLE : View.GONE);
+                if (visible) anyVisible = true;
+            }
         }
+        boolean previousRowVisible = false;
+        for (int i = 0; i < card.getChildCount(); i++) {
+            View child = card.getChildAt(i);
+            Object tag = child.getTag();
+            if (tag instanceof String && !"divider".equals(tag)) {
+                previousRowVisible = child.getVisibility() == View.VISIBLE;
+            } else if ("divider".equals(tag)) {
+                boolean nextRowVisible = false;
+                for (int j = i + 1; j < card.getChildCount(); j++) {
+                    View nextChild = card.getChildAt(j);
+                    if (nextChild.getTag() instanceof String && !"divider".equals(nextChild.getTag())
+                            && nextChild.getVisibility() == View.VISIBLE) {
+                        nextRowVisible = true;
+                        break;
+                    }
+                }
+                child.setVisibility((previousRowVisible && nextRowVisible) ? View.VISIBLE : View.GONE);
+            }
+        }
+        card.setVisibility(anyVisible ? View.VISIBLE : View.GONE);
     }
 
     private View createActionRow(int iconRes, String title, String description, Runnable onClick) {
         LinearLayout row = new LinearLayout(context);
+        row.setTag(title);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         int padV = UiTheme.dp(context, 12);
@@ -175,6 +202,7 @@ public final class ManageHubView {
 
     private void addDivider(LinearLayout parent) {
         View line = new View(context);
+        line.setTag("divider");
         line.setBackgroundColor(0xfff1f5f9);
         parent.addView(line, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, UiTheme.dp(context, 1)));

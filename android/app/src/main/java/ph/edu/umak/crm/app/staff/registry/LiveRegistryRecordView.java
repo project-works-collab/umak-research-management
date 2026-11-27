@@ -51,7 +51,6 @@ public final class LiveRegistryRecordView extends LinearLayout {
     public void showRecord(int id){if(currentRecordId!=id||getChildCount()==0)load(id);}
     public LiveRegistryRecordView(Context context, Actions actions) {
         super(context); this.actions = actions; setOrientation(VERTICAL);
-        int padding = UiTheme.dp(context, 16); setPadding(padding, padding, padding, padding);
     }
 
     public void load(int id) {
