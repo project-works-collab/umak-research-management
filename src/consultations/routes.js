@@ -73,13 +73,13 @@ export function consultationRouter(db,auth,staff){
     const row=await transaction(db,req.user.id,'consultation.claimed',async c=>(await c.query(CLAIM_SQL,[req.user.id])).rows[0]);
     if(!row)return res.sendStatus(204);res.json(publicTicket(row));
   });
-  router.patch('/:id/deadline',staff,validate(z.strictObject({deadline_at:deadline,expected_version:version.shape.expected_version})),async(req,res)=>{
+  router.patch('/:id/deadline',staff,validate(z.strictObject({id}),'params'),validate(z.strictObject({deadline_at:deadline,expected_version:version.shape.expected_version})),async(req,res)=>{
     const b=req.body;
     if(!validId(req.params.id)||!keys(b,['deadline_at','expected_version'])||!Object.hasOwn(b,'deadline_at')||!validDeadline(b.deadline_at)||!validId(b.expected_version)||typeof b.expected_version!=='number')return res.status(400).json({error:'Valid ID, UTC deadline_at (or null) and expected_version required'});
     const row=await transaction(db,req.user.id,'consultation.rescheduled',async c=>(await c.query("UPDATE consultation_tickets SET deadline_at=$1,version=version+1 WHERE id=$2 AND status='queued' AND version=$3 RETURNING *",[b.deadline_at,req.params.id,b.expected_version])).rows[0]);
     if(!row)return res.status(409).json({error:'Ticket unavailable or version changed'});res.json(publicTicket(row));
   });
-  for(const action of ['resolve','cancel'])router.post(`/:id/${action}`,validate(version),async(req,res)=>{
+  for(const action of ['resolve','cancel'])router.post(`/:id/${action}`,validate(z.strictObject({id}),'params'),validate(version),async(req,res)=>{
     const b=req.body;
     if(!validId(req.params.id)||!keys(b,['expected_version'])||!validId(b.expected_version)||typeof b.expected_version!=='number')return res.status(400).json({error:'Valid ID and expected_version required'});
     if(action==='resolve'&&req.user.role!=='staff')return res.status(403).json({error:'Forbidden'});

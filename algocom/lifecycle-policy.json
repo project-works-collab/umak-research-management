@@ -1,0 +1,40 @@
+{
+  "regions": {
+    "lifecycle": [
+      "Registered",
+      "In-Progress",
+      "UnderReview",
+      "Completed"
+    ],
+    "presentation": [
+      "NotPresented",
+      "Presented"
+    ],
+    "publication": [
+      "NotPublished",
+      "Published"
+    ]
+  },
+  "transitions": [
+    [
+      "Registered",
+      "In-Progress"
+    ],
+    [
+      "In-Progress",
+      "UnderReview"
+    ],
+    [
+      "UnderReview",
+      "In-Progress"
+    ],
+    [
+      "UnderReview",
+      "Completed"
+    ],
+    [
+      "In-Progress",
+      "Completed"
+    ]
+  ]
+}

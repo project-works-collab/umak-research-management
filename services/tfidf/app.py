@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 import psycopg
 from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -20,9 +20,16 @@ class Candidate(BaseModel):
     abstract: str = ''
 
 class ScoreRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     title: str = Field(min_length=1, max_length=200)
     abstract: str = Field(min_length=1, max_length=4000)
     candidates: list[Candidate] = Field(max_length=50)
+
+class SearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=200)
+    abstract: str = Field(min_length=1, max_length=4000)
+    allowed_ids: list[int] = Field(max_length=100000)
 
 @contextmanager
 def connection():
@@ -101,5 +108,40 @@ def score(request: ScoreRequest, authorization: str | None = Header(default=None
         return {'model_version': snapshot['version'], 'scores': [
             {'id': candidate.id, 'score': float(value)}
             for candidate, value in zip(request.candidates, values)]}
+    except psycopg.Error as error:
+        raise HTTPException(503, 'Archive unavailable') from error
+
+
+@app.post('/search')
+def search(request: SearchRequest, authorization: str | None = Header(default=None)):
+    """Exact cosine search over the caller's entire authorized archive scope.
+
+    The Node service derives IDs using its authenticated RLS context. Only IDs
+    and scores cross this private boundary; Node rechecks access before returning
+    current metadata. There is no title-overlap predicate in this path.
+    """
+    expected = 'Bearer ' + os.environ['TFIDF_SERVICE_TOKEN']
+    if not authorization or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(401, 'Unauthorized')
+    ids = sorted(set(request.allowed_ids))
+    if any(record_id < 1 for record_id in ids):
+        raise HTTPException(422, 'Invalid archive scope')
+    try:
+        snapshot = refresh(force=True)
+        if any(record_id not in snapshot['records'] for record_id in ids):
+            snapshot = refresh(force=True)
+        if any(record_id not in snapshot['records'] for record_id in ids):
+            raise HTTPException(503, 'Archive changed during retrieval')
+        if not ids:
+            return {'model_version': snapshot['version'], 'scores': [], 'scored_count': 0}
+        if snapshot['vectorizer'] is None:
+            raise HTTPException(503, 'Archive is empty')
+        query = snapshot['vectorizer'].transform([request.title + ' ' + request.abstract])
+        indices = [snapshot['records'][record_id][0] for record_id in ids]
+        values = (snapshot['matrix'][indices] @ query.T).toarray().ravel()
+        ranked = sorted(zip(ids, values), key=lambda item: (-float(item[1]), item[0]))[:5]
+        return {'model_version': snapshot['version'], 'scored_count': len(ids),
+                'scores': [{'id': record_id, 'score': min(1.0, max(0.0, float(value)))}
+                           for record_id, value in ranked]}
     except psycopg.Error as error:
         raise HTTPException(503, 'Archive unavailable') from error

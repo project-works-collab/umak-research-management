@@ -1,5 +1,6 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import express from 'express';
+import {validate,z} from '../src/security/validation.js';
 import {requestLimiter} from '../src/security/limiter.js';
 
 export const acceptsDemoAddress=address=>/^(?:demo[.-][a-z0-9.-]+|(?:student|faculty)\.demo[0-9]+)@umak\.edu\.ph$/.test(address);
@@ -36,7 +37,7 @@ export function hostedDemo(pool,env=process.env){
         const messages=(await pool.query("SELECT recipient,body,created_at FROM crm_demo_mail WHERE created_at>now()-interval '15 minutes' ORDER BY id DESC LIMIT 100")).rows;
         res.type('html').send(page('Demo verification inbox',`<p><a href="/demo/inbox">Refresh inbox</a></p><p>Codes expire after 15 minutes. Use the code for your exact signup address.</p>${messages.length?messages.map(message=>`<article><h2>${escape(message.recipient)}</h2><p>${escape(message.body)}</p><time>${escape(message.created_at.toISOString())}</time></article>`).join(''):'<p>No recent verification codes. Create an account in the Android app first.</p>'}<form method="post" action="/demo/inbox/logout"><button>Close inbox</button></form>`));
       });
-      router.post('/login',requestLimiter(pool,{scope:'demo-inbox-login',capacity:10,perSecond:1/90}),express.urlencoded({extended:false,limit:'2kb'}),async(req,res)=>{
+      router.post('/login',requestLimiter(pool,{scope:'demo-inbox-login',capacity:10,perSecond:1/90}),express.urlencoded({extended:false,limit:'2kb'}),validate(z.strictObject({password:z.string().max(128)})),async(req,res)=>{
         if(typeof req.body?.password!=='string'||!equal(passwordDigest(req.body.password),passwordDigest(env.DEMO_PASSWORD)))
           return res.status(403).type('html').send(page('Inbox access denied','<p>Incorrect demo password. <a href="/demo/inbox">Try again</a></p>'));
         const expiry=String(Date.now()+8*3600_000);
@@ -49,7 +50,7 @@ export function hostedDemo(pool,env=process.env){
       app.use('/demo/inbox',router);
       app.get('/api/v1/demo/info',(_req,res)=>res.set('Cache-Control','no-store').json({mode:'synthetic',domain:'umak.edu.ph',
         inbox:'/demo/inbox',signup_examples:['student.demo01@umak.edu.ph','faculty.demo01@umak.edu.ph'],
-        antivirus:'synthetic files only; no antivirus certification',tfidf:'not integrated'}));
+        antivirus:env.CLAMAV_HOST?'configured ClamAV; signature freshness and detection must be verified':'synthetic files only; no antivirus certification',tfidf:env.TFIDF_REVIEW_ENABLED==='true'&&env.TFIDF_SERVICE_URL&&env.TFIDF_SERVICE_TOKEN?'configured; readiness must be verified':'not integrated'}));
     }
   };
 }

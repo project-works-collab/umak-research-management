@@ -1,5 +1,7 @@
 # ALGOCOM — Algorithms, Complexity, Pseudocode and Benchmarks
 
+Local changes on 27 November unify the lifecycle transition policy and add archive-wide TF-IDF review. See [checklist implementation updates](../docs/implementation/CHECKLIST_GAP_CLOSURE.md) for exact scope and pending verification. The measurements below remain historical evidence for their recorded source snapshots.
+
 This is the algorithm reference for the UMak Center for Research Management repository. It explains the implemented algorithms, mathematical models, complexity, pseudocode, correctness checks and measured results. Measurements below were collected on **4 November 2026** using synthetic data; the original October results remain available separately.
 
 The DAG, FSM, search and priority queue have different responsibilities. Keep the DAG for prerequisites/duration and the FSM for lifecycle rules; comparing their absolute execution times does not identify an overall winner.

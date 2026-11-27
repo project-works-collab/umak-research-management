@@ -1,5 +1,7 @@
 # IAS implementation and operation
 
+Current local changes are described in [checklist implementation updates](CHECKLIST_GAP_CLOSURE.md). They supersede the older TLS and validation configuration below but have not been deployed or runtime-verified.
+
 Updated 10 November 2026 (Asia/Manila). These changes are local workspace work, not a deployed university service or remote CI result. The original planning document is [here](../plans/IAS_CIA_IMPLEMENTATION_PLAN.md).
 
 ## Implemented

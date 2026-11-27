@@ -29,7 +29,7 @@ const errors={
   support:[400,'Provide supporting details or a reference.'],
   action:[400,'Enter a next action or select No next action recorded.'],
   completion_date:[400,'Please enter the completion date.'],
-  reason:[400,'Enter the completion correction reason.'],
+  reason:[400,'Enter a reason for the correction.'],
   presentation:[400,'Enter the presentation date and event.'],
   publication:[400,'Enter the publication date and citation.'],
   milestone:[400,'Select an active milestone.'],
