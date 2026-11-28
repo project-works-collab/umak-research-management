@@ -28,13 +28,12 @@ final class DuplicateReviewDialog {
                 .setView(scroll).setNegativeButton("Back to entry", null);
         if (continueAction != null) builder.setPositiveButton("Continue", null);
         AlertDialog dialog = builder.create();
-        dialog.setOnShowListener(ignored -> {
-            // Keep the sheet within the screen; long results scroll rather than hide actions.
-            dialog.getWindow().setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    (int) (context.getResources().getDisplayMetrics().heightPixels * .85));
-            load(context, dialog, content, title, abstractText, request, current, continueAction);
-        });
         dialog.show();
+        // Initialize controls immediately after show so Continue is disabled before
+        // asynchronous results arrive, without waiting for the posted OnShow event.
+        dialog.getWindow().setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                (int) (context.getResources().getDisplayMetrics().heightPixels * .85));
+        load(context, dialog, content, title, abstractText, request, current, continueAction);
         return dialog;
     }
 
