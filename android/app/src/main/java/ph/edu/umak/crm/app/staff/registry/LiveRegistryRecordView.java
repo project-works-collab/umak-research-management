@@ -98,7 +98,7 @@ public final class LiveRegistryRecordView extends LinearLayout {
         EditText abstractText = input("Abstract", record == null ? "" : record.optString("abstract"));
         title.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
         abstractText.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(4000)});
-        line("Review similar titles and abstracts before creating a record. Scores are advisory; the alert threshold is a synthetic pilot.", false);
+        line("Review similar titles and abstracts before creating a record. Scores are advisory; staff decide whether a record is a duplicate.", false);
         Button review = button("Review duplicates", null);
         review.setOnClickListener(view -> {
             if (saving) return;
@@ -107,31 +107,12 @@ public final class LiveRegistryRecordView extends LinearLayout {
             try {
                 JSONObject query = new JSONObject().put("title", value(title)).put("abstract", value(abstractText));
                 if (record != null) query.put("exclude_id", record.optInt("id"));
-                saving = true;
-                Runnable restore = ph.edu.umak.crm.app.staff.common.StaffDesignPage.freeze(this.body);
-                PendingStatus current = status; current.working("Reviewing titles and abstracts…");
-                actions.reviewDuplicates(query, (data, error) -> {
-                    saving = false; restore.run();
-                    if (current != status) return;
-                    if (error != null) { current.result("Duplicate review unavailable. Please try again.", true); return; }
-                    try {
-                        JSONArray matches = new JSONObject(data).getJSONArray("matches");
-                        StringBuilder message = new StringBuilder();
-                        if (matches.length() == 0) message.append("No matches found in the current title shortlist. This does not prove originality.\n");
-                        for (int i = 0; i < matches.length(); i++) {
-                            JSONObject match = matches.getJSONObject(i);
-                            message.append(i + 1).append(". ").append(match.getString("title"))
-                                .append("\nTF-IDF similarity: ").append(String.format(java.util.Locale.ROOT, "%.3f", match.getDouble("tfidf_score")))
-                                .append(match.optBoolean("alert") ? " — review suggested" : " — below pilot threshold");
-                            if (match.optBoolean("abstract_unavailable")) message.append("\nArchive abstract unavailable");
-                            message.append("\n\n");
-                        }
-                        message.append("Synthetic pilot threshold. Staff decide whether records are duplicates; scores do not determine plagiarism.");
-                        current.clear();
-                        new AlertDialog.Builder(getContext()).setTitle("Duplicate review")
-                            .setMessage(message.toString()).setPositiveButton("Back to entry", null).show();
-                    } catch (JSONException invalid) { current.result("CRM returned invalid duplicate review results. Please retry.", true); }
-                });
+                PendingStatus current = status;
+                String reviewedTitle = value(title), reviewedAbstract = value(abstractText);
+                DuplicateReviewDialog.show(getContext(), reviewedTitle, reviewedAbstract,
+                        result -> actions.reviewDuplicates(query, result),
+                        () -> current == status && reviewedTitle.equals(value(title))
+                                && reviewedAbstract.equals(value(abstractText)), null);
             } catch (JSONException invalid) { status.result("Review the title and abstract.", true); }
         });
         CheckBox historical = new CheckBox(getContext()); historical.setText("Historical entry");
@@ -186,6 +167,9 @@ public final class LiveRegistryRecordView extends LinearLayout {
         Button save = button(record == null ? "Create record" : "Save correction", null);
         save.setOnClickListener(view -> {
             if (saving) return;
+            if (duplicate.isChecked() && value(duplicateReason).isEmpty()) {
+                duplicateReason.setError("Enter a reason for creating a separate record."); return;
+            }
             if (members.isEmpty()) { status.result("Select existing Researcher accounts.", true); return; }
             if (value(title).isEmpty()) { title.setError("Please enter the research title."); return; }
             try {

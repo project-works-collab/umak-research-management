@@ -36,6 +36,9 @@ public class AddResearchEntryView {
 
     public interface Callbacks {
         void onSaveEntry(StaffRegistryData.RegistryRecordItem record);
+        default void onSaveEntry(StaffRegistryData.RegistryRecordItem record, String duplicateReason) {
+            onSaveEntry(record);
+        }
         void onCancel();
         void onReviewDuplicates(String title, String abstractText, java.util.function.BiConsumer<String,String> result);
     }
@@ -47,7 +50,7 @@ public class AddResearchEntryView {
     private boolean isStaleConflict = false;
     private boolean showDuplicateWarning = false;
     private boolean duplicateReasonError = false;
-    private boolean reviewInProgress = false;
+    private String reviewedDuplicateReason = "";
     private String teamErrorType = "none"; // "none", "already_member", "no_such_account"
 
     private FrameLayout rootContainer;
@@ -383,7 +386,7 @@ public class AddResearchEntryView {
         topRow.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView recId = new TextView(activity);
-        recId.setText("REG-2024-012");
+        recId.setText("Design preview example · REG-2024-012");
         recId.setTextColor(0xff185d9d);
         recId.setTypeface(bold);
         ScreenTypography.apply(recId, 13);
@@ -942,32 +945,14 @@ public class AddResearchEntryView {
                 new android.app.AlertDialog.Builder(activity).setMessage("Enter a title and abstract before duplicate review.").setPositiveButton("OK", null).show();
                 return;
             }
-            if (reviewInProgress || callbacks == null) return;
-            reviewInProgress = true;
-            callbacks.onReviewDuplicates(title, abstractText, (data, error) -> {
-                reviewInProgress = false;
-                if (error != null || data == null) {
-                    new android.app.AlertDialog.Builder(activity).setMessage("Duplicate review is unavailable. Please try again.").setPositiveButton("OK", null).show();
-                    return;
-                }
-                try {
-                    org.json.JSONArray matches = new org.json.JSONObject(data).getJSONArray("matches");
-                    StringBuilder message = new StringBuilder("Possible matches for staff review:\n\n");
-                    if (matches.length() == 0) message.append("No matches found in the current shortlist.");
-                    for (int i = 0; i < matches.length(); i++) {
-                        org.json.JSONObject match = matches.getJSONObject(i);
-                        message.append(i + 1).append(". ").append(match.optString("title"))
-                                .append(" (score ").append(String.format(java.util.Locale.ROOT, "%.3f", match.getDouble("tfidf_score"))).append(")");
-                        if (match.optBoolean("alert")) message.append(" — review suggested");
-                        message.append("\n");
-                    }
-                    new android.app.AlertDialog.Builder(activity).setTitle("Duplicate review")
-                            .setMessage(message.toString()).setNegativeButton("Back", null)
-                            .setPositiveButton("Continue", (dialog, which) -> saveEntry()).show();
-                } catch (org.json.JSONException invalid) {
-                    new android.app.AlertDialog.Builder(activity).setMessage("Duplicate review is unavailable. Please try again.").setPositiveButton("OK", null).show();
-                }
-            });
+            if (callbacks == null) return;
+            EditText reviewedTitleInput = titleInput, reviewedAbstractInput = abstractInput;
+            DuplicateReviewDialog.show(activity, title, abstractText,
+                    result -> callbacks.onReviewDuplicates(title, abstractText, result),
+                    () -> titleInput == reviewedTitleInput && abstractInput == reviewedAbstractInput
+                            && title.equals(titleInput.getText().toString().trim())
+                            && abstractText.equals(abstractInput.getText().toString().trim()),
+                    reason -> { reviewedDuplicateReason = reason; saveEntry(); });
             return;
         }
 
@@ -994,7 +979,7 @@ public class AddResearchEntryView {
                             null,
                             new ArrayList<>()
                     );
-            callbacks.onSaveEntry(item);
+            callbacks.onSaveEntry(item, reviewedDuplicateReason);
         }
     }
 
