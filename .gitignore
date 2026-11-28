@@ -24,3 +24,8 @@ submissions/output/
 
 # Generated local demo credentials and emulator-specific APK
 outputs/manual-demo/
+
+# Hosted demo Python build outputs
+.render-bootstrap/
+.render-python/
+.render-tfidf/

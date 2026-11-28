@@ -37,7 +37,11 @@
     "demo:tfidf:check": "node scripts/synthetic-acceptance.js --tfidf --smoke",
     "demo:tfidf": "node scripts/synthetic-acceptance.js --umak-demo --tfidf",
     "start:demo": "node --env-file-if-exists=.env demo/render-server.js",
-    "test:demo:hosted": "node scripts/synthetic-acceptance.js --hosted-smoke"
+    "test:demo:hosted": "node scripts/synthetic-acceptance.js --hosted-smoke",
+    "build:hosted-demo": "sh scripts/build-hosted-demo.sh",
+    "start:hosted-demo": "node scripts/start-hosted-demo.js",
+    "demo:hosted:sql": "node scripts/build-hosted-recording-sql.js",
+    "demo:hosted:verify-recording": "node scripts/verify-recording-demo.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
